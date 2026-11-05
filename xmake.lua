@@ -4,7 +4,7 @@
 -- Mozilla Public License Version 2.0
 
 set_project("cais")
-set_version("0.2.0")
+set_version("0.3.0")
 
 set_languages("c89")
 set_warnings("all", "extra")
@@ -332,6 +332,7 @@ end
 -- 4.1 C API Test Suite
 target("test_c_api")
     set_kind("binary")
+    set_toolchains("recudo-c")
     set_default(false)
     set_targetdir("tests")
     set_rundir(os.projectdir())
@@ -344,6 +345,7 @@ target("test_c_api")
 -- 4.2 Lua Test Suite & Portable Launcher (xmake run test_lua)
 target("test_lua")
     add_rules("recudo.lua.app")
+    set_toolchains("recudo-c")
     set_values("recudo.lua.entry", "tests/runner.lua")
     set_default(false)
     add_deps(
@@ -370,6 +372,7 @@ end -- is_plat(host)
 -- ==============================================================================
 target("cais_smoke")
     set_kind("binary")
+    set_toolchains("recudo-c")
     set_default(false)
     set_rundir(os.projectdir())
     set_targetdir(target_dir)

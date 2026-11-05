@@ -43,7 +43,7 @@ extern "C" {
 #define CAIS_VERSION_MAJOR 0
 #define CAIS_VERSION_MINOR 2
 #define CAIS_VERSION_PATCH 0
-#define CAIS_VERSION_STRING "0.2.0"
+#define CAIS_VERSION_STRING "0.3.0"
 
 /*
  * Returns the version string of the cais runtime foundation.
