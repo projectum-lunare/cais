@@ -237,11 +237,41 @@ target("cais_static")
     apply_platform_rules(conf)
 
 -- ==============================================================================
--- 2. Lua Subsystem & C Modules (Powered by recudo.lua.module)
+-- 2. Standalone C Subsystem Libraries (libcais_<subsystem>.a) - Opt-in Modular
+-- ==============================================================================
+-- Self-contained archives mirroring the Lua standalone submodule design:
+-- each library bundles its platform driver plus the shared platform core,
+-- so a consumer links exactly one subsystem without the umbrella archive.
+-- The dependency graph is a star around platform (no cross-subsystem links),
+-- and standard archive link semantics resolve duplicate platform members
+-- when several subsystem libraries are combined on the same link line.
+local c_subsystems = {
+    platform   = {"src/platform/platform.c"},
+    filesystem = {"src/filesystem/filesystem.c", "src/filesystem/filesystem_" .. conf.filesystem .. ".c", "src/platform/platform.c"},
+    serial     = {"src/serial/serial_" .. conf.serial .. ".c", "src/platform/platform.c"},
+    parallel   = {"src/parallel/parallel_" .. conf.parallel .. ".c", "src/platform/platform.c"},
+    socket     = {"src/socket/socket_common.c", "src/socket/socket_" .. conf.socket .. ".c", "src/platform/platform.c"},
+    sandbox    = {"src/sandbox/sandbox_" .. conf.sandbox .. ".c", "src/platform/platform.c"},
+}
+
+for sub_name, files in pairs(c_subsystems) do
+    target("cais_" .. sub_name)
+        set_kind("static")
+        set_group("subsystems")
+        set_default(false)
+        set_basename("cais_" .. sub_name)
+        set_targetdir(target_dir)
+        add_headerfiles("include/(cais/*.h)")
+        add_files(files)
+        apply_platform_rules(conf)
+end
+
+-- ==============================================================================
+-- 3. Lua Subsystem & C Modules (Powered by recudo.lua.module)
 -- ==============================================================================
 if is_plat("linux", "macosx", "bsd", "windows", "mingw") then
 
--- 2.1 Static Lua C Module (libcais_lua.a / cais_lua.lib) for embedding
+-- 3.1 Static Lua C Module (libcais_lua.a / cais_lua.lib) for embedding
 target("cais_lua_static")
     add_rules("recudo.lua.module")
     set_values("recudo.lua.kind", "static")
@@ -250,7 +280,7 @@ target("cais_lua_static")
     add_defines("LUA_USE_C89")
     add_files("src/**_lua.c")
 
--- 2.2 Umbrella Shared Lua C Module (build/lua/cais.so & ./cais.so)
+-- 3.2 Umbrella Shared Lua C Module (build/lua/cais.so & ./cais.so)
 target("cais")
     add_rules("recudo.lua.module")
     set_values("recudo.lua.kind", "shared")
@@ -262,7 +292,7 @@ target("cais")
         os.trycp(target:targetfile(), path.join(os.projectdir(), path.filename(target:targetfile())))
     end)
 
--- 2.3 Standalone C Modules (build/lua/cais/<submodule>.so)
+-- 3.3 Standalone C Modules (build/lua/cais/<submodule>.so)
 local submodules = {
     platform   = {"src/platform/platform_lua.c", "src/platform/platform.c"},
     filesystem = {"src/filesystem/filesystem_lua.c", "src/filesystem/filesystem.c", "src/filesystem/filesystem_" .. conf.filesystem .. ".c", "src/platform/platform.c"},
@@ -282,10 +312,10 @@ for mod_name, files in pairs(submodules) do
 end
 
 -- ==============================================================================
--- 3. Test Suites & Application Launchers (Powered by recudo.lua.app)
+-- 4. Test Suites & Application Launchers (Powered by recudo.lua.app)
 -- ==============================================================================
 
--- 3.1 C API Test Suite
+-- 4.1 C API Test Suite
 target("test_c_api")
     set_kind("binary")
     set_targetdir("tests")
@@ -295,7 +325,7 @@ target("test_c_api")
     add_packages("greatest")
     add_tests("c_api")
 
--- 3.2 Lua Test Suite & Portable Launcher (xmake run test_lua)
+-- 4.2 Lua Test Suite & Portable Launcher (xmake run test_lua)
 target("test_lua")
     add_rules("recudo.lua.app")
     set_values("recudo.lua.entry", "tests/runner.lua")
@@ -318,7 +348,7 @@ target("test_lua")
 end -- is_plat(host)
 
 -- ==============================================================================
--- 4. Cross-Platform Smoke Binary
+-- 5. Cross-Platform Smoke Binary
 -- ==============================================================================
 target("cais_smoke")
     set_kind("binary")
