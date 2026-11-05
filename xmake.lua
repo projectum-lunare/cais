@@ -318,6 +318,7 @@ end
 -- 4.1 C API Test Suite
 target("test_c_api")
     set_kind("binary")
+    set_default(false)
     set_targetdir("tests")
     set_rundir(os.projectdir())
     add_files("tests/c/*.c")
@@ -329,6 +330,7 @@ target("test_c_api")
 target("test_lua")
     add_rules("recudo.lua.app")
     set_values("recudo.lua.entry", "tests/runner.lua")
+    set_default(false)
     add_deps(
         "cais",
         "cais.platform",
@@ -352,6 +354,7 @@ end -- is_plat(host)
 -- ==============================================================================
 target("cais_smoke")
     set_kind("binary")
+    set_default(false)
     set_rundir(os.projectdir())
     set_targetdir(target_dir)
     add_files("tests/smoke.c")
