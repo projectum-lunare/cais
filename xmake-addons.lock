@@ -5,8 +5,8 @@
     recudo = {
         repo = {
             commit = "590f7d528c883372c029f09c53e04c311b17e266",
-            url = "/home/gustavo/Projetos/xmake-repo"
+            url = "https://github.com/projectum-lunare/xmake-repo.git"
         },
-        version = "v0.2.3"
+        version = "v0.2.5"
     }
 }

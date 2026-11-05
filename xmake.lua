@@ -16,7 +16,7 @@ add_includedirs("include")
 
 -- Official Projectum Lunare Package Repository & Build Infrastructure Addon
 add_repositories("projectum-lunare https://github.com/projectum-lunare/xmake-repo.git")
-add_addons("recudo v0.2.3")
+add_addons("recudo v0.2.5")
 includes("@addon/recudo/recudo.lua")
 
 -- Host dependencies for Lua C bindings and C test suites
@@ -287,7 +287,17 @@ target("cais")
     add_deps("cais_static")
     add_defines("LUA_USE_C89")
     add_files("src/**_lua.c")
+    if is_plat("linux", "bsd") then
+        -- Hide symbols pulled from the statically embedded Lua runtime: keeps
+        -- the module from interposing on a foreign host VM (e.g. LuaJIT) and
+        -- trims the dynamic symbol table. macOS uses a two-level namespace and
+        -- PE exports are explicit, so both are already safe without this.
+        add_shflags("-Wl,--exclude-libs,ALL")
+    end
     after_build(function (target)
+        if target:kind() ~= "shared" then
+            return
+        end
         -- Mirror shared module to project root for zero-config require("cais")
         os.trycp(target:targetfile(), path.join(os.projectdir(), path.filename(target:targetfile())))
     end)
@@ -309,6 +319,10 @@ for mod_name, files in pairs(submodules) do
         set_values("recudo.lua.kind", "shared")
         add_defines("LUA_USE_C89")
         add_files(files)
+        if is_plat("linux", "bsd") then
+            -- Same interposition guard as the umbrella module (see above).
+            add_shflags("-Wl,--exclude-libs,ALL")
+        end
 end
 
 -- ==============================================================================
@@ -325,6 +339,7 @@ target("test_c_api")
     add_deps("cais_static")
     add_packages("greatest")
     add_tests("c_api")
+    on_install(function (target) end) -- test-only artifact: never packaged
 
 -- 4.2 Lua Test Suite & Portable Launcher (xmake run test_lua)
 target("test_lua")
@@ -346,6 +361,7 @@ target("test_lua")
         return true
     end)
     add_tests("lua_suite")
+    on_install(function (target) end) -- test-only artifact: never packaged
 
 end -- is_plat(host)
 
@@ -364,3 +380,4 @@ target("cais_smoke")
         set_targetdir("build/bin")
         add_tests("smoke")
     end
+    on_install(function (target) end) -- demo binary: never packaged

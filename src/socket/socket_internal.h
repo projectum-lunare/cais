@@ -17,7 +17,11 @@
 #include <stddef.h>
 
 #if CAIS_IS_WINDOWS
+#if CAIS_IS_WINDOWS_CE
+#include <winsock.h>
+#else
 #include <winsock2.h>
+#endif
 #include <windows.h>
 #define CAIS_SOCK_HANDLE_TYPE SOCKET
 #define CAIS_INVALID_SOCK_HANDLE INVALID_SOCKET

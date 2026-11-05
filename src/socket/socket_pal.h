@@ -32,8 +32,16 @@
 #define FD_SETSIZE 1024
 #endif
 
+#if CAIS_IS_WINDOWS_CE
+/* Windows CE ships only the Winsock 1.1 header set: winsock2.h and
+ * ws2tcpip.h do not exist in the eVC SDKs. Everything this PAL uses
+ * (socket, connect, send/recv, select, ioctlsocket, gethostbyname)
+ * is Winsock 1.1 API. */
+#include <winsock.h>
+#else
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#endif
 #include <windows.h>
 
 #define CAIS_PAL_SOCK_T           SOCKET
@@ -48,8 +56,15 @@ static int cais_pal_sock_init(char *err_buf, size_t err_cap)
 {
     static int inited = 0;
     if (!inited) {
+        WORD version;
         WSADATA wsa;
-        if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
+#if CAIS_IS_WINDOWS_CE
+        /* CE exposes the Winsock 1.1 interface: request version 1.1. */
+        version = MAKEWORD(1, 1);
+#else
+        version = MAKEWORD(2, 2);
+#endif
+        if (WSAStartup(version, &wsa) != 0) {
             cais_set_err(err_buf, err_cap, "WSAStartup failed");
             return 0;
         }

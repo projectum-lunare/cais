@@ -263,6 +263,8 @@ local serial   = require("cais.serial")   -- only serial communication (~27 KB)
 
 The umbrella `cais` module itself is **lazy**: `require("cais")` only registers subsystem openers in `package.preload`, and each subsystem initializes on first field access — the Lua equivalent of dead-code elimination. `local cais = require("cais")` is nearly free, `cais.socket` loads only when used, and the `cais.fs` alias shares the `cais.filesystem` table identity.
 
+By default (`--kind=static`) the Lua bindings compile as embedding archives under `build/lua_static/` — `libcais_lua.a` and `libcais_<module>_lua.a` carry only the binding objects, so the embedding application brings its own interpreter — and `xmake run`/`xmake test` yield a single self-contained binary with the interpreter, bindings and entry script inside. With `--kind=shared` the modules become dynamic `.so` files linked against the shared Lua runtime (~31 KB each, e.g. `cais.serial`). In both modes the umbrella stays lazy and interpreter symbols stay hidden from the dynamic table.
+
 ### Cross-Platform Multi-Target Builds (Recudo)
 
 `cais` uses [Recudo](https://github.com/projectum-lunare/recudo) for automated cross-compilation and platform management:
