@@ -63,13 +63,3 @@ When embedding `cais` directly into proprietary build systems or embedded firmwa
 | `-DCAIS_NO_FILESYSTEM` | Excludes file manipulation, directory iterators, and stats. |
 | `-DCAIS_NO_SANDBOX` | Excludes Landlock, Pledge, and Capsicum kernel sandboxing. |
 | `-DCAIS_NO_PLATFORM` | Excludes OS and CPU architecture detection metadata. |
-
----
-
-## Installing via LuaRocks
-
-`cais` includes a native Rockspec:
-
-```bash
-luarocks make cais-scm-1.rockspec
-```

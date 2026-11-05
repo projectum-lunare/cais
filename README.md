@@ -1,6 +1,6 @@
-# cais ⚙️
+# cais 🌊
 
-> **Physical I/O, System Foundations & Hardware Abstractions**  
+> **Communication Abstraction & I/O Substrate**  
 > _Part of the [Projectum Lunare](https://github.com/projectum-lunare) Ecosystem._
 
 [![License: MPL-2.0](https://img.shields.io/badge/License-MPL_2.0-blue.svg)](https://mozilla.org/MPL/2.0/)
@@ -280,12 +280,6 @@ xmake forge kolibri   # build/kolibri/libcais.a (kos32-gcc)
 
 # Build all available platforms in a multi-target matrix:
 xmake forge all
-```
-
-### LuaRocks Installation
-
-```bash
-luarocks make cais-scm-1.rockspec
 ```
 
 ---
