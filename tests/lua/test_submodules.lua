@@ -15,6 +15,50 @@ local assert_eq = T.assert_eq
 local cais = require("cais")
 
 -- ============================================================================
+-- cais lazy umbrella (Deferred Subsystem Initialization)
+-- ============================================================================
+-- The umbrella defers subsystem initialization to first access (the Lua
+-- equivalent of dead-code elimination): require("cais") only registers
+-- openers in package.preload, and each subsystem materializes when a field
+-- is touched for the first time. Must run before any field is materialized.
+describe("cais lazy umbrella (Deferred Subsystem Initialization)", function()
+    local fresh
+
+    -- 1. Openers are registered, but nothing is materialized yet
+    test("registers openers without materializing subsystems", function()
+        assert_eq(type(package.preload["cais.serial"]), "function")
+        -- Re-acquire a pristine umbrella: clearing the loaded cache re-runs
+        -- the opener, which starts with an empty subsystem surface even when
+        -- other suites have already materialized fields on their instance.
+        package.loaded["cais"] = nil
+        fresh = require("cais")
+        assert_eq(rawget(fresh, "platform"), nil)
+        assert_eq(rawget(fresh, "serial"), nil)
+        assert_eq(rawget(fresh, "socket"), nil)
+    end)
+
+    -- 2. First access materializes the field in place
+    test("materializes subsystem on first access", function()
+        local serial = fresh.serial
+        assert_eq(type(serial.open), "function")
+        assert_eq(rawget(fresh, "serial") ~= nil, true)
+    end)
+
+    -- 3. The fs alias shares the filesystem table identity
+    test("fs alias shares filesystem table identity", function()
+        assert_eq(fresh.fs == fresh.filesystem, true)
+        assert_eq(package.loaded["cais.fs"], package.loaded["cais.filesystem"])
+    end)
+
+    -- 4. Unknown fields stay nil without spurious module lookups
+    test("unknown fields resolve to nil", function()
+        assert_eq(fresh.no_such_subsystem, nil)
+        assert_eq(fresh[42], nil)
+    end)
+end)
+
+
+-- ============================================================================
 -- cais standalone submodules (Independent C Module Loading Tests)
 -- ============================================================================
 -- Verifies that each cais C submodule (platform, serial, socket, fs, parallel,

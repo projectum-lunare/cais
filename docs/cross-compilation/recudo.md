@@ -1,16 +1,16 @@
-# Cross-Compilation with Forge
+# Cross-Compilation with Recudo
 
-`cais` integrates [Forge](https://github.com/projectum-lunare/forge) to automate cross-compiling the entire matrix of vintage and exotic targets without manual toolchain configuration.
+`cais` integrates [Recudo](https://github.com/projectum-lunare/recudo) to automate cross-compiling the entire matrix of vintage and exotic targets without manual toolchain configuration.
 
 ---
 
 ## Listing Available Toolchains
 
 ```bash
-xmake forge list
+xmake recudo list
 ```
 
-Forge inspects local compilers, SDK paths, and emulators (wibo, DOSBox, UAE).
+Recudo inspects local compilers, SDK paths, and emulators (wibo, DOSBox, UAE).
 
 ---
 
@@ -18,25 +18,25 @@ Forge inspects local compilers, SDK paths, and emulators (wibo, DOSBox, UAE).
 
 ```bash
 # Build for modern POSIX (Linux x86_64 / arm64)
-xmake forge posix
+xmake recudo posix
 
 # Build for MS-DOS (Open Watcom + WATT-32)
-xmake forge dos
+xmake recudo dos
 
 # Build for IBM OS/2 (Open Watcom OS/2)
-xmake forge os2
+xmake recudo os2
 
 # Build for Windows CE / Pocket PC (Microsoft eVC 3.0 ARM via wibo)
-xmake forge wince
+xmake recudo wince
 
 # Build for Commodore Amiga (m68k-amigaos-gcc)
-xmake forge amiga
+xmake recudo amiga
 
 # Build for Atari ST (m68k-atari-mint-gcc)
-xmake forge atari
+xmake recudo atari
 
 # Build for KolibriOS (kos32-gcc)
-xmake forge kolibri
+xmake recudo kolibri
 ```
 
 ---
@@ -46,7 +46,7 @@ xmake forge kolibri
 To build static libraries for all installed platform toolchains in a single command:
 
 ```bash
-xmake forge all
+xmake recudo all
 ```
 
 Output static libraries will be organized in:

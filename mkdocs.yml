@@ -130,4 +130,4 @@ nav:
       - Exotic Kernels (KolibriOS, OS/2, Plan 9): platforms/exotic.md
       - Kernel Internals & Gotchas: platforms/internals.md
   - Cross-Compilation:
-    - Forge Multi-Target Matrix: cross-compilation/forge.md
+    - Recudo Multi-Target Matrix: cross-compilation/recudo.md

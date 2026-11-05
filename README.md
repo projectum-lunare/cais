@@ -197,7 +197,7 @@ int main(void) {
 
 `cais` public C headers (`include/cais/*.h`) and consumer-facing C code are strictly ANSI C89 (C90) compliant, ensuring clean interoperability across vintage and modern C compilers. Internal library implementations and platform-specific drivers (such as AmigaOS m68k, Atari ST TOS/MiNT, and KolibriOS) compile under `gnu89` where compiler extensions (`__asm__`, struct alignment, `#pragma`) and standard C-runtime features (such as `vsnprintf`) are utilized.
 
-The project uses [xmake](https://xmake.io) and [Forge](https://github.com/projectum-lunare/forge) as its unified build system.
+The project uses [xmake](https://xmake.io) and [Recudo](https://github.com/projectum-lunare/recudo) as its unified build system.
 
 ```bash
 # Build static library, shared library, and Lua module:
@@ -206,7 +206,7 @@ xmake
 # Run C API unit tests:
 xmake test
 
-# Run Lua test suite via Forge launcher:
+# Run Lua test suite via Recudo launcher:
 xmake run test_lua
 
 # Run minimal standalone smoke executable:
@@ -261,25 +261,27 @@ local platform = require("cais.platform") -- only platform detection (~17 KB)
 local serial   = require("cais.serial")   -- only serial communication (~27 KB)
 ```
 
-### Cross-Platform Multi-Target Builds (Forge)
+The umbrella `cais` module itself is **lazy**: `require("cais")` only registers subsystem openers in `package.preload`, and each subsystem initializes on first field access — the Lua equivalent of dead-code elimination. `local cais = require("cais")` is nearly free, `cais.socket` loads only when used, and the `cais.fs` alias shares the `cais.filesystem` table identity.
 
-`cais` uses [Forge](https://github.com/projectum-lunare/forge) for automated cross-compilation and platform management:
+### Cross-Platform Multi-Target Builds (Recudo)
+
+`cais` uses [Recudo](https://github.com/projectum-lunare/recudo) for automated cross-compilation and platform management:
 
 ```bash
 # Inspect SDK availability and platform toolchain status:
-xmake forge list
+xmake recudo list
 
 # Build a specific target static library:
-xmake forge posix     # build/posix/libcais.a
-xmake forge dos       # build/dos/libcais.a (Open Watcom + WATT-32)
-xmake forge os2       # build/os2/libcais.a (Open Watcom OS/2)
-xmake forge wince     # build/windows_ce/arm/libcais.a (MS eVC 3.0 ARM via wibo)
-xmake forge amiga     # build/amiga/libcais.a (m68k-amigaos-gcc)
-xmake forge atari     # build/atarist/libcais.a (m68k-atari-mint-gcc)
-xmake forge kolibri   # build/kolibri/libcais.a (kos32-gcc)
+xmake recudo posix     # build/posix/libcais.a
+xmake recudo dos       # build/dos/libcais.a (Open Watcom + WATT-32)
+xmake recudo os2       # build/os2/libcais.a (Open Watcom OS/2)
+xmake recudo wince     # build/windows_ce/arm/libcais.a (MS eVC 3.0 ARM via wibo)
+xmake recudo amiga     # build/amiga/libcais.a (m68k-amigaos-gcc)
+xmake recudo atari     # build/atarist/libcais.a (m68k-atari-mint-gcc)
+xmake recudo kolibri   # build/kolibri/libcais.a (kos32-gcc)
 
 # Build all available platforms in a multi-target matrix:
-xmake forge all
+xmake recudo all
 ```
 
 ---

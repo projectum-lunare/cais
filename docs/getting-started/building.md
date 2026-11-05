@@ -1,6 +1,6 @@
 # Building & Compiling
 
-`cais` uses [xmake](https://xmake.io) and [Forge](https://github.com/projectum-lunare/forge) as its cross-platform build engine.
+`cais` uses [xmake](https://xmake.io) and [Recudo](https://github.com/projectum-lunare/recudo) as its cross-platform build engine.
 
 ---
 

@@ -122,10 +122,10 @@ All functions will cleanly return `CAIS_SANDBOX_UNSUPPORTED` (`-4`), allowing ap
 
 ---
 
-### Step 6: Add Cross-Compilation Target to Forge
+### Step 6: Add Cross-Compilation Target to Recudo
 
 In [`xmake.lua`](file:///home/gustavo/Projetos/cais/xmake.lua):
-Register your toolchain in Forge:
+Register your toolchain in Recudo:
 ```lua
 target("cais_qnx")
     set_kind("static")
