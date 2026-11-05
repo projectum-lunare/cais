@@ -1,6 +1,6 @@
 --
--- solo - Physical I/O, System Foundations & Hardware Abstractions
--- Projectum Lunare <https://github.com/projectum-lunare/solo>
+-- cais - Physical I/O, System Foundations & Hardware Abstractions
+-- Projectum Lunare <https://github.com/projectum-lunare/cais>
 -- Copyright (C) 2026 Gustavo Veiga <gustavo.veiga@outlook.com.br>
 -- Mozilla Public License Version 2.0
 --
@@ -12,37 +12,37 @@ local T = require("tests.harness")
 local describe, test = T.describe, T.test
 local assert_eq, assert_true, assert_false = T.assert_eq, T.assert_true, T.assert_false
 
-local solo = require("solo")
+local cais = require("cais")
 
 -- ============================================================================
--- solo.filesystem (Filesystem Abstraction & fs Alias Tests)
+-- cais.filesystem (Filesystem Abstraction & fs Alias Tests)
 -- ============================================================================
-describe("solo.filesystem (Filesystem Abstraction & fs Alias)", function()
-    local fs = solo.fs
+describe("cais.filesystem (Filesystem Abstraction & fs Alias)", function()
+    local fs = cais.fs
 
     -- 1. Table alias parity
-    test("exposes identical solo.filesystem and solo.fs alias", function()
-        assert_true(solo.filesystem ~= nil)
-        assert_true(solo.fs ~= nil)
-        assert_eq(solo.filesystem, solo.fs)
-        assert_eq(type(solo.filesystem.exists), "function")
-        assert_eq(type(solo.filesystem.stat), "function")
-        assert_eq(type(solo.filesystem.read), "function")
-        assert_eq(type(solo.filesystem.write), "function")
-        assert_eq(type(solo.filesystem.open), "function")
+    test("exposes identical cais.filesystem and cais.fs alias", function()
+        assert_true(cais.filesystem ~= nil)
+        assert_true(cais.fs ~= nil)
+        assert_eq(cais.filesystem, cais.fs)
+        assert_eq(type(cais.filesystem.exists), "function")
+        assert_eq(type(cais.filesystem.stat), "function")
+        assert_eq(type(cais.filesystem.read), "function")
+        assert_eq(type(cais.filesystem.write), "function")
+        assert_eq(type(cais.filesystem.open), "function")
     end)
 
     -- 2. Existence verification
     test("checks existence of existing directories and files", function()
         assert_true(fs.exists("."))
-        assert_true(fs.exists("include/solo/solo.h"))
+        assert_true(fs.exists("include/cais/cais.h"))
         assert_false(fs.exists("/nonexistent_xyz_998877"))
         assert_false(fs.exists("nonexistent_path_xyz_123.bin"))
         assert_false(fs.exists(""))
         assert_false(fs.exists(nil))
     end)
 
-    -- 3. Path Algebra (solo.fs.path)
+    -- 3. Path Algebra (cais.fs.path)
     test("path manipulation and decomposition", function()
         assert_true(fs.path ~= nil)
         assert_true(fs.path.separator == "/" or fs.path.separator == "\\")
@@ -74,14 +74,14 @@ describe("solo.filesystem (Filesystem Abstraction & fs Alias)", function()
 
     -- 4. Stat and metadata inspection
     test("retrieves metadata via stat and boolean predicates", function()
-        local info, err = fs.stat("include/solo/solo.h")
+        local info, err = fs.stat("include/cais/cais.h")
         assert_true(info ~= nil)
         assert_eq(info.type, "file")
         assert_true(info.size > 0)
         assert_true(info.mtime > 0)
 
-        assert_true(fs.is_file("include/solo/solo.h"))
-        assert_false(fs.is_dir("include/solo/solo.h"))
+        assert_true(fs.is_file("include/cais/cais.h"))
+        assert_false(fs.is_dir("include/cais/cais.h"))
 
         local dir_info = fs.stat("src")
         assert_true(dir_info ~= nil)
@@ -89,7 +89,7 @@ describe("solo.filesystem (Filesystem Abstraction & fs Alias)", function()
         assert_true(fs.is_dir("src"))
         assert_false(fs.is_file("src"))
 
-        local sz = fs.file_size("include/solo/solo.h")
+        local sz = fs.file_size("include/cais/cais.h")
         assert_true(type(sz) == "number")
         assert_true(sz > 0)
 
@@ -145,22 +145,22 @@ describe("solo.filesystem (Filesystem Abstraction & fs Alias)", function()
     -- 7. Directory streaming iteration and listing
     test("iterates directory entries and produces list table", function()
         local count = 0
-        local found_solo_h = false
+        local found_cais_h = false
 
-        for entry in fs.dir("include/solo") do
+        for entry in fs.dir("include/cais") do
             count = count + 1
             assert_true(entry.name ~= nil)
             assert_true(entry.type ~= nil)
-            if entry.name == "solo.h" then
-                found_solo_h = true
+            if entry.name == "cais.h" then
+                found_cais_h = true
                 assert_eq(entry.type, "file")
             end
         end
 
         assert_true(count > 0)
-        assert_true(found_solo_h)
+        assert_true(found_cais_h)
 
-        local list = fs.list("include/solo")
+        local list = fs.list("include/cais")
         assert_true(type(list) == "table")
         assert_true(#list > 0)
     end)
@@ -216,12 +216,12 @@ describe("solo.filesystem (Filesystem Abstraction & fs Alias)", function()
     end)
 
     -- 10. Independent submodule resolution
-    test("submodules require('solo.fs') and require('solo.filesystem') resolve correctly", function()
-        local req_fs = require("solo.fs")
-        assert_eq(req_fs, solo.fs)
+    test("submodules require('cais.fs') and require('cais.filesystem') resolve correctly", function()
+        local req_fs = require("cais.fs")
+        assert_eq(req_fs, cais.fs)
 
-        local req_filesystem = require("solo.filesystem")
-        assert_eq(req_filesystem, solo.filesystem)
+        local req_filesystem = require("cais.filesystem")
+        assert_eq(req_filesystem, cais.filesystem)
     end)
 end)
 

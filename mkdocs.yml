@@ -1,9 +1,9 @@
-site_name: solo
-site_url: https://projectum-lunare.github.io/solo/
+site_name: cais
+site_url: https://projectum-lunare.github.io/cais/
 site_description: Lightweight, modular C89 and Lua systems programming library for modern and vintage operating systems.
 site_author: Gustavo Veiga
-repo_name: projectum-lunare/solo
-repo_url: https://github.com/projectum-lunare/solo
+repo_name: projectum-lunare/cais
+repo_url: https://github.com/projectum-lunare/cais
 edit_uri: ""
 
 watch:
@@ -48,8 +48,8 @@ plugins:
   - search
   - mkdoxy:
       projects:
-        solo:
-          src-dirs: include/solo
+        cais:
+          src-dirs: include/cais
           full-doc: True
           api-path: api
           doxy-cfg:
@@ -114,7 +114,7 @@ nav:
       - Functions: api/functions.md
       - Macros: api/macros.md
       - Subsystems:
-          - solo.h: api/solo_8h.md
+          - cais.h: api/cais_8h.md
           - types.h: api/types_8h.md
           - socket.h: api/socket_8h.md
           - serial.h: api/serial_8h.md

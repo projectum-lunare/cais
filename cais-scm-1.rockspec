@@ -1,8 +1,8 @@
-package = "solo"
+package = "cais"
 version = "scm-1"
 
 source = {
-   url = "git+https://github.com/projectum-lunare/solo.git"
+   url = "git+https://github.com/projectum-lunare/cais.git"
 }
 
 description = {
@@ -14,7 +14,7 @@ description = {
       operations), parallel (parallel port), serial (serial UART), socket (TCP/UDP sockets),
       and sandbox (OS kernel sandboxing).
    ]],
-   homepage = "https://github.com/projectum-lunare/solo",
+   homepage = "https://github.com/projectum-lunare/cais",
    license = "MPL-2.0"
 }
 

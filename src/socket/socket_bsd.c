@@ -1,6 +1,6 @@
 /*
- * solo - Physical I/O, System Foundations & Hardware Abstractions
- * Projectum Lunare <https://github.com/projectum-lunare/solo>
+ * cais - Physical I/O, System Foundations & Hardware Abstractions
+ * Projectum Lunare <https://github.com/projectum-lunare/cais>
  * Copyright (C) 2026 Gustavo Veiga <gustavo.veiga@outlook.com.br>
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
@@ -15,20 +15,20 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifndef SOLO_SOCKLEN_T
-#if SOLO_IS_WINDOWS || SOLO_IS_OS2 || SOLO_IS_DOS
-#define SOLO_SOCKLEN_T int
-#elif SOLO_IS_AMIGA
-#define SOLO_SOCKLEN_T unsigned long
+#ifndef CAIS_SOCKLEN_T
+#if CAIS_IS_WINDOWS || CAIS_IS_OS2 || CAIS_IS_DOS
+#define CAIS_SOCKLEN_T int
+#elif CAIS_IS_AMIGA
+#define CAIS_SOCKLEN_T unsigned long
 #else
-#define SOLO_SOCKLEN_T socklen_t
+#define CAIS_SOCKLEN_T socklen_t
 #endif
 #endif
 
 /*
  * Resolves an IPv4 address/hostname and port into a struct sockaddr_in.
  */
-static int solo_pal_resolve_ipv4(const char *host, int port, struct sockaddr_in *sin, char *err_buf, size_t err_cap)
+static int cais_pal_resolve_ipv4(const char *host, int port, struct sockaddr_in *sin, char *err_buf, size_t err_cap)
 {
     unsigned long ip_be = 0;
 
@@ -46,7 +46,7 @@ static int solo_pal_resolve_ipv4(const char *host, int port, struct sockaddr_in 
         return 0;
     }
 
-    if (solo_socket_parse_ipv4(host, &ip_be)) {
+    if (cais_socket_parse_ipv4(host, &ip_be)) {
         sin->sin_addr.s_addr = htonl(ip_be);
         return 0;
     }
@@ -60,42 +60,42 @@ static int solo_pal_resolve_ipv4(const char *host, int port, struct sockaddr_in 
         }
     }
 
-    solo_set_err_fmt(err_buf, err_cap, "cannot resolve host '%.128s'", host);
+    cais_set_err_fmt(err_buf, err_cap, "cannot resolve host '%.128s'", host);
     return -1;
 }
 
-solo_socket_t *solo_socket_create(solo_socket_type_t type, solo_socket_mode_t mode, char *err_buf, size_t err_cap)
+cais_socket_t *cais_socket_create(cais_socket_type_t type, cais_socket_mode_t mode, char *err_buf, size_t err_cap)
 {
-    int socktype = (type == SOLO_SOCK_UDP) ? SOCK_DGRAM : SOCK_STREAM;
-    SOLO_PAL_SOCK_T fd;
-    solo_socket_t *sock;
+    int socktype = (type == CAIS_SOCK_UDP) ? SOCK_DGRAM : SOCK_STREAM;
+    CAIS_PAL_SOCK_T fd;
+    cais_socket_t *sock;
 
     if (err_buf != NULL && err_cap > 0) {
         err_buf[0] = '\0';
     }
 
-    if (!solo_pal_sock_init(err_buf, err_cap)) {
+    if (!cais_pal_sock_init(err_buf, err_cap)) {
         return NULL;
     }
 
     fd = socket(AF_INET, socktype, 0);
-    if (fd == SOLO_PAL_INVALID_SOCK) {
-        solo_pal_strerror(SOLO_PAL_SOCK_ERRNO, err_buf, err_cap);
+    if (fd == CAIS_PAL_INVALID_SOCK) {
+        cais_pal_strerror(CAIS_PAL_SOCK_ERRNO, err_buf, err_cap);
         return NULL;
     }
 
-    if (mode == SOLO_SOCK_NONBLOCKING) {
-        if (solo_pal_set_nonblocking(fd, 1) != 0) {
-            solo_pal_strerror(SOLO_PAL_SOCK_ERRNO, err_buf, err_cap);
-            SOLO_PAL_CLOSESOCKET(fd);
+    if (mode == CAIS_SOCK_NONBLOCKING) {
+        if (cais_pal_set_nonblocking(fd, 1) != 0) {
+            cais_pal_strerror(CAIS_PAL_SOCK_ERRNO, err_buf, err_cap);
+            CAIS_PAL_CLOSESOCKET(fd);
             return NULL;
         }
     }
 
-    sock = (solo_socket_t *)malloc(sizeof(solo_socket_t));
+    sock = (cais_socket_t *)malloc(sizeof(cais_socket_t));
     if (sock == NULL) {
-        SOLO_PAL_CLOSESOCKET(fd);
-        solo_set_err(err_buf, err_cap, "out of memory allocating socket structure");
+        CAIS_PAL_CLOSESOCKET(fd);
+        cais_set_err(err_buf, err_cap, "out of memory allocating socket structure");
         return NULL;
     }
 
@@ -106,15 +106,15 @@ solo_socket_t *solo_socket_create(solo_socket_type_t type, solo_socket_mode_t mo
     return sock;
 }
 
-void solo_socket_backend_close(solo_socket_t *sock)
+void cais_socket_backend_close(cais_socket_t *sock)
 {
-    if (sock != NULL && SOLO_SOCK_IS_VALID(sock)) {
-        SOLO_PAL_CLOSESOCKET(sock->fd);
-        sock->fd = SOLO_PAL_INVALID_SOCK;
+    if (sock != NULL && CAIS_SOCK_IS_VALID(sock)) {
+        CAIS_PAL_CLOSESOCKET(sock->fd);
+        sock->fd = CAIS_PAL_INVALID_SOCK;
     }
 }
 
-solo_socket_status_t solo_socket_bind_sock(solo_socket_t *sock, const char *host, int port, int backlog, char *err_buf, size_t err_cap)
+cais_socket_status_t cais_socket_bind_sock(cais_socket_t *sock, const char *host, int port, int backlog, char *err_buf, size_t err_cap)
 {
     struct sockaddr_in sin;
     int opt = 1;
@@ -123,34 +123,34 @@ solo_socket_status_t solo_socket_bind_sock(solo_socket_t *sock, const char *host
         err_buf[0] = '\0';
     }
 
-    if (sock == NULL || !SOLO_SOCK_IS_VALID(sock)) {
-        solo_set_err(err_buf, err_cap, "invalid socket handle");
-        return SOLO_SOCK_ERROR;
+    if (sock == NULL || !CAIS_SOCK_IS_VALID(sock)) {
+        cais_set_err(err_buf, err_cap, "invalid socket handle");
+        return CAIS_SOCK_ERROR;
     }
 
-    host = solo_socket_normalize_bind_host(host);
-    if (solo_pal_resolve_ipv4(host, port, &sin, err_buf, err_cap) != 0) {
-        return SOLO_SOCK_ERROR;
+    host = cais_socket_normalize_bind_host(host);
+    if (cais_pal_resolve_ipv4(host, port, &sin, err_buf, err_cap) != 0) {
+        return CAIS_SOCK_ERROR;
     }
 
     setsockopt(sock->fd, SOL_SOCKET, SO_REUSEADDR, (const char *)&opt, sizeof(opt));
 
-    if (bind(sock->fd, (struct sockaddr *)&sin, (SOLO_SOCKLEN_T)sizeof(sin)) != 0) {
-        solo_pal_strerror(SOLO_PAL_SOCK_ERRNO, err_buf, err_cap);
-        return SOLO_SOCK_ERROR;
+    if (bind(sock->fd, (struct sockaddr *)&sin, (CAIS_SOCKLEN_T)sizeof(sin)) != 0) {
+        cais_pal_strerror(CAIS_PAL_SOCK_ERRNO, err_buf, err_cap);
+        return CAIS_SOCK_ERROR;
     }
 
-    if (sock->type == SOLO_SOCK_TCP) {
+    if (sock->type == CAIS_SOCK_TCP) {
         if (listen(sock->fd, backlog > 0 ? backlog : 128) != 0) {
-            solo_pal_strerror(SOLO_PAL_SOCK_ERRNO, err_buf, err_cap);
-            return SOLO_SOCK_ERROR;
+            cais_pal_strerror(CAIS_PAL_SOCK_ERRNO, err_buf, err_cap);
+            return CAIS_SOCK_ERROR;
         }
     }
 
-    return SOLO_SOCK_OK;
+    return CAIS_SOCK_OK;
 }
 
-solo_socket_status_t solo_socket_connect_sock(solo_socket_t *sock, const char *host, int port, char *err_buf, size_t err_cap)
+cais_socket_status_t cais_socket_connect_sock(cais_socket_t *sock, const char *host, int port, char *err_buf, size_t err_cap)
 {
     struct sockaddr_in sin;
     int res;
@@ -159,91 +159,91 @@ solo_socket_status_t solo_socket_connect_sock(solo_socket_t *sock, const char *h
         err_buf[0] = '\0';
     }
 
-    if (sock == NULL || !SOLO_SOCK_IS_VALID(sock)) {
-        solo_set_err(err_buf, err_cap, "invalid socket handle");
-        return SOLO_SOCK_ERROR;
+    if (sock == NULL || !CAIS_SOCK_IS_VALID(sock)) {
+        cais_set_err(err_buf, err_cap, "invalid socket handle");
+        return CAIS_SOCK_ERROR;
     }
 
-    host = solo_socket_normalize_connect_host(host);
-    if (solo_pal_resolve_ipv4(host, port, &sin, err_buf, err_cap) != 0) {
-        return SOLO_SOCK_ERROR;
+    host = cais_socket_normalize_connect_host(host);
+    if (cais_pal_resolve_ipv4(host, port, &sin, err_buf, err_cap) != 0) {
+        return CAIS_SOCK_ERROR;
     }
 
-    res = connect(sock->fd, (struct sockaddr *)&sin, (SOLO_SOCKLEN_T)sizeof(sin));
+    res = connect(sock->fd, (struct sockaddr *)&sin, (CAIS_SOCKLEN_T)sizeof(sin));
     if (res != 0) {
-        int err = SOLO_PAL_SOCK_ERRNO;
-        if (SOLO_PAL_IS_INPROGRESS(err) || SOLO_PAL_IS_WOULDBLOCK(err)) {
-            return SOLO_SOCK_AGAIN;
+        int err = CAIS_PAL_SOCK_ERRNO;
+        if (CAIS_PAL_IS_INPROGRESS(err) || CAIS_PAL_IS_WOULDBLOCK(err)) {
+            return CAIS_SOCK_AGAIN;
         }
-        solo_pal_strerror(err, err_buf, err_cap);
-        return SOLO_SOCK_ERROR;
+        cais_pal_strerror(err, err_buf, err_cap);
+        return CAIS_SOCK_ERROR;
     }
 
-    return SOLO_SOCK_OK;
+    return CAIS_SOCK_OK;
 }
 
-solo_socket_t *solo_socket_accept(solo_socket_t *server, char *client_ip, size_t ip_len,
+cais_socket_t *cais_socket_accept(cais_socket_t *server, char *client_ip, size_t ip_len,
                                   int *client_port, char *err_buf, size_t err_cap)
 {
     struct sockaddr_in addr;
-    SOLO_SOCKLEN_T addr_len = (SOLO_SOCKLEN_T)sizeof(addr);
-    SOLO_PAL_SOCK_T client_fd;
-    solo_socket_t *client_sock;
+    CAIS_SOCKLEN_T addr_len = (CAIS_SOCKLEN_T)sizeof(addr);
+    CAIS_PAL_SOCK_T client_fd;
+    cais_socket_t *client_sock;
 
     if (err_buf != NULL && err_cap > 0) {
         err_buf[0] = '\0';
     }
 
-    if (server == NULL || !SOLO_SOCK_IS_VALID(server)) {
-        solo_set_err(err_buf, err_cap, "invalid server socket");
+    if (server == NULL || !CAIS_SOCK_IS_VALID(server)) {
+        cais_set_err(err_buf, err_cap, "invalid server socket");
         return NULL;
     }
 
     client_fd = accept(server->fd, (struct sockaddr *)&addr, &addr_len);
-    if (client_fd == SOLO_PAL_INVALID_SOCK) {
-        int err = SOLO_PAL_SOCK_ERRNO;
-        if (SOLO_PAL_IS_WOULDBLOCK(err)) {
+    if (client_fd == CAIS_PAL_INVALID_SOCK) {
+        int err = CAIS_PAL_SOCK_ERRNO;
+        if (CAIS_PAL_IS_WOULDBLOCK(err)) {
             return NULL;
         }
-        solo_pal_strerror(err, err_buf, err_cap);
+        cais_pal_strerror(err, err_buf, err_cap);
         return NULL;
     }
 
     if (client_ip != NULL && ip_len > 0) {
         unsigned long ip_h = ntohl(addr.sin_addr.s_addr);
-        solo_socket_format_ipv4(ip_h, client_ip, ip_len);
+        cais_socket_format_ipv4(ip_h, client_ip, ip_len);
         if (client_port != NULL) {
             *client_port = (int)ntohs(addr.sin_port);
         }
     }
 
-    client_sock = (solo_socket_t *)malloc(sizeof(solo_socket_t));
+    client_sock = (cais_socket_t *)malloc(sizeof(cais_socket_t));
     if (client_sock == NULL) {
-        SOLO_PAL_CLOSESOCKET(client_fd);
-        solo_set_err(err_buf, err_cap, "out of memory allocating client socket");
+        CAIS_PAL_CLOSESOCKET(client_fd);
+        cais_set_err(err_buf, err_cap, "out of memory allocating client socket");
         return NULL;
     }
 
     client_sock->fd = client_fd;
-    client_sock->type = SOLO_SOCK_TCP;
+    client_sock->type = CAIS_SOCK_TCP;
     client_sock->mode = server->mode;
     client_sock->timeout_ms = 0;
 
-    if (server->mode == SOLO_SOCK_NONBLOCKING) {
-        solo_pal_set_nonblocking(client_fd, 1);
+    if (server->mode == CAIS_SOCK_NONBLOCKING) {
+        cais_pal_set_nonblocking(client_fd, 1);
     }
 
     return client_sock;
 }
 
-solo_socket_status_t solo_socket_backend_send(solo_socket_t *sock, const char *buf, size_t len, size_t *sent)
+cais_socket_status_t cais_socket_backend_send(cais_socket_t *sock, const char *buf, size_t len, size_t *sent)
 {
     int n;
     if (sent != NULL) {
         *sent = 0;
     }
-    if (sock == NULL || !SOLO_SOCK_IS_VALID(sock) || buf == NULL) {
-        return SOLO_SOCK_ERROR;
+    if (sock == NULL || !CAIS_SOCK_IS_VALID(sock) || buf == NULL) {
+        return CAIS_SOCK_ERROR;
     }
 
 #if defined(MSG_NOSIGNAL)
@@ -253,55 +253,55 @@ solo_socket_status_t solo_socket_backend_send(solo_socket_t *sock, const char *b
 #endif
 
     if (n < 0) {
-        int err = SOLO_PAL_SOCK_ERRNO;
-        if (SOLO_PAL_IS_INTR(err) || SOLO_PAL_IS_WOULDBLOCK(err)) {
-            return SOLO_SOCK_AGAIN;
+        int err = CAIS_PAL_SOCK_ERRNO;
+        if (CAIS_PAL_IS_INTR(err) || CAIS_PAL_IS_WOULDBLOCK(err)) {
+            return CAIS_SOCK_AGAIN;
         }
-        return SOLO_SOCK_ERROR;
+        return CAIS_SOCK_ERROR;
     }
 
     if (sent != NULL) {
         *sent = (size_t)n;
     }
-    return SOLO_SOCK_OK;
+    return CAIS_SOCK_OK;
 }
 
-solo_socket_status_t solo_socket_recv(solo_socket_t *sock, char *buf, size_t max_len, size_t *received)
+cais_socket_status_t cais_socket_recv(cais_socket_t *sock, char *buf, size_t max_len, size_t *received)
 {
     int n;
     if (received != NULL) {
         *received = 0;
     }
-    if (sock == NULL || !SOLO_SOCK_IS_VALID(sock) || buf == NULL || max_len == 0) {
-        return SOLO_SOCK_ERROR;
+    if (sock == NULL || !CAIS_SOCK_IS_VALID(sock) || buf == NULL || max_len == 0) {
+        return CAIS_SOCK_ERROR;
     }
 
     while (1) {
         n = recv(sock->fd, buf, (int)max_len, 0);
         if (n < 0) {
-            int err = SOLO_PAL_SOCK_ERRNO;
-            if (SOLO_PAL_IS_INTR(err)) {
+            int err = CAIS_PAL_SOCK_ERRNO;
+            if (CAIS_PAL_IS_INTR(err)) {
                 continue;
             }
-            if (SOLO_PAL_IS_WOULDBLOCK(err)) {
-                return SOLO_SOCK_AGAIN;
+            if (CAIS_PAL_IS_WOULDBLOCK(err)) {
+                return CAIS_SOCK_AGAIN;
             }
-            return SOLO_SOCK_ERROR;
+            return CAIS_SOCK_ERROR;
         }
         break;
     }
 
-    if (n == 0 && sock->type == SOLO_SOCK_TCP) {
-        return SOLO_SOCK_CLOSED;
+    if (n == 0 && sock->type == CAIS_SOCK_TCP) {
+        return CAIS_SOCK_CLOSED;
     }
 
     if (received != NULL) {
         *received = (size_t)n;
     }
-    return SOLO_SOCK_OK;
+    return CAIS_SOCK_OK;
 }
 
-solo_socket_status_t solo_socket_sendto(solo_socket_t *sock, const char *buf, size_t len,
+cais_socket_status_t cais_socket_sendto(cais_socket_t *sock, const char *buf, size_t len,
                                         const char *host, int port, size_t *sent)
 {
     struct sockaddr_in sin;
@@ -310,26 +310,26 @@ solo_socket_status_t solo_socket_sendto(solo_socket_t *sock, const char *buf, si
     if (sent != NULL) {
         *sent = 0;
     }
-    if (sock == NULL || !SOLO_SOCK_IS_VALID(sock) || buf == NULL) {
-        return SOLO_SOCK_ERROR;
+    if (sock == NULL || !CAIS_SOCK_IS_VALID(sock) || buf == NULL) {
+        return CAIS_SOCK_ERROR;
     }
 
-    host = solo_socket_normalize_connect_host(host);
-    if (solo_pal_resolve_ipv4(host, port, &sin, NULL, 0) != 0) {
-        return SOLO_SOCK_ERROR;
+    host = cais_socket_normalize_connect_host(host);
+    if (cais_pal_resolve_ipv4(host, port, &sin, NULL, 0) != 0) {
+        return CAIS_SOCK_ERROR;
     }
 
     while (1) {
-        n = sendto(sock->fd, buf, (int)len, 0, (struct sockaddr *)&sin, (SOLO_SOCKLEN_T)sizeof(sin));
+        n = sendto(sock->fd, buf, (int)len, 0, (struct sockaddr *)&sin, (CAIS_SOCKLEN_T)sizeof(sin));
         if (n < 0) {
-            int err = SOLO_PAL_SOCK_ERRNO;
-            if (SOLO_PAL_IS_INTR(err)) {
+            int err = CAIS_PAL_SOCK_ERRNO;
+            if (CAIS_PAL_IS_INTR(err)) {
                 continue;
             }
-            if (SOLO_PAL_IS_WOULDBLOCK(err)) {
-                return SOLO_SOCK_AGAIN;
+            if (CAIS_PAL_IS_WOULDBLOCK(err)) {
+                return CAIS_SOCK_AGAIN;
             }
-            return SOLO_SOCK_ERROR;
+            return CAIS_SOCK_ERROR;
         }
         break;
     }
@@ -337,46 +337,46 @@ solo_socket_status_t solo_socket_sendto(solo_socket_t *sock, const char *buf, si
     if (sent != NULL) {
         *sent = (size_t)n;
     }
-    return SOLO_SOCK_OK;
+    return CAIS_SOCK_OK;
 }
 
-solo_socket_status_t solo_socket_recvfrom(solo_socket_t *sock, char *buf, size_t max_len,
+cais_socket_status_t cais_socket_recvfrom(cais_socket_t *sock, char *buf, size_t max_len,
                                           char *src_ip, size_t ip_len, int *src_port,
                                           size_t *received)
 {
     struct sockaddr_in sin;
-    SOLO_SOCKLEN_T addr_len = (SOLO_SOCKLEN_T)sizeof(sin);
+    CAIS_SOCKLEN_T addr_len = (CAIS_SOCKLEN_T)sizeof(sin);
     int n;
 
     if (received != NULL) {
         *received = 0;
     }
-    if (sock == NULL || !SOLO_SOCK_IS_VALID(sock) || buf == NULL || max_len == 0) {
-        return SOLO_SOCK_ERROR;
+    if (sock == NULL || !CAIS_SOCK_IS_VALID(sock) || buf == NULL || max_len == 0) {
+        return CAIS_SOCK_ERROR;
     }
 
     while (1) {
         n = recvfrom(sock->fd, buf, (int)max_len, 0, (struct sockaddr *)&sin, &addr_len);
         if (n < 0) {
-            int err = SOLO_PAL_SOCK_ERRNO;
-            if (SOLO_PAL_IS_INTR(err)) {
+            int err = CAIS_PAL_SOCK_ERRNO;
+            if (CAIS_PAL_IS_INTR(err)) {
                 continue;
             }
-            if (SOLO_PAL_IS_WOULDBLOCK(err)) {
-                return SOLO_SOCK_AGAIN;
+            if (CAIS_PAL_IS_WOULDBLOCK(err)) {
+                return CAIS_SOCK_AGAIN;
             }
-            return SOLO_SOCK_ERROR;
+            return CAIS_SOCK_ERROR;
         }
         break;
     }
 
-    if (n == 0 && sock->type == SOLO_SOCK_TCP) {
-        return SOLO_SOCK_CLOSED;
+    if (n == 0 && sock->type == CAIS_SOCK_TCP) {
+        return CAIS_SOCK_CLOSED;
     }
 
     if (src_ip != NULL && ip_len > 0) {
         unsigned long ip_h = ntohl(sin.sin_addr.s_addr);
-        solo_socket_format_ipv4(ip_h, src_ip, ip_len);
+        cais_socket_format_ipv4(ip_h, src_ip, ip_len);
         if (src_port != NULL) {
             *src_port = (int)ntohs(sin.sin_port);
         }
@@ -385,45 +385,45 @@ solo_socket_status_t solo_socket_recvfrom(solo_socket_t *sock, char *buf, size_t
     if (received != NULL) {
         *received = (size_t)n;
     }
-    return SOLO_SOCK_OK;
+    return CAIS_SOCK_OK;
 }
 
-solo_socket_status_t solo_socket_backend_set_mode(solo_socket_t *sock, solo_socket_mode_t mode, char *err_buf, size_t err_cap)
+cais_socket_status_t cais_socket_backend_set_mode(cais_socket_t *sock, cais_socket_mode_t mode, char *err_buf, size_t err_cap)
 {
     if (err_buf != NULL && err_cap > 0) {
         err_buf[0] = '\0';
     }
 
-    if (sock == NULL || !SOLO_SOCK_IS_VALID(sock)) {
-        solo_set_err(err_buf, err_cap, "invalid socket handle");
-        return SOLO_SOCK_ERROR;
+    if (sock == NULL || !CAIS_SOCK_IS_VALID(sock)) {
+        cais_set_err(err_buf, err_cap, "invalid socket handle");
+        return CAIS_SOCK_ERROR;
     }
 
-    if (solo_pal_set_nonblocking(sock->fd, (mode == SOLO_SOCK_NONBLOCKING) ? 1 : 0) != 0) {
-        solo_pal_strerror(SOLO_PAL_SOCK_ERRNO, err_buf, err_cap);
-        return SOLO_SOCK_ERROR;
+    if (cais_pal_set_nonblocking(sock->fd, (mode == CAIS_SOCK_NONBLOCKING) ? 1 : 0) != 0) {
+        cais_pal_strerror(CAIS_PAL_SOCK_ERRNO, err_buf, err_cap);
+        return CAIS_SOCK_ERROR;
     }
 
-    return SOLO_SOCK_OK;
+    return CAIS_SOCK_OK;
 }
 
-solo_socket_status_t solo_socket_backend_set_timeout(solo_socket_t *sock, int timeout_ms, char *err_buf, size_t err_cap)
+cais_socket_status_t cais_socket_backend_set_timeout(cais_socket_t *sock, int timeout_ms, char *err_buf, size_t err_cap)
 {
     if (err_buf != NULL && err_cap > 0) {
         err_buf[0] = '\0';
     }
 
-    if (sock == NULL || !SOLO_SOCK_IS_VALID(sock)) {
-        solo_set_err(err_buf, err_cap, "invalid socket handle");
-        return SOLO_SOCK_ERROR;
+    if (sock == NULL || !CAIS_SOCK_IS_VALID(sock)) {
+        cais_set_err(err_buf, err_cap, "invalid socket handle");
+        return CAIS_SOCK_ERROR;
     }
 
-    if (solo_pal_set_timeout(sock->fd, timeout_ms) != 0) {
-        solo_pal_strerror(SOLO_PAL_SOCK_ERRNO, err_buf, err_cap);
-        return SOLO_SOCK_ERROR;
+    if (cais_pal_set_timeout(sock->fd, timeout_ms) != 0) {
+        cais_pal_strerror(CAIS_PAL_SOCK_ERRNO, err_buf, err_cap);
+        return CAIS_SOCK_ERROR;
     }
 
-    return SOLO_SOCK_OK;
+    return CAIS_SOCK_OK;
 }
 
 /* =============================================================================
@@ -449,11 +449,11 @@ solo_socket_status_t solo_socket_backend_set_timeout(solo_socket_t *sock, int ti
  * fallback safely scales up to 1024 concurrent sockets even on Windows NT 3.51
  * without stack buffer overflow.
  */
-#if !SOLO_IS_POSIX || defined(SOLO_FORCE_SELECT)
-static int solo_poll_via_select(solo_pollfd_t *fds, size_t nfds, int timeout_ms)
+#if !CAIS_IS_POSIX || defined(CAIS_FORCE_SELECT)
+static int cais_poll_via_select(cais_pollfd_t *fds, size_t nfds, int timeout_ms)
 {
     fd_set read_fds, write_fds, err_fds;
-    SOLO_PAL_SOCK_T max_fd = 0;
+    CAIS_PAL_SOCK_T max_fd = 0;
     struct timeval tv;
     struct timeval *ptv = NULL;
     size_t i;
@@ -461,13 +461,13 @@ static int solo_poll_via_select(solo_pollfd_t *fds, size_t nfds, int timeout_ms)
     int ready_count = 0;
 
     if (fds == NULL && nfds > 0) {
-        return SOLO_SOCK_ERROR;
+        return CAIS_SOCK_ERROR;
     }
     if (nfds == 0) {
         if (timeout_ms > 0) {
             tv.tv_sec = timeout_ms / 1000;
             tv.tv_usec = (timeout_ms % 1000) * 1000L;
-            SOLO_PAL_SELECT(0, NULL, NULL, NULL, &tv);
+            CAIS_PAL_SELECT(0, NULL, NULL, NULL, &tv);
         }
         return 0;
     }
@@ -478,12 +478,12 @@ static int solo_poll_via_select(solo_pollfd_t *fds, size_t nfds, int timeout_ms)
 
     for (i = 0; i < nfds; i++) {
         fds[i].revents = 0;
-        if (fds[i].sock != NULL && SOLO_SOCK_IS_VALID(fds[i].sock)) {
-            SOLO_PAL_SOCK_T s = fds[i].sock->fd;
-            if (fds[i].events & SOLO_SOCK_POLL_READ) {
+        if (fds[i].sock != NULL && CAIS_SOCK_IS_VALID(fds[i].sock)) {
+            CAIS_PAL_SOCK_T s = fds[i].sock->fd;
+            if (fds[i].events & CAIS_SOCK_POLL_READ) {
                 FD_SET(s, &read_fds);
             }
-            if (fds[i].events & SOLO_SOCK_POLL_WRITE) {
+            if (fds[i].events & CAIS_SOCK_POLL_WRITE) {
                 FD_SET(s, &write_fds);
             }
             FD_SET(s, &err_fds);
@@ -500,29 +500,29 @@ static int solo_poll_via_select(solo_pollfd_t *fds, size_t nfds, int timeout_ms)
     }
 
     while (1) {
-        ret = SOLO_PAL_SELECT(max_fd + 1, &read_fds, &write_fds, &err_fds, ptv);
+        ret = CAIS_PAL_SELECT(max_fd + 1, &read_fds, &write_fds, &err_fds, ptv);
         if (ret < 0) {
-            int err = SOLO_PAL_SOCK_ERRNO;
-            if (SOLO_PAL_IS_INTR(err)) {
+            int err = CAIS_PAL_SOCK_ERRNO;
+            if (CAIS_PAL_IS_INTR(err)) {
                 continue;
             }
-            return SOLO_SOCK_ERROR;
+            return CAIS_SOCK_ERROR;
         }
         break;
     }
 
     if (ret > 0) {
         for (i = 0; i < nfds; i++) {
-            if (fds[i].sock != NULL && SOLO_SOCK_IS_VALID(fds[i].sock)) {
-                SOLO_PAL_SOCK_T s = fds[i].sock->fd;
+            if (fds[i].sock != NULL && CAIS_SOCK_IS_VALID(fds[i].sock)) {
+                CAIS_PAL_SOCK_T s = fds[i].sock->fd;
                 if (FD_ISSET(s, &read_fds)) {
-                    fds[i].revents |= SOLO_SOCK_POLL_READ;
+                    fds[i].revents |= CAIS_SOCK_POLL_READ;
                 }
                 if (FD_ISSET(s, &write_fds)) {
-                    fds[i].revents |= SOLO_SOCK_POLL_WRITE;
+                    fds[i].revents |= CAIS_SOCK_POLL_WRITE;
                 }
                 if (FD_ISSET(s, &err_fds)) {
-                    fds[i].revents |= SOLO_SOCK_POLL_ERR;
+                    fds[i].revents |= CAIS_SOCK_POLL_ERR;
                 }
                 if (fds[i].revents != 0) {
                     ready_count++;
@@ -535,7 +535,7 @@ static int solo_poll_via_select(solo_pollfd_t *fds, size_t nfds, int timeout_ms)
 }
 #endif
 
-#if SOLO_IS_POSIX
+#if CAIS_IS_POSIX
 /*
  * -----------------------------------------------------------------------------
  * 2. Modern POSIX poll(2) Engine
@@ -550,7 +550,7 @@ static int solo_poll_via_select(solo_pollfd_t *fds, size_t nfds, int timeout_ms)
  * 3. Stack allocation optimization for small sets (<= 64 fds) to eliminate
  *    dynamic memory allocation overhead on fast paths.
  */
-static int solo_posix_poll(solo_pollfd_t *fds, size_t nfds, int timeout_ms)
+static int cais_posix_poll(cais_pollfd_t *fds, size_t nfds, int timeout_ms)
 {
     struct pollfd stack_pfds[64];
     struct pollfd *pfds = stack_pfds;
@@ -559,7 +559,7 @@ static int solo_posix_poll(solo_pollfd_t *fds, size_t nfds, int timeout_ms)
     int ready_count = 0;
 
     if (fds == NULL && nfds > 0) {
-        return SOLO_SOCK_ERROR;
+        return CAIS_SOCK_ERROR;
     }
     if (nfds == 0) {
         if (timeout_ms > 0) {
@@ -571,19 +571,19 @@ static int solo_posix_poll(solo_pollfd_t *fds, size_t nfds, int timeout_ms)
     if (nfds > sizeof(stack_pfds) / sizeof(stack_pfds[0])) {
         pfds = (struct pollfd *)malloc(nfds * sizeof(struct pollfd));
         if (pfds == NULL) {
-            return SOLO_SOCK_ERROR;
+            return CAIS_SOCK_ERROR;
         }
     }
 
     for (i = 0; i < nfds; i++) {
         fds[i].revents = 0;
-        if (fds[i].sock != NULL && SOLO_SOCK_IS_VALID(fds[i].sock)) {
+        if (fds[i].sock != NULL && CAIS_SOCK_IS_VALID(fds[i].sock)) {
             pfds[i].fd = fds[i].sock->fd;
             pfds[i].events = 0;
-            if (fds[i].events & SOLO_SOCK_POLL_READ) {
+            if (fds[i].events & CAIS_SOCK_POLL_READ) {
                 pfds[i].events |= POLLIN;
             }
-            if (fds[i].events & SOLO_SOCK_POLL_WRITE) {
+            if (fds[i].events & CAIS_SOCK_POLL_WRITE) {
                 pfds[i].events |= POLLOUT;
             }
         } else {
@@ -597,13 +597,13 @@ static int solo_posix_poll(solo_pollfd_t *fds, size_t nfds, int timeout_ms)
     while (1) {
         ret = poll(pfds, (nfds_t)nfds, timeout_ms);
         if (ret < 0) {
-            if (SOLO_PAL_IS_INTR(errno)) {
+            if (CAIS_PAL_IS_INTR(errno)) {
                 continue;
             }
             if (pfds != stack_pfds) {
                 free(pfds);
             }
-            return SOLO_SOCK_ERROR;
+            return CAIS_SOCK_ERROR;
         }
         break;
     }
@@ -612,13 +612,13 @@ static int solo_posix_poll(solo_pollfd_t *fds, size_t nfds, int timeout_ms)
         for (i = 0; i < nfds; i++) {
             if (pfds[i].fd >= 0 && pfds[i].revents != 0) {
                 if (pfds[i].revents & (POLLIN | POLLPRI)) {
-                    fds[i].revents |= SOLO_SOCK_POLL_READ;
+                    fds[i].revents |= CAIS_SOCK_POLL_READ;
                 }
                 if (pfds[i].revents & POLLOUT) {
-                    fds[i].revents |= SOLO_SOCK_POLL_WRITE;
+                    fds[i].revents |= CAIS_SOCK_POLL_WRITE;
                 }
                 if (pfds[i].revents & (POLLERR | POLLHUP | POLLNVAL)) {
-                    fds[i].revents |= SOLO_SOCK_POLL_ERR;
+                    fds[i].revents |= CAIS_SOCK_POLL_ERR;
                 }
                 if (fds[i].revents != 0) {
                     ready_count++;
@@ -633,7 +633,7 @@ static int solo_posix_poll(solo_pollfd_t *fds, size_t nfds, int timeout_ms)
     return ready_count;
 }
 
-#elif SOLO_IS_WINDOWS
+#elif CAIS_IS_WINDOWS
 /*
  * -----------------------------------------------------------------------------
  * 3. Windows Adaptive WSAPoll / select() Engine
@@ -649,59 +649,59 @@ static int solo_posix_poll(solo_pollfd_t *fds, size_t nfds, int timeout_ms)
  * We resolve WSAPoll dynamically via GetProcAddress:
  * - On Windows Vista..11 / Server 2008..2025: WSAPoll is resolved and invoked.
  * - On Windows NT 3.51..XP: GetProcAddress returns NULL and we fall back to
- *   solo_poll_via_select(), with FD_SETSIZE expanded to 1024.
+ *   cais_poll_via_select(), with FD_SETSIZE expanded to 1024.
  */
 
-#define SOLO_WSA_POLLRDNORM 0x0100
-#define SOLO_WSA_POLLRDBAND 0x0200
-#define SOLO_WSA_POLLIN     (SOLO_WSA_POLLRDNORM | SOLO_WSA_POLLRDBAND)
-#define SOLO_WSA_POLLPRI    0x0400
-#define SOLO_WSA_POLLWRNORM 0x0010
-#define SOLO_WSA_POLLOUT    (SOLO_WSA_POLLWRNORM)
-#define SOLO_WSA_POLLERR    0x0001
-#define SOLO_WSA_POLLHUP    0x0002
-#define SOLO_WSA_POLLNVAL   0x0004
+#define CAIS_WSA_POLLRDNORM 0x0100
+#define CAIS_WSA_POLLRDBAND 0x0200
+#define CAIS_WSA_POLLIN     (CAIS_WSA_POLLRDNORM | CAIS_WSA_POLLRDBAND)
+#define CAIS_WSA_POLLPRI    0x0400
+#define CAIS_WSA_POLLWRNORM 0x0010
+#define CAIS_WSA_POLLOUT    (CAIS_WSA_POLLWRNORM)
+#define CAIS_WSA_POLLERR    0x0001
+#define CAIS_WSA_POLLHUP    0x0002
+#define CAIS_WSA_POLLNVAL   0x0004
 
 /* Exact memory ABI structure matching Winsock2 WSAPOLLFD across x86/x64/ARM */
-typedef struct solo_wsapollfd {
+typedef struct cais_wsapollfd {
     SOCKET fd;
     short  events;
     short  revents;
-} solo_wsapollfd_t;
+} cais_wsapollfd_t;
 
-typedef int (WSAAPI *solo_pfn_wsapoll_t)(solo_wsapollfd_t *fdArray, ULONG fds, INT timeout);
+typedef int (WSAAPI *cais_pfn_wsapoll_t)(cais_wsapollfd_t *fdArray, ULONG fds, INT timeout);
 
-static solo_pfn_wsapoll_t s_pfn_WSAPoll = NULL;
+static cais_pfn_wsapoll_t s_pfn_WSAPoll = NULL;
 static int s_wsapoll_probed = 0;
 
-static void solo_win32_probe_wsapoll(void)
+static void cais_win32_probe_wsapoll(void)
 {
     if (!s_wsapoll_probed) {
         HMODULE hws2 = GetModuleHandleA("ws2_32.dll");
         if (hws2 != NULL) {
-            s_pfn_WSAPoll = (solo_pfn_wsapoll_t)GetProcAddress(hws2, "WSAPoll");
+            s_pfn_WSAPoll = (cais_pfn_wsapoll_t)GetProcAddress(hws2, "WSAPoll");
         }
         s_wsapoll_probed = 1;
     }
 }
 
-static int solo_win32_poll(solo_pollfd_t *fds, size_t nfds, int timeout_ms)
+static int cais_win32_poll(cais_pollfd_t *fds, size_t nfds, int timeout_ms)
 {
-    solo_wsapollfd_t stack_pfds[64];
-    solo_wsapollfd_t *pfds = stack_pfds;
+    cais_wsapollfd_t stack_pfds[64];
+    cais_wsapollfd_t *pfds = stack_pfds;
     size_t i;
     int ret;
     int ready_count = 0;
 
-    solo_win32_probe_wsapoll();
+    cais_win32_probe_wsapoll();
 
     /* If WSAPoll is unavailable (WinNT 3.51 / 4.0 / 2000 / XP), use select() */
     if (s_pfn_WSAPoll == NULL) {
-        return solo_poll_via_select(fds, nfds, timeout_ms);
+        return cais_poll_via_select(fds, nfds, timeout_ms);
     }
 
     if (fds == NULL && nfds > 0) {
-        return SOLO_SOCK_ERROR;
+        return CAIS_SOCK_ERROR;
     }
     if (nfds == 0) {
         if (timeout_ms > 0) {
@@ -711,22 +711,22 @@ static int solo_win32_poll(solo_pollfd_t *fds, size_t nfds, int timeout_ms)
     }
 
     if (nfds > sizeof(stack_pfds) / sizeof(stack_pfds[0])) {
-        pfds = (solo_wsapollfd_t *)malloc(nfds * sizeof(solo_wsapollfd_t));
+        pfds = (cais_wsapollfd_t *)malloc(nfds * sizeof(cais_wsapollfd_t));
         if (pfds == NULL) {
-            return SOLO_SOCK_ERROR;
+            return CAIS_SOCK_ERROR;
         }
     }
 
     for (i = 0; i < nfds; i++) {
         fds[i].revents = 0;
-        if (fds[i].sock != NULL && SOLO_SOCK_IS_VALID(fds[i].sock)) {
+        if (fds[i].sock != NULL && CAIS_SOCK_IS_VALID(fds[i].sock)) {
             pfds[i].fd = fds[i].sock->fd;
             pfds[i].events = 0;
-            if (fds[i].events & SOLO_SOCK_POLL_READ) {
-                pfds[i].events |= SOLO_WSA_POLLIN;
+            if (fds[i].events & CAIS_SOCK_POLL_READ) {
+                pfds[i].events |= CAIS_WSA_POLLIN;
             }
-            if (fds[i].events & SOLO_SOCK_POLL_WRITE) {
-                pfds[i].events |= SOLO_WSA_POLLOUT;
+            if (fds[i].events & CAIS_SOCK_POLL_WRITE) {
+                pfds[i].events |= CAIS_WSA_POLLOUT;
             }
         } else {
             pfds[i].fd = INVALID_SOCKET;
@@ -739,13 +739,13 @@ static int solo_win32_poll(solo_pollfd_t *fds, size_t nfds, int timeout_ms)
         ret = s_pfn_WSAPoll(pfds, (ULONG)nfds, timeout_ms);
         if (ret < 0) {
             int err = WSAGetLastError();
-            if (SOLO_PAL_IS_INTR(err)) {
+            if (CAIS_PAL_IS_INTR(err)) {
                 continue;
             }
             if (pfds != stack_pfds) {
                 free(pfds);
             }
-            return SOLO_SOCK_ERROR;
+            return CAIS_SOCK_ERROR;
         }
         break;
     }
@@ -753,14 +753,14 @@ static int solo_win32_poll(solo_pollfd_t *fds, size_t nfds, int timeout_ms)
     if (ret > 0) {
         for (i = 0; i < nfds; i++) {
             if (pfds[i].fd != INVALID_SOCKET && pfds[i].revents != 0) {
-                if (pfds[i].revents & (SOLO_WSA_POLLIN | SOLO_WSA_POLLPRI)) {
-                    fds[i].revents |= SOLO_SOCK_POLL_READ;
+                if (pfds[i].revents & (CAIS_WSA_POLLIN | CAIS_WSA_POLLPRI)) {
+                    fds[i].revents |= CAIS_SOCK_POLL_READ;
                 }
-                if (pfds[i].revents & SOLO_WSA_POLLOUT) {
-                    fds[i].revents |= SOLO_SOCK_POLL_WRITE;
+                if (pfds[i].revents & CAIS_WSA_POLLOUT) {
+                    fds[i].revents |= CAIS_SOCK_POLL_WRITE;
                 }
-                if (pfds[i].revents & (SOLO_WSA_POLLERR | SOLO_WSA_POLLHUP | SOLO_WSA_POLLNVAL)) {
-                    fds[i].revents |= SOLO_SOCK_POLL_ERR;
+                if (pfds[i].revents & (CAIS_WSA_POLLERR | CAIS_WSA_POLLHUP | CAIS_WSA_POLLNVAL)) {
+                    fds[i].revents |= CAIS_SOCK_POLL_ERR;
                 }
                 if (fds[i].revents != 0) {
                     ready_count++;
@@ -776,17 +776,17 @@ static int solo_win32_poll(solo_pollfd_t *fds, size_t nfds, int timeout_ms)
 }
 #endif
 
-int solo_socket_backend_poll(solo_pollfd_t *fds, size_t nfds, int timeout_ms)
+int cais_socket_backend_poll(cais_pollfd_t *fds, size_t nfds, int timeout_ms)
 {
-#if defined(SOLO_PAL_HAS_CUSTOM_POLL)
-    return solo_pal_custom_poll(fds, nfds, timeout_ms);
-#elif SOLO_IS_WINDOWS
-    return solo_win32_poll(fds, nfds, timeout_ms);
-#elif SOLO_IS_POSIX
-    return solo_posix_poll(fds, nfds, timeout_ms);
-#elif SOLO_IS_DOS || SOLO_IS_AMIGA || SOLO_IS_OS2 || SOLO_IS_ATARIST
-    return solo_poll_via_select(fds, nfds, timeout_ms);
+#if defined(CAIS_PAL_HAS_CUSTOM_POLL)
+    return cais_pal_custom_poll(fds, nfds, timeout_ms);
+#elif CAIS_IS_WINDOWS
+    return cais_win32_poll(fds, nfds, timeout_ms);
+#elif CAIS_IS_POSIX
+    return cais_posix_poll(fds, nfds, timeout_ms);
+#elif CAIS_IS_DOS || CAIS_IS_AMIGA || CAIS_IS_OS2 || CAIS_IS_ATARIST
+    return cais_poll_via_select(fds, nfds, timeout_ms);
 #else
-    return solo_poll_via_select(fds, nfds, timeout_ms);
+    return cais_poll_via_select(fds, nfds, timeout_ms);
 #endif
 }

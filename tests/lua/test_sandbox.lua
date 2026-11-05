@@ -1,6 +1,6 @@
 --
--- solo - Physical I/O, System Foundations & Hardware Abstractions
--- Projectum Lunare <https://github.com/projectum-lunare/solo>
+-- cais - Physical I/O, System Foundations & Hardware Abstractions
+-- Projectum Lunare <https://github.com/projectum-lunare/cais>
 -- Copyright (C) 2026 Gustavo Veiga <gustavo.veiga@outlook.com.br>
 -- Mozilla Public License Version 2.0
 --
@@ -12,10 +12,10 @@ local T = require("tests.harness")
 local describe, test = T.describe, T.test
 local assert_eq, assert_true, assert_false = T.assert_eq, T.assert_true, T.assert_false
 
-local solo = require("solo")
+local cais = require("cais")
 
 -- ============================================================================
--- solo.sandbox (Kernel Security & Process Confinement Tests)
+-- cais.sandbox (Kernel Security & Process Confinement Tests)
 -- ============================================================================
 -- Tests the kernel sandboxing bindings (Landlock LSM on Linux, pledge/unveil on
 -- OpenBSD, Capsicum on FreeBSD).
@@ -25,8 +25,8 @@ local solo = require("solo")
 -- relaxed once locked. Therefore, live enforcement tests execute in a separate
 -- child Lua process via os.execute() so that the test runner's own execution
 -- environment remains unrestricted.
-describe("solo.sandbox (Kernel Security & Isolation)", function()
-    local s = solo.sandbox
+describe("cais.sandbox (Kernel Security & Isolation)", function()
+    local s = cais.sandbox
 
     -- 1. Introspection of backend engine and version
     test("exposes backend name and version information", function()
@@ -90,7 +90,7 @@ describe("solo.sandbox (Kernel Security & Isolation)", function()
             -- 1. Reading "xmake.lua" (inside ".") must succeed.
             -- 2. Reading "/etc/passwd" (outside ".") must be blocked by the kernel.
             local code = [=[
-                local s = require("solo.sandbox")
+                local s = require("cais.sandbox")
                 assert(s.unveil(".", "r"))
                 assert(s.lock())
                 local f1 = io.open("xmake.lua", "r")
@@ -115,7 +115,7 @@ describe("solo.sandbox (Kernel Security & Isolation)", function()
             -- Locking immediately without unveiling grants zero filesystem paths.
             -- Any attempt to open a file must be denied by Landlock.
             local code = [=[
-                local s = require("solo.sandbox")
+                local s = require("cais.sandbox")
                 assert(s.lock())
                 local f = io.open("/etc/passwd", "r")
                 if f then f:close() os.exit(2) end
@@ -130,7 +130,7 @@ describe("solo.sandbox (Kernel Security & Isolation)", function()
 
     -- 7. Unsupported primitive handling
     test("unsupported sandbox operations fail visibly with explanatory error", function()
-        if solo.platform.is_linux then
+        if cais.platform.is_linux then
             -- On Linux, pledge() is unsupported (pledge is OpenBSD-specific); must return UNSUPPORTED
             local ok, err, code = s.pledge("stdio")
             assert_false(ok)

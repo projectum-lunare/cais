@@ -1,4 +1,4 @@
-# Network Sockets & Multiplexing (`solo.socket`)
+# Network Sockets & Multiplexing (`cais.socket`)
 
 The `socket` subsystem provides a cross-platform, non-blocking IPv4 TCP (streaming) and UDP (datagram) engine designed to maintain 100% semantic parity between modern POSIX workstations and vintage operating systems.
 
@@ -6,67 +6,67 @@ The `socket` subsystem provides a cross-platform, non-blocking IPv4 TCP (streami
 
 ## 1. Constants & Enumerations
 
-### Socket Type (`solo_socket_type_t`)
+### Socket Type (`cais_socket_type_t`)
 
-| C Constant | Lua Field (`solo.socket.type`) | Integer Value | Description |
+| C Constant | Lua Field (`cais.socket.type`) | Integer Value | Description |
 | :--- | :--- | :---: | :--- |
-| `SOLO_SOCK_TCP` / `SOLO_SOCK_STREAM` | `TCP` | `1` | Stream-oriented connection (TCP over IPv4) |
-| `SOLO_SOCK_UDP` / `SOLO_SOCK_DGRAM` | `UDP` | `2` | Datagram connectionless socket (UDP over IPv4) |
+| `CAIS_SOCK_TCP` / `CAIS_SOCK_STREAM` | `TCP` | `1` | Stream-oriented connection (TCP over IPv4) |
+| `CAIS_SOCK_UDP` / `CAIS_SOCK_DGRAM` | `UDP` | `2` | Datagram connectionless socket (UDP over IPv4) |
 
-### Blocking Mode (`solo_socket_mode_t`)
+### Blocking Mode (`cais_socket_mode_t`)
 
-| C Constant | Lua Field (`solo.socket.mode`) | Integer Value | Description |
+| C Constant | Lua Field (`cais.socket.mode`) | Integer Value | Description |
 | :--- | :--- | :---: | :--- |
-| `SOLO_SOCK_BLOCKING` | `BLOCKING` | `0` | Sockets block execution until I/O completes or times out |
-| `SOLO_SOCK_NONBLOCKING` | `NONBLOCKING` | `1` | Sockets return immediately; return `SOLO_SOCK_AGAIN` if operation cannot complete |
+| `CAIS_SOCK_BLOCKING` | `BLOCKING` | `0` | Sockets block execution until I/O completes or times out |
+| `CAIS_SOCK_NONBLOCKING` | `NONBLOCKING` | `1` | Sockets return immediately; return `CAIS_SOCK_AGAIN` if operation cannot complete |
 
-### Readiness Polling Events (`solo_socket_event_t`)
+### Readiness Polling Events (`cais_socket_event_t`)
 
-| C Constant | Lua Field (`solo.socket.event`) | Bitmask Value | Description |
+| C Constant | Lua Field (`cais.socket.event`) | Bitmask Value | Description |
 | :--- | :--- | :---: | :--- |
-| `SOLO_SOCK_POLL_READ` | `READ` | `1 << 0` (`0x01`) | Socket has incoming data ready to read, or has pending incoming connections |
-| `SOLO_SOCK_POLL_WRITE` | `WRITE` | `1 << 1` (`0x02`) | Socket has buffer capacity available to send data |
-| `SOLO_SOCK_POLL_ERR` | `ERR` | `1 << 2` (`0x04`) | Socket encountered an asynchronous error, peer hangup (HUP), or invalid descriptor |
+| `CAIS_SOCK_POLL_READ` | `READ` | `1 << 0` (`0x01`) | Socket has incoming data ready to read, or has pending incoming connections |
+| `CAIS_SOCK_POLL_WRITE` | `WRITE` | `1 << 1` (`0x02`) | Socket has buffer capacity available to send data |
+| `CAIS_SOCK_POLL_ERR` | `ERR` | `1 << 2` (`0x04`) | Socket encountered an asynchronous error, peer hangup (HUP), or invalid descriptor |
 
-### Return Status Codes (`solo_socket_status_t`)
+### Return Status Codes (`cais_socket_status_t`)
 
 | C Constant | Integer Value | Description |
 | :--- | :---: | :--- |
-| `SOLO_SOCK_OK` | `0` | Operation completed successfully |
-| `SOLO_SOCK_ERROR` | `-1` | Unrecoverable I/O or network stack error |
-| `SOLO_SOCK_AGAIN` | `-2` | Non-blocking operation would block (`EAGAIN` / `EWOULDBLOCK`) |
-| `SOLO_SOCK_CLOSED` | `-3` | Orderly disconnection / EOF received from peer |
-| `SOLO_SOCK_TIMEOUT` | `-4` | Configured timeout expired before data could be sent/received |
+| `CAIS_SOCK_OK` | `0` | Operation completed successfully |
+| `CAIS_SOCK_ERROR` | `-1` | Unrecoverable I/O or network stack error |
+| `CAIS_SOCK_AGAIN` | `-2` | Non-blocking operation would block (`EAGAIN` / `EWOULDBLOCK`) |
+| `CAIS_SOCK_CLOSED` | `-3` | Orderly disconnection / EOF received from peer |
+| `CAIS_SOCK_TIMEOUT` | `-4` | Configured timeout expired before data could be sent/received |
 
 ---
 
 ## 2. C89 Function Reference
 
-### `solo_socket_create`
+### `cais_socket_create`
 ```c
-solo_socket_t *solo_socket_create(
-    solo_socket_type_t type, 
-    solo_socket_mode_t mode, 
+cais_socket_t *cais_socket_create(
+    cais_socket_type_t type, 
+    cais_socket_mode_t mode, 
     char *err_buf, 
     size_t err_cap
 );
 ```
 Creates an unbound IPv4 socket.
 * **Parameters:**
-  * `type`: `SOLO_SOCK_TCP` or `SOLO_SOCK_UDP`.
-  * `mode`: `SOLO_SOCK_BLOCKING` or `SOLO_SOCK_NONBLOCKING`.
+  * `type`: `CAIS_SOCK_TCP` or `CAIS_SOCK_UDP`.
+  * `mode`: `CAIS_SOCK_BLOCKING` or `CAIS_SOCK_NONBLOCKING`.
   * `err_buf`: Optional caller-allocated buffer for diagnostic messages (may be `NULL`).
   * `err_cap`: Capacity of `err_buf` in bytes.
-* **Returns:** Pointer to `solo_socket_t` on success, or `NULL` on failure.
+* **Returns:** Pointer to `cais_socket_t` on success, or `NULL` on failure.
 
 ---
 
-### `solo_socket_connect`
+### `cais_socket_connect`
 ```c
-solo_socket_t *solo_socket_connect(
+cais_socket_t *cais_socket_connect(
     const char *host, 
     int port, 
-    solo_socket_mode_t mode, 
+    cais_socket_mode_t mode, 
     char *err_buf, 
     size_t err_cap
 );
@@ -76,13 +76,13 @@ Creates a TCP socket and initiates a connection to `host`:`port`. Resolves IPv4 
 
 ---
 
-### `solo_socket_bind`
+### `cais_socket_bind`
 ```c
-solo_socket_t *solo_socket_bind(
+cais_socket_t *cais_socket_bind(
     const char *host, 
     int port, 
     int backlog, 
-    solo_socket_mode_t mode, 
+    cais_socket_mode_t mode, 
     char *err_buf, 
     size_t err_cap
 );
@@ -92,10 +92,10 @@ Creates a TCP server socket, binds to `host`:`port`, and begins listening with t
 
 ---
 
-### `solo_socket_accept`
+### `cais_socket_accept`
 ```c
-solo_socket_t *solo_socket_accept(
-    solo_socket_t *server, 
+cais_socket_t *cais_socket_accept(
+    cais_socket_t *server, 
     char *client_ip, 
     size_t ip_len, 
     int *client_port, 
@@ -108,21 +108,21 @@ Accepts an incoming TCP connection from a listening server socket.
   * `client_ip`: Optional buffer to receive the client's IPv4 address string (e.g. `192.168.1.100`).
   * `ip_len`: Length of `client_ip` buffer (at least 16 bytes recommended).
   * `client_port`: Optional pointer to receive client's ephemeral port number.
-* **Returns:** New client `solo_socket_t*`, or `NULL` if no connection is available or an error occurs. In non-blocking mode, if no connection is pending, returns `NULL` with `err_buf` empty.
+* **Returns:** New client `cais_socket_t*`, or `NULL` if no connection is available or an error occurs. In non-blocking mode, if no connection is pending, returns `NULL` with `err_buf` empty.
 
 ---
 
-### `solo_socket_send` / `solo_socket_recv`
+### `cais_socket_send` / `cais_socket_recv`
 ```c
-solo_socket_status_t solo_socket_send(
-    solo_socket_t *sock, 
+cais_socket_status_t cais_socket_send(
+    cais_socket_t *sock, 
     const char *buf, 
     size_t len, 
     size_t *sent
 );
 
-solo_socket_status_t solo_socket_recv(
-    solo_socket_t *sock, 
+cais_socket_status_t cais_socket_recv(
+    cais_socket_t *sock, 
     char *buf, 
     size_t max_len, 
     size_t *received
@@ -130,17 +130,17 @@ solo_socket_status_t solo_socket_recv(
 ```
 Sends or receives stream data over a connected TCP socket.
 * **Returns:**
-  * `SOLO_SOCK_OK`: Data transferred (*sent / *received populated).
-  * `SOLO_SOCK_AGAIN`: Socket would block in non-blocking mode.
-  * `SOLO_SOCK_CLOSED`: Remote peer closed connection cleanly (EOF on recv).
-  * `SOLO_SOCK_ERROR`: Fatal socket error.
+  * `CAIS_SOCK_OK`: Data transferred (*sent / *received populated).
+  * `CAIS_SOCK_AGAIN`: Socket would block in non-blocking mode.
+  * `CAIS_SOCK_CLOSED`: Remote peer closed connection cleanly (EOF on recv).
+  * `CAIS_SOCK_ERROR`: Fatal socket error.
 
 ---
 
-### `solo_socket_sendto` / `solo_socket_recvfrom`
+### `cais_socket_sendto` / `cais_socket_recvfrom`
 ```c
-solo_socket_status_t solo_socket_sendto(
-    solo_socket_t *sock, 
+cais_socket_status_t cais_socket_sendto(
+    cais_socket_t *sock, 
     const char *buf, 
     size_t len,
     const char *host, 
@@ -148,8 +148,8 @@ solo_socket_status_t solo_socket_sendto(
     size_t *sent
 );
 
-solo_socket_status_t solo_socket_recvfrom(
-    solo_socket_t *sock, 
+cais_socket_status_t cais_socket_recvfrom(
+    cais_socket_t *sock, 
     char *buf, 
     size_t max_len,
     char *src_ip, 
@@ -162,36 +162,36 @@ Transfers connectionless UDP datagrams. `recvfrom` captures the origin sender's 
 
 ---
 
-### `solo_socket_poll`
+### `cais_socket_poll`
 ```c
-int solo_socket_poll(
-    solo_pollfd_t *fds, 
+int cais_socket_poll(
+    cais_pollfd_t *fds, 
     size_t nfds, 
     int timeout_ms
 );
 ```
 Multiplexes events across multiple sockets simultaneously.
-* **`solo_pollfd_t` Structure:**
+* **`cais_pollfd_t` Structure:**
   ```c
-  typedef struct solo_pollfd {
-      solo_socket_t *sock;    /* Target socket handle */
-      int events;             /* Input bitmask: SOLO_SOCK_POLL_READ | SOLO_SOCK_POLL_WRITE */
+  typedef struct cais_pollfd {
+      cais_socket_t *sock;    /* Target socket handle */
+      int events;             /* Input bitmask: CAIS_SOCK_POLL_READ | CAIS_SOCK_POLL_WRITE */
       int revents;            /* Output bitmask: Events that occurred */
-  } solo_pollfd_t;
+  } cais_pollfd_t;
   ```
 * **Parameters:**
   * `timeout_ms`: `< 0` blocks indefinitely; `0` returns immediately; `> 0` waits up to specified milliseconds.
-* **Returns:** Count of descriptors ready (`> 0`), `0` on timeout, or `SOLO_SOCK_ERROR` on failure.
+* **Returns:** Count of descriptors ready (`> 0`), `0` on timeout, or `CAIS_SOCK_ERROR` on failure.
 
 ---
 
-### `solo_socket_is_blocking` / `solo_socket_is_nonblocking`
+### `cais_socket_is_blocking` / `cais_socket_is_nonblocking`
 ```c
-solo_bool_t solo_socket_is_blocking(const solo_socket_t *sock);
-solo_bool_t solo_socket_is_nonblocking(const solo_socket_t *sock);
+cais_bool_t cais_socket_is_blocking(const cais_socket_t *sock);
+cais_bool_t cais_socket_is_nonblocking(const cais_socket_t *sock);
 ```
 Inspects whether the socket descriptor operates in blocking or non-blocking mode.
-* **Returns:** `SOLO_TRUE` or `SOLO_FALSE` (returns `SOLO_FALSE` if `sock` is `NULL`).
+* **Returns:** `CAIS_TRUE` or `CAIS_FALSE` (returns `CAIS_FALSE` if `sock` is `NULL`).
 
 ---
 
@@ -200,7 +200,7 @@ Inspects whether the socket descriptor operates in blocking or non-blocking mode
 ### Module Constructors
 
 ```lua
-local sock = require("solo.socket")
+local sock = require("cais.socket")
 ```
 
 | Lua Function | Description | Return Value |

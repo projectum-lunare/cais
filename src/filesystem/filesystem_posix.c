@@ -1,6 +1,6 @@
 /*
- * solo - Physical I/O, System Foundations & Hardware Abstractions
- * Projectum Lunare <https://github.com/projectum-lunare/solo>
+ * cais - Physical I/O, System Foundations & Hardware Abstractions
+ * Projectum Lunare <https://github.com/projectum-lunare/cais>
  * Copyright (C) 2026 Gustavo Veiga <gustavo.veiga@outlook.com.br>
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
@@ -18,9 +18,9 @@
 #define _BSD_SOURCE
 #endif
 
-#include <solo/platform.h>
+#include <cais/platform.h>
 
-#if SOLO_IS_POSIX || SOLO_IS_PLAN9
+#if CAIS_IS_POSIX || CAIS_IS_PLAN9
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,19 +33,19 @@
 
 #include "fs_internal.h"
 
-struct solo_fs_dir {
+struct cais_fs_dir {
     DIR *dirp;
-    char path[SOLO_PATH_MAX];
+    char path[CAIS_PATH_MAX];
 };
 
-solo_status_t solo_pal_fs_stat(const char *path, solo_fs_stat_t *st, solo_bool_t follow_links, char *err_buf, size_t err_cap)
+cais_status_t cais_pal_fs_stat(const char *path, cais_fs_stat_t *st, cais_bool_t follow_links, char *err_buf, size_t err_cap)
 {
     struct stat s;
     int res;
 
     if (path == NULL || st == NULL) {
-        solo_set_err(err_buf, err_cap, "invalid null argument to stat");
-        return SOLO_ERROR;
+        cais_set_err(err_buf, err_cap, "invalid null argument to stat");
+        return CAIS_ERROR;
     }
 
     memset(st, 0, sizeof(*st));
@@ -62,114 +62,114 @@ solo_status_t solo_pal_fs_stat(const char *path, solo_fs_stat_t *st, solo_bool_t
 #endif
 
     if (res != 0) {
-        solo_set_err_fmt(err_buf, err_cap, "stat failed: %s", strerror(errno));
-        return SOLO_ERROR;
+        cais_set_err_fmt(err_buf, err_cap, "stat failed: %s", strerror(errno));
+        return CAIS_ERROR;
     }
 
-    st->size = (solo_fsize_t)s.st_size;
+    st->size = (cais_fsize_t)s.st_size;
     st->mtime = (long)s.st_mtime;
     st->atime = (long)s.st_atime;
     st->ctime = (long)s.st_ctime;
     st->mode = (int)(s.st_mode & 07777);
-    st->is_readonly = !(s.st_mode & 0222) ? SOLO_TRUE : SOLO_FALSE;
+    st->is_readonly = !(s.st_mode & 0222) ? CAIS_TRUE : CAIS_FALSE;
 
     if (S_ISDIR(s.st_mode)) {
-        st->type = SOLO_FS_TYPE_DIR;
+        st->type = CAIS_FS_TYPE_DIR;
     } else if (S_ISREG(s.st_mode)) {
-        st->type = SOLO_FS_TYPE_FILE;
+        st->type = CAIS_FS_TYPE_FILE;
 #if defined(S_ISLNK)
     } else if (S_ISLNK(s.st_mode)) {
-        st->type = SOLO_FS_TYPE_SYMLINK;
+        st->type = CAIS_FS_TYPE_SYMLINK;
 #endif
 #if defined(S_ISCHR) || defined(S_ISBLK)
     } else if (S_ISCHR(s.st_mode) || S_ISBLK(s.st_mode)) {
-        st->type = SOLO_FS_TYPE_DEVICE;
+        st->type = CAIS_FS_TYPE_DEVICE;
 #endif
 #if defined(S_ISFIFO)
     } else if (S_ISFIFO(s.st_mode)) {
-        st->type = SOLO_FS_TYPE_FIFO;
+        st->type = CAIS_FS_TYPE_FIFO;
 #endif
 #if defined(S_ISSOCK)
     } else if (S_ISSOCK(s.st_mode)) {
-        st->type = SOLO_FS_TYPE_SOCKET;
+        st->type = CAIS_FS_TYPE_SOCKET;
 #endif
     } else {
-        st->type = SOLO_FS_TYPE_UNKNOWN;
+        st->type = CAIS_FS_TYPE_UNKNOWN;
     }
 
-    return SOLO_OK;
+    return CAIS_OK;
 }
 
-solo_status_t solo_pal_fs_mkdir(const char *path, int mode, char *err_buf, size_t err_cap)
+cais_status_t cais_pal_fs_mkdir(const char *path, int mode, char *err_buf, size_t err_cap)
 {
     mode_t m = (mode > 0) ? (mode_t)mode : 0777;
     if (mkdir(path, m) != 0) {
         if (errno == EEXIST) {
-            solo_set_err(err_buf, err_cap, "directory already exists");
+            cais_set_err(err_buf, err_cap, "directory already exists");
         } else {
-            solo_set_err_fmt(err_buf, err_cap, "mkdir failed: %s", strerror(errno));
+            cais_set_err_fmt(err_buf, err_cap, "mkdir failed: %s", strerror(errno));
         }
-        return SOLO_ERROR;
+        return CAIS_ERROR;
     }
-    return SOLO_OK;
+    return CAIS_OK;
 }
 
-solo_status_t solo_pal_fs_rmdir(const char *path, char *err_buf, size_t err_cap)
+cais_status_t cais_pal_fs_rmdir(const char *path, char *err_buf, size_t err_cap)
 {
     if (rmdir(path) != 0) {
-        solo_set_err_fmt(err_buf, err_cap, "rmdir failed: %s", strerror(errno));
-        return SOLO_ERROR;
+        cais_set_err_fmt(err_buf, err_cap, "rmdir failed: %s", strerror(errno));
+        return CAIS_ERROR;
     }
-    return SOLO_OK;
+    return CAIS_OK;
 }
 
-solo_status_t solo_pal_fs_unlink(const char *path, char *err_buf, size_t err_cap)
+cais_status_t cais_pal_fs_unlink(const char *path, char *err_buf, size_t err_cap)
 {
     if (unlink(path) != 0) {
-        solo_set_err_fmt(err_buf, err_cap, "unlink failed: %s", strerror(errno));
-        return SOLO_ERROR;
+        cais_set_err_fmt(err_buf, err_cap, "unlink failed: %s", strerror(errno));
+        return CAIS_ERROR;
     }
-    return SOLO_OK;
+    return CAIS_OK;
 }
 
-solo_status_t solo_pal_fs_rename(const char *oldpath, const char *newpath, char *err_buf, size_t err_cap)
+cais_status_t cais_pal_fs_rename(const char *oldpath, const char *newpath, char *err_buf, size_t err_cap)
 {
     if (rename(oldpath, newpath) != 0) {
-        solo_set_err_fmt(err_buf, err_cap, "rename failed: %s", strerror(errno));
-        return SOLO_ERROR;
+        cais_set_err_fmt(err_buf, err_cap, "rename failed: %s", strerror(errno));
+        return CAIS_ERROR;
     }
-    return SOLO_OK;
+    return CAIS_OK;
 }
 
-solo_status_t solo_pal_fs_chmod(const char *path, int mode, char *err_buf, size_t err_cap)
+cais_status_t cais_pal_fs_chmod(const char *path, int mode, char *err_buf, size_t err_cap)
 {
     if (chmod(path, (mode_t)mode) != 0) {
-        solo_set_err_fmt(err_buf, err_cap, "chmod failed: %s", strerror(errno));
-        return SOLO_ERROR;
+        cais_set_err_fmt(err_buf, err_cap, "chmod failed: %s", strerror(errno));
+        return CAIS_ERROR;
     }
-    return SOLO_OK;
+    return CAIS_OK;
 }
 
-solo_fs_dir_t *solo_pal_fs_dir_open(const char *path, char *err_buf, size_t err_cap)
+cais_fs_dir_t *cais_pal_fs_dir_open(const char *path, char *err_buf, size_t err_cap)
 {
     DIR *d;
-    solo_fs_dir_t *dir;
+    cais_fs_dir_t *dir;
 
     if (path == NULL) {
-        solo_set_err(err_buf, err_cap, "path is null");
+        cais_set_err(err_buf, err_cap, "path is null");
         return NULL;
     }
 
     d = opendir(path);
     if (d == NULL) {
-        solo_set_err_fmt(err_buf, err_cap, "opendir failed: %s", strerror(errno));
+        cais_set_err_fmt(err_buf, err_cap, "opendir failed: %s", strerror(errno));
         return NULL;
     }
 
-    dir = (solo_fs_dir_t *)malloc(sizeof(solo_fs_dir_t));
+    dir = (cais_fs_dir_t *)malloc(sizeof(cais_fs_dir_t));
     if (dir == NULL) {
         closedir(d);
-        solo_set_err(err_buf, err_cap, "out of memory allocating directory handle");
+        cais_set_err(err_buf, err_cap, "out of memory allocating directory handle");
         return NULL;
     }
 
@@ -179,12 +179,12 @@ solo_fs_dir_t *solo_pal_fs_dir_open(const char *path, char *err_buf, size_t err_
     return dir;
 }
 
-solo_status_t solo_pal_fs_dir_next(solo_fs_dir_t *dir, solo_fs_dirent_t *ent)
+cais_status_t cais_pal_fs_dir_next(cais_fs_dir_t *dir, cais_fs_dirent_t *ent)
 {
     struct dirent *de;
 
     if (dir == NULL || ent == NULL) {
-        return SOLO_ERROR;
+        return CAIS_ERROR;
     }
 
     while (1) {
@@ -192,9 +192,9 @@ solo_status_t solo_pal_fs_dir_next(solo_fs_dir_t *dir, solo_fs_dirent_t *ent)
         de = readdir(dir->dirp);
         if (de == NULL) {
             if (errno != 0) {
-                return SOLO_ERROR;
+                return CAIS_ERROR;
             }
-            return SOLO_EOF;
+            return CAIS_EOF;
         }
 
         /* Skip "." and ".." */
@@ -205,45 +205,45 @@ solo_status_t solo_pal_fs_dir_next(solo_fs_dir_t *dir, solo_fs_dirent_t *ent)
         strncpy(ent->name, de->d_name, sizeof(ent->name) - 1);
         ent->name[sizeof(ent->name) - 1] = '\0';
 
-        ent->type = SOLO_FS_TYPE_UNKNOWN;
+        ent->type = CAIS_FS_TYPE_UNKNOWN;
 #if defined(DT_DIR)
         if (de->d_type == DT_DIR) {
-            ent->type = SOLO_FS_TYPE_DIR;
+            ent->type = CAIS_FS_TYPE_DIR;
         } else if (de->d_type == DT_REG) {
-            ent->type = SOLO_FS_TYPE_FILE;
+            ent->type = CAIS_FS_TYPE_FILE;
 #if defined(DT_LNK)
         } else if (de->d_type == DT_LNK) {
-            ent->type = SOLO_FS_TYPE_SYMLINK;
+            ent->type = CAIS_FS_TYPE_SYMLINK;
 #endif
 #if defined(DT_CHR) && defined(DT_BLK)
         } else if (de->d_type == DT_CHR || de->d_type == DT_BLK) {
-            ent->type = SOLO_FS_TYPE_DEVICE;
+            ent->type = CAIS_FS_TYPE_DEVICE;
 #endif
 #if defined(DT_FIFO)
         } else if (de->d_type == DT_FIFO) {
-            ent->type = SOLO_FS_TYPE_FIFO;
+            ent->type = CAIS_FS_TYPE_FIFO;
 #endif
 #if defined(DT_SOCK)
         } else if (de->d_type == DT_SOCK) {
-            ent->type = SOLO_FS_TYPE_SOCKET;
+            ent->type = CAIS_FS_TYPE_SOCKET;
 #endif
         }
 #endif
-        if (ent->type == SOLO_FS_TYPE_UNKNOWN) {
-            char full_path[SOLO_PATH_MAX];
-            solo_fs_stat_t st;
-            if (solo_fs_path_join(dir->path, ent->name, full_path, sizeof(full_path)) == SOLO_OK) {
-                if (solo_pal_fs_stat(full_path, &st, SOLO_FALSE, NULL, 0) == SOLO_OK) {
+        if (ent->type == CAIS_FS_TYPE_UNKNOWN) {
+            char full_path[CAIS_PATH_MAX];
+            cais_fs_stat_t st;
+            if (cais_fs_path_join(dir->path, ent->name, full_path, sizeof(full_path)) == CAIS_OK) {
+                if (cais_pal_fs_stat(full_path, &st, CAIS_FALSE, NULL, 0) == CAIS_OK) {
                     ent->type = st.type;
                 }
             }
         }
 
-        return SOLO_OK;
+        return CAIS_OK;
     }
 }
 
-void solo_pal_fs_dir_close(solo_fs_dir_t *dir)
+void cais_pal_fs_dir_close(cais_fs_dir_t *dir)
 {
     if (dir != NULL) {
         if (dir->dirp != NULL) {
@@ -253,25 +253,25 @@ void solo_pal_fs_dir_close(solo_fs_dir_t *dir)
     }
 }
 
-solo_status_t solo_pal_fs_getcwd(char *buf, size_t cap, char *err_buf, size_t err_cap)
+cais_status_t cais_pal_fs_getcwd(char *buf, size_t cap, char *err_buf, size_t err_cap)
 {
     if (getcwd(buf, cap) == NULL) {
-        solo_set_err_fmt(err_buf, err_cap, "getcwd failed: %s", strerror(errno));
-        return SOLO_ERROR;
+        cais_set_err_fmt(err_buf, err_cap, "getcwd failed: %s", strerror(errno));
+        return CAIS_ERROR;
     }
-    return SOLO_OK;
+    return CAIS_OK;
 }
 
-solo_status_t solo_pal_fs_setcwd(const char *path, char *err_buf, size_t err_cap)
+cais_status_t cais_pal_fs_setcwd(const char *path, char *err_buf, size_t err_cap)
 {
     if (chdir(path) != 0) {
-        solo_set_err_fmt(err_buf, err_cap, "chdir failed: %s", strerror(errno));
-        return SOLO_ERROR;
+        cais_set_err_fmt(err_buf, err_cap, "chdir failed: %s", strerror(errno));
+        return CAIS_ERROR;
     }
-    return SOLO_OK;
+    return CAIS_OK;
 }
 
-solo_status_t solo_pal_fs_temp_dir(char *buf, size_t cap, char *err_buf, size_t err_cap)
+cais_status_t cais_pal_fs_temp_dir(char *buf, size_t cap, char *err_buf, size_t err_cap)
 {
     const char *tmp = getenv("TMPDIR");
     if (tmp == NULL || tmp[0] == '\0') tmp = getenv("TEMP");
@@ -279,12 +279,12 @@ solo_status_t solo_pal_fs_temp_dir(char *buf, size_t cap, char *err_buf, size_t 
     if (tmp == NULL || tmp[0] == '\0') tmp = "/tmp";
 
     if (strlen(tmp) + 1 > cap) {
-        solo_set_err(err_buf, err_cap, "buffer too small for temp dir path");
-        return SOLO_ERROR;
+        cais_set_err(err_buf, err_cap, "buffer too small for temp dir path");
+        return CAIS_ERROR;
     }
 
     strcpy(buf, tmp);
-    return SOLO_OK;
+    return CAIS_OK;
 }
 
-#endif /* SOLO_IS_POSIX || SOLO_IS_PLAN9 */
+#endif /* CAIS_IS_POSIX || CAIS_IS_PLAN9 */

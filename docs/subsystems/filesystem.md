@@ -1,30 +1,30 @@
-# Filesystem & Path I/O (`solo.filesystem` / `fs`)
+# Filesystem & Path I/O (`cais.filesystem` / `fs`)
 
-The `filesystem` subsystem (available as both `solo.filesystem` and `solo.fs`) provides zero-allocation path algebra, recursive file and directory manipulation, metadata inspection, and streaming file I/O.
+The `filesystem` subsystem (available as both `cais.filesystem` and `cais.fs`) provides zero-allocation path algebra, recursive file and directory manipulation, metadata inspection, and streaming file I/O.
 
 ---
 
 ## 1. Constants & Enumerations
 
-### Filesystem Node Type (`solo_fs_type_t`)
+### Filesystem Node Type (`cais_fs_type_t`)
 
-| C Constant | Lua Field (`solo.fs.type`) | Integer Value | Description |
+| C Constant | Lua Field (`cais.fs.type`) | Integer Value | Description |
 | :--- | :--- | :---: | :--- |
-| `SOLO_FS_TYPE_UNKNOWN` | `UNKNOWN` | `0` | Unidentifiable node type |
-| `SOLO_FS_TYPE_FILE` | `FILE` | `1` | Regular file |
-| `SOLO_FS_TYPE_DIR` | `DIR` | `2` | Directory |
-| `SOLO_FS_TYPE_SYMLINK` | `SYMLINK` | `3` | Symbolic link |
-| `SOLO_FS_TYPE_DEVICE` | `DEVICE` | `4` | Character or block special device |
-| `SOLO_FS_TYPE_FIFO` | `FIFO` | `5` | Named pipe (FIFO) |
-| `SOLO_FS_TYPE_SOCKET` | `SOCKET` | `6` | UNIX domain socket |
+| `CAIS_FS_TYPE_UNKNOWN` | `UNKNOWN` | `0` | Unidentifiable node type |
+| `CAIS_FS_TYPE_FILE` | `FILE` | `1` | Regular file |
+| `CAIS_FS_TYPE_DIR` | `DIR` | `2` | Directory |
+| `CAIS_FS_TYPE_SYMLINK` | `SYMLINK` | `3` | Symbolic link |
+| `CAIS_FS_TYPE_DEVICE` | `DEVICE` | `4` | Character or block special device |
+| `CAIS_FS_TYPE_FIFO` | `FIFO` | `5` | Named pipe (FIFO) |
+| `CAIS_FS_TYPE_SOCKET` | `SOCKET` | `6` | UNIX domain socket |
 
 ### Seek Origins
 
 | C Constant | Lua Value | Description |
 | :--- | :--- | :--- |
-| `SOLO_FS_SEEK_SET` | `"set"` | Beginning of file |
-| `SOLO_FS_SEEK_CUR` | `"cur"` | Current file offset position |
-| `SOLO_FS_SEEK_END` | `"end"` | End of file |
+| `CAIS_FS_SEEK_SET` | `"set"` | Beginning of file |
+| `CAIS_FS_SEEK_CUR` | `"cur"` | Current file offset position |
+| `CAIS_FS_SEEK_END` | `"end"` | End of file |
 
 ---
 
@@ -36,25 +36,25 @@ These functions do not execute syscalls or touch the disk:
 
 ```c
 /* Joins two path components with platform separator */
-solo_status_t solo_fs_path_join(const char *p1, const char *p2, char *out, size_t out_cap);
+cais_status_t cais_fs_path_join(const char *p1, const char *p2, char *out, size_t out_cap);
 
 /* Collapses '.', '..', and duplicate slashes */
-solo_status_t solo_fs_path_normalize(const char *path, char *out, size_t out_cap);
+cais_status_t cais_fs_path_normalize(const char *path, char *out, size_t out_cap);
 
 /* Extracts the final component (e.g. "file.txt") */
-solo_status_t solo_fs_path_basename(const char *path, char *out, size_t out_cap);
+cais_status_t cais_fs_path_basename(const char *path, char *out, size_t out_cap);
 
 /* Extracts the parent directory component (e.g. "/usr/local") */
-solo_status_t solo_fs_path_dirname(const char *path, char *out, size_t out_cap);
+cais_status_t cais_fs_path_dirname(const char *path, char *out, size_t out_cap);
 
 /* Extracts extension including dot (e.g. ".tar.gz" -> ".gz") */
-solo_status_t solo_fs_path_ext(const char *path, char *out, size_t out_cap);
+cais_status_t cais_fs_path_ext(const char *path, char *out, size_t out_cap);
 
-/* Returns SOLO_TRUE if path begins with root or drive letter */
-solo_bool_t solo_fs_path_is_absolute(const char *path);
+/* Returns CAIS_TRUE if path begins with root or drive letter */
+cais_bool_t cais_fs_path_is_absolute(const char *path);
 
 /* Returns '/' on POSIX/Amiga/Atari, or '\\' on Windows/DOS */
-char solo_fs_path_separator(void);
+char cais_fs_path_separator(void);
 ```
 
 ---
@@ -63,27 +63,27 @@ char solo_fs_path_separator(void);
 
 ```c
 /* Fast existence predicate */
-solo_bool_t solo_fs_exists(const char *path);
-solo_bool_t solo_fs_is_file(const char *path);
-solo_bool_t solo_fs_is_dir(const char *path);
-solo_bool_t solo_fs_is_symlink(const char *path);
+cais_bool_t cais_fs_exists(const char *path);
+cais_bool_t cais_fs_is_file(const char *path);
+cais_bool_t cais_fs_is_dir(const char *path);
+cais_bool_t cais_fs_is_symlink(const char *path);
 
 /* Inspect metadata (size, timestamps, permissions) */
-solo_status_t solo_fs_stat(const char *path, solo_fs_stat_t *st, char *err_buf, size_t err_cap);
-solo_status_t solo_fs_lstat(const char *path, solo_fs_stat_t *st, char *err_buf, size_t err_cap);
+cais_status_t cais_fs_stat(const char *path, cais_fs_stat_t *st, char *err_buf, size_t err_cap);
+cais_status_t cais_fs_lstat(const char *path, cais_fs_stat_t *st, char *err_buf, size_t err_cap);
 ```
 
-#### `solo_fs_stat_t` Structure:
+#### `cais_fs_stat_t` Structure:
 ```c
-typedef struct solo_fs_stat {
-    solo_fs_type_t type;         /* Node type */
-    solo_fsize_t   size;         /* Size in bytes (64-bit safe) */
+typedef struct cais_fs_stat {
+    cais_fs_type_t type;         /* Node type */
+    cais_fsize_t   size;         /* Size in bytes (64-bit safe) */
     long           mtime;        /* Modification time (epoch seconds) */
     long           atime;        /* Access time (epoch seconds) */
     long           ctime;        /* Status change time */
     int            mode;         /* Permission bits (POSIX octal mode flags) */
-    solo_bool_t    is_readonly;  /* SOLO_TRUE if write-protected */
-} solo_fs_stat_t;
+    cais_bool_t    is_readonly;  /* CAIS_TRUE if write-protected */
+} cais_fs_stat_t;
 ```
 
 ---
@@ -92,20 +92,20 @@ typedef struct solo_fs_stat {
 
 ```c
 /* Reads entire file into dynamically allocated null-terminated buffer (caller frees with free()) */
-char *solo_fs_read_file(const char *path, size_t *out_size);
+char *cais_fs_read_file(const char *path, size_t *out_size);
 
 /* Writes or appends entire buffer to file */
-solo_status_t solo_fs_write_file(const char *path, const char *data, size_t len);
-solo_status_t solo_fs_append_file(const char *path, const char *data, size_t len);
+cais_status_t cais_fs_write_file(const char *path, const char *data, size_t len);
+cais_status_t cais_fs_append_file(const char *path, const char *data, size_t len);
 
 /* File system operations */
-solo_status_t solo_fs_remove(const char *path);
-solo_status_t solo_fs_remove_r(const char *path);
-solo_status_t solo_fs_rename(const char *old_path, const char *new_path);
-solo_status_t solo_fs_copy_file(const char *src, const char *dst);
-solo_status_t solo_fs_copy_r(const char *src, const char *dst);
-solo_status_t solo_fs_mkdir(const char *path);
-solo_status_t solo_fs_mkdir_p(const char *path);
+cais_status_t cais_fs_remove(const char *path);
+cais_status_t cais_fs_remove_r(const char *path);
+cais_status_t cais_fs_rename(const char *old_path, const char *new_path);
+cais_status_t cais_fs_copy_file(const char *src, const char *dst);
+cais_status_t cais_fs_copy_r(const char *src, const char *dst);
+cais_status_t cais_fs_mkdir(const char *path);
+cais_status_t cais_fs_mkdir_p(const char *path);
 ```
 
 ---
@@ -113,7 +113,7 @@ solo_status_t solo_fs_mkdir_p(const char *path);
 ## 3. Lua API Reference
 
 ```lua
-local fs = require("solo.fs") -- or require("solo.filesystem")
+local fs = require("cais.fs") -- or require("cais.filesystem")
 ```
 
 ### Path Helpers

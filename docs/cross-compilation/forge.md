@@ -1,6 +1,6 @@
 # Cross-Compilation with Forge
 
-`solo` integrates [Forge](https://github.com/projectum-lunare/forge) to automate cross-compiling the entire matrix of vintage and exotic targets without manual toolchain configuration.
+`cais` integrates [Forge](https://github.com/projectum-lunare/forge) to automate cross-compiling the entire matrix of vintage and exotic targets without manual toolchain configuration.
 
 ---
 
@@ -52,11 +52,11 @@ xmake forge all
 Output static libraries will be organized in:
 ```
 build/
-├── posix/libsolo.a
-├── dos/libsolo.a
-├── os2/libsolo.a
-├── windows_ce/arm/libsolo.a
-├── amiga/libsolo.a
-├── atarist/libsolo.a
-└── kolibri/libsolo.a
+├── posix/libcais.a
+├── dos/libcais.a
+├── os2/libcais.a
+├── windows_ce/arm/libcais.a
+├── amiga/libcais.a
+├── atarist/libcais.a
+└── kolibri/libcais.a
 ```

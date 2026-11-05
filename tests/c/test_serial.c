@@ -1,6 +1,6 @@
 /*
- * solo - Physical I/O, System Foundations & Hardware Abstractions
- * Projectum Lunare <https://github.com/projectum-lunare/solo>
+ * cais - Physical I/O, System Foundations & Hardware Abstractions
+ * Projectum Lunare <https://github.com/projectum-lunare/cais>
  * Copyright (C) 2026 Gustavo Veiga <gustavo.veiga@outlook.com.br>
  * Mozilla Public License Version 2.0
  */
@@ -19,76 +19,76 @@
  * available on continuous integration or developer machines. On POSIX systems,
  * these tests simulate a full hardware UART loopback using POSIX pseudo-terminals
  * (PTY pairs via posix_openpt). The master side acts as the connected external
- * serial device, while the solo serial driver operates on the slave PTY device.
+ * serial device, while the cais serial driver operates on the slave PTY device.
  */
 
 /*
  * Verifies standard constant values, enum bitmasks, and default structure
- * fields defined in solo/serial.h.
+ * fields defined in cais/serial.h.
  */
 TEST test_serial_enums(void)
 {
-    solo_serial_opts_t opts;
+    cais_serial_opts_t opts;
 
     /* Status return codes */
-    ASSERT_EQ(0, SOLO_SERIAL_OK);
-    ASSERT_EQ(-1, SOLO_SERIAL_ERROR);
-    ASSERT_EQ(-4, SOLO_SERIAL_UNSUPPORTED);
+    ASSERT_EQ(0, CAIS_SERIAL_OK);
+    ASSERT_EQ(-1, CAIS_SERIAL_ERROR);
+    ASSERT_EQ(-4, CAIS_SERIAL_UNSUPPORTED);
 
     /* Flow control constants */
-    ASSERT_EQ(0, SOLO_SERIAL_FLOW_NONE);
-    ASSERT_EQ(1, SOLO_SERIAL_FLOW_HARDWARE);
-    ASSERT_EQ(2, SOLO_SERIAL_FLOW_SOFTWARE);
+    ASSERT_EQ(0, CAIS_SERIAL_FLOW_NONE);
+    ASSERT_EQ(1, CAIS_SERIAL_FLOW_HARDWARE);
+    ASSERT_EQ(2, CAIS_SERIAL_FLOW_SOFTWARE);
 
     /* Parity character constants */
-    ASSERT_EQ('n', SOLO_SERIAL_PARITY_NONE);
-    ASSERT_EQ('e', SOLO_SERIAL_PARITY_EVEN);
-    ASSERT_EQ('o', SOLO_SERIAL_PARITY_ODD);
-    ASSERT_EQ('m', SOLO_SERIAL_PARITY_MARK);
-    ASSERT_EQ('s', SOLO_SERIAL_PARITY_SPACE);
+    ASSERT_EQ('n', CAIS_SERIAL_PARITY_NONE);
+    ASSERT_EQ('e', CAIS_SERIAL_PARITY_EVEN);
+    ASSERT_EQ('o', CAIS_SERIAL_PARITY_ODD);
+    ASSERT_EQ('m', CAIS_SERIAL_PARITY_MARK);
+    ASSERT_EQ('s', CAIS_SERIAL_PARITY_SPACE);
 
     /* Stop bits */
-    ASSERT_EQ(1, SOLO_SERIAL_STOP_1);
-    ASSERT_EQ(2, SOLO_SERIAL_STOP_2);
+    ASSERT_EQ(1, CAIS_SERIAL_STOP_1);
+    ASSERT_EQ(2, CAIS_SERIAL_STOP_2);
 
     /* Data bits */
-    ASSERT_EQ(5, SOLO_SERIAL_DATA_5);
-    ASSERT_EQ(6, SOLO_SERIAL_DATA_6);
-    ASSERT_EQ(7, SOLO_SERIAL_DATA_7);
-    ASSERT_EQ(8, SOLO_SERIAL_DATA_8);
+    ASSERT_EQ(5, CAIS_SERIAL_DATA_5);
+    ASSERT_EQ(6, CAIS_SERIAL_DATA_6);
+    ASSERT_EQ(7, CAIS_SERIAL_DATA_7);
+    ASSERT_EQ(8, CAIS_SERIAL_DATA_8);
 
     /* Standard Baud rates */
-    ASSERT_EQ(9600, SOLO_SERIAL_BAUD_9600);
-    ASSERT_EQ(115200, SOLO_SERIAL_BAUD_115200);
+    ASSERT_EQ(9600, CAIS_SERIAL_BAUD_9600);
+    ASSERT_EQ(115200, CAIS_SERIAL_BAUD_115200);
 
     /* Modem line pin control values */
-    ASSERT_EQ(-1, SOLO_SERIAL_LINE_IGNORE);
-    ASSERT_EQ(0, SOLO_SERIAL_LINE_OFF);
-    ASSERT_EQ(1, SOLO_SERIAL_LINE_ON);
+    ASSERT_EQ(-1, CAIS_SERIAL_LINE_IGNORE);
+    ASSERT_EQ(0, CAIS_SERIAL_LINE_OFF);
+    ASSERT_EQ(1, CAIS_SERIAL_LINE_ON);
 
     /* Canonical hardware logic levels */
-    ASSERT_EQ(-1, SOLO_LINE_ERROR);
-    ASSERT_EQ(0, SOLO_LINE_LOW);
-    ASSERT_EQ(1, SOLO_LINE_HIGH);
-    ASSERT_EQ(0, SOLO_LINE_OFF);
-    ASSERT_EQ(1, SOLO_LINE_ON);
+    ASSERT_EQ(-1, CAIS_LINE_ERROR);
+    ASSERT_EQ(0, CAIS_LINE_LOW);
+    ASSERT_EQ(1, CAIS_LINE_HIGH);
+    ASSERT_EQ(0, CAIS_LINE_OFF);
+    ASSERT_EQ(1, CAIS_LINE_ON);
 
     /* Verify configuration struct assignment */
-    opts.baud = SOLO_SERIAL_BAUD_115200;
-    opts.data_bits = SOLO_SERIAL_DATA_8;
-    opts.parity = SOLO_SERIAL_PARITY_NONE;
-    opts.stop_bits = SOLO_SERIAL_STOP_1;
-    opts.flow_control = SOLO_SERIAL_FLOW_HARDWARE;
-    opts.rts = SOLO_SERIAL_LINE_ON;
-    opts.dtr = SOLO_SERIAL_LINE_ON;
+    opts.baud = CAIS_SERIAL_BAUD_115200;
+    opts.data_bits = CAIS_SERIAL_DATA_8;
+    opts.parity = CAIS_SERIAL_PARITY_NONE;
+    opts.stop_bits = CAIS_SERIAL_STOP_1;
+    opts.flow_control = CAIS_SERIAL_FLOW_HARDWARE;
+    opts.rts = CAIS_SERIAL_LINE_ON;
+    opts.dtr = CAIS_SERIAL_LINE_ON;
 
     ASSERT_EQ(115200, opts.baud);
     ASSERT_EQ(8, opts.data_bits);
     ASSERT_EQ('n', opts.parity);
 
     /* NULL handle guards on modem control functions */
-    ASSERT_EQ(SOLO_SERIAL_ERROR, solo_serial_set_rts(NULL, SOLO_SERIAL_LINE_ON));
-    ASSERT_EQ(SOLO_SERIAL_ERROR, solo_serial_set_dtr(NULL, SOLO_SERIAL_LINE_OFF));
+    ASSERT_EQ(CAIS_SERIAL_ERROR, cais_serial_set_rts(NULL, CAIS_SERIAL_LINE_ON));
+    ASSERT_EQ(CAIS_SERIAL_ERROR, cais_serial_set_dtr(NULL, CAIS_SERIAL_LINE_OFF));
 
     PASS();
 }
@@ -104,26 +104,26 @@ TEST test_serial_null_guards(void)
     char buf[16];
     char err_buf[128];
     size_t io_bytes = 0;
-    solo_serial_t *s = NULL;
+    cais_serial_t *s = NULL;
 
     /* Closing NULL handle must be a safe no-op */
-    solo_serial_close(NULL);
+    cais_serial_close(NULL);
 
-    /* Operations with NULL handle must return SOLO_ERROR */
-    ASSERT_EQ(SOLO_ERROR, solo_serial_write(NULL, buf, sizeof(buf), &io_bytes));
-    ASSERT_EQ(SOLO_ERROR, solo_serial_read(NULL, buf, sizeof(buf), &io_bytes, -1));
-    ASSERT_EQ(SOLO_SERIAL_ERROR, solo_serial_set_timeout(NULL, 100));
-    ASSERT_EQ(SOLO_SERIAL_ERROR, solo_serial_drain(NULL));
-    ASSERT_EQ(SOLO_SERIAL_ERROR, solo_serial_set_rts(NULL, SOLO_SERIAL_LINE_ON));
-    ASSERT_EQ(SOLO_SERIAL_ERROR, solo_serial_set_dtr(NULL, SOLO_SERIAL_LINE_OFF));
-    ASSERT_EQ(SOLO_LINE_ERROR, solo_serial_get_cts(NULL));
-    ASSERT_EQ(SOLO_LINE_ERROR, solo_serial_get_dsr(NULL));
-    ASSERT_EQ(SOLO_LINE_ERROR, solo_serial_get_cd(NULL));
-    ASSERT_EQ(SOLO_LINE_ERROR, solo_serial_get_ri(NULL));
+    /* Operations with NULL handle must return CAIS_ERROR */
+    ASSERT_EQ(CAIS_ERROR, cais_serial_write(NULL, buf, sizeof(buf), &io_bytes));
+    ASSERT_EQ(CAIS_ERROR, cais_serial_read(NULL, buf, sizeof(buf), &io_bytes, -1));
+    ASSERT_EQ(CAIS_SERIAL_ERROR, cais_serial_set_timeout(NULL, 100));
+    ASSERT_EQ(CAIS_SERIAL_ERROR, cais_serial_drain(NULL));
+    ASSERT_EQ(CAIS_SERIAL_ERROR, cais_serial_set_rts(NULL, CAIS_SERIAL_LINE_ON));
+    ASSERT_EQ(CAIS_SERIAL_ERROR, cais_serial_set_dtr(NULL, CAIS_SERIAL_LINE_OFF));
+    ASSERT_EQ(CAIS_LINE_ERROR, cais_serial_get_cts(NULL));
+    ASSERT_EQ(CAIS_LINE_ERROR, cais_serial_get_dsr(NULL));
+    ASSERT_EQ(CAIS_LINE_ERROR, cais_serial_get_cd(NULL));
+    ASSERT_EQ(CAIS_LINE_ERROR, cais_serial_get_ri(NULL));
 
     /* Opening nonexistent serial device path */
     err_buf[0] = '\0';
-    s = solo_serial_open("/dev/nonexistent_serial_guard_test", NULL, err_buf, sizeof(err_buf));
+    s = cais_serial_open("/dev/nonexistent_serial_guard_test", NULL, err_buf, sizeof(err_buf));
     ASSERT_EQ(NULL, s);
     ASSERT(strlen(err_buf) > 0);
 
@@ -134,25 +134,25 @@ TEST test_serial_null_guards(void)
  * Basic serial communication test using a POSIX Pseudo-Terminal (PTY) pair:
  * 1. Allocates a PTY master/slave pair (posix_openpt).
  * 2. Validates error handling on invalid baud and parity options.
- * 3. Opens the slave PTY device using solo_serial_open with default options.
- * 4. Transmits data from solo driver (slave) -> reads on master fd.
- * 5. Transmits data from master fd -> reads on solo driver (slave).
+ * 3. Opens the slave PTY device using cais_serial_open with default options.
+ * 4. Transmits data from cais driver (slave) -> reads on master fd.
+ * 5. Transmits data from master fd -> reads on cais driver (slave).
  * 6. Verifies timed read expiration on an idle line.
  */
 TEST test_serial_pty(void)
 {
-#if SOLO_IS_POSIX
+#if CAIS_IS_POSIX
     int master_fd = -1;
     char *pts = NULL;
     char err_buf[128];
-    solo_serial_t *s = NULL;
-    solo_serial_opts_t bad_baud_opts;
-    solo_serial_opts_t bad_parity_opts;
+    cais_serial_t *s = NULL;
+    cais_serial_opts_t bad_baud_opts;
+    cais_serial_opts_t bad_parity_opts;
     char buf[64];
     ssize_t n;
     size_t written = 0;
     size_t read_bytes = 0;
-    solo_status_t r;
+    cais_status_t r;
 
     /* Allocate pseudo-terminal master */
     master_fd = posix_openpt(O_RDWR | O_NOCTTY);
@@ -177,7 +177,7 @@ TEST test_serial_pty(void)
     bad_baud_opts.parity = 'n';
     bad_baud_opts.stop_bits = 1;
     err_buf[0] = '\0';
-    s = solo_serial_open(pts, &bad_baud_opts, err_buf, sizeof(err_buf));
+    s = cais_serial_open(pts, &bad_baud_opts, err_buf, sizeof(err_buf));
     ASSERT_EQ(NULL, s);
     ASSERT(strlen(err_buf) > 0);
 
@@ -188,18 +188,18 @@ TEST test_serial_pty(void)
     bad_parity_opts.parity = 'z';
     bad_parity_opts.stop_bits = 1;
     err_buf[0] = '\0';
-    s = solo_serial_open(pts, &bad_parity_opts, err_buf, sizeof(err_buf));
+    s = cais_serial_open(pts, &bad_parity_opts, err_buf, sizeof(err_buf));
     ASSERT_EQ(NULL, s);
     ASSERT(strlen(err_buf) > 0);
 
     /* 3. Opening with default options (opts == NULL) must default to flow NONE and succeed */
     err_buf[0] = '\0';
-    s = solo_serial_open(pts, NULL, err_buf, sizeof(err_buf));
+    s = cais_serial_open(pts, NULL, err_buf, sizeof(err_buf));
     ASSERT(s != NULL);
 
-    /* 4. Write through solo driver -> read raw on master fd */
-    r = solo_serial_write(s, "pty_test\n", 9, &written);
-    ASSERT_EQ(SOLO_OK, r);
+    /* 4. Write through cais driver -> read raw on master fd */
+    r = cais_serial_write(s, "pty_test\n", 9, &written);
+    ASSERT_EQ(CAIS_OK, r);
     ASSERT_EQ(9, (int)written);
 
     memset(buf, 0, sizeof(buf));
@@ -207,31 +207,31 @@ TEST test_serial_pty(void)
     ASSERT_EQ(9, n);
     ASSERT_STR_EQ("pty_test\n", buf);
 
-    /* 5. Write raw on master fd -> read through solo driver with timeout */
+    /* 5. Write raw on master fd -> read through cais driver with timeout */
     n = write(master_fd, "pty_reply\n", 10);
     ASSERT_EQ(10, n);
 
-    solo_serial_set_timeout(s, 1000);
+    cais_serial_set_timeout(s, 1000);
     memset(buf, 0, sizeof(buf));
-    r = solo_serial_read(s, buf, sizeof(buf) - 1, &read_bytes, 1000);
-    ASSERT_EQ(SOLO_OK, r);
+    r = cais_serial_read(s, buf, sizeof(buf) - 1, &read_bytes, 1000);
+    ASSERT_EQ(CAIS_OK, r);
     ASSERT(read_bytes > 0);
     buf[read_bytes] = '\0';
     ASSERT_STR_EQ("pty_reply\n", buf);
 
-    /* 6. Timed read with no data waiting must return SOLO_AGAIN (timeout, not a fatal error) */
-    r = solo_serial_read(s, buf, sizeof(buf), &read_bytes, 10);
-    ASSERT_EQ(SOLO_AGAIN, r);
+    /* 6. Timed read with no data waiting must return CAIS_AGAIN (timeout, not a fatal error) */
+    r = cais_serial_read(s, buf, sizeof(buf), &read_bytes, 10);
+    ASSERT_EQ(CAIS_AGAIN, r);
 
     /* 7. Modem line getters: safe execution on PTY device */
-    (void)solo_serial_get_cts(s);
-    (void)solo_serial_get_dsr(s);
-    (void)solo_serial_get_cd(s);
-    (void)solo_serial_get_ri(s);
+    (void)cais_serial_get_cts(s);
+    (void)cais_serial_get_dsr(s);
+    (void)cais_serial_get_cd(s);
+    (void)cais_serial_get_ri(s);
 
     /* Flush/drain pending hardware buffers and clean up */
-    solo_serial_drain(s);
-    solo_serial_close(s);
+    cais_serial_drain(s);
+    cais_serial_close(s);
     close(master_fd);
 #endif
 
@@ -244,25 +244,25 @@ TEST test_serial_pty(void)
  * 2. Rejects 5 invalid/negative baud rates (0, -9600, 7, 13, 999999).
  * 3. Tests even ('e') and odd ('o') parity modes, and rejects invalid options ('z', 'x').
  * 4. Verifies zero-length write returns 0 without side effects.
- * 5. Verifies non-blocking (0ms) and timed reads return SOLO_AGAIN on empty input.
- * 6. Tests dynamic runtime reconfiguration of timeouts via solo_serial_set_timeout().
+ * 5. Verifies non-blocking (0ms) and timed reads return CAIS_AGAIN on empty input.
+ * 6. Tests dynamic runtime reconfiguration of timeouts via cais_serial_set_timeout().
  * 7. Performs a full 1024-byte bidirectional binary transfer with memcmp verification.
  * 8. Exercises modem control line commands and hardware buffer drainage.
  */
 TEST test_serial_pty_exhaustive(void)
 {
-#if SOLO_IS_POSIX
+#if CAIS_IS_POSIX
     int master_fd = -1;
     char *pts = NULL;
     char err_buf[128];
-    solo_serial_t *s = NULL;
-    solo_serial_opts_t opts;
+    cais_serial_t *s = NULL;
+    cais_serial_opts_t opts;
     char sbuf[1024];
     char rbuf[1024];
     ssize_t n;
     size_t written = 0;
     size_t read_bytes = 0;
-    solo_status_t r;
+    cais_status_t r;
     int i;
     int valid_bauds[8];
     int invalid_bauds[5];
@@ -293,11 +293,11 @@ TEST test_serial_pty_exhaustive(void)
         opts.data_bits = 8;
         opts.parity = 'n';
         opts.stop_bits = 1;
-        opts.flow_control = SOLO_SERIAL_FLOW_NONE;
+        opts.flow_control = CAIS_SERIAL_FLOW_NONE;
         err_buf[0] = '\0';
-        s = solo_serial_open(pts, &opts, err_buf, sizeof(err_buf));
+        s = cais_serial_open(pts, &opts, err_buf, sizeof(err_buf));
         ASSERT(s != NULL);
-        solo_serial_close(s);
+        cais_serial_close(s);
     }
 
     /* 2. All invalid baud rates must fail and generate descriptive error messages */
@@ -308,7 +308,7 @@ TEST test_serial_pty_exhaustive(void)
         opts.parity = 'n';
         opts.stop_bits = 1;
         err_buf[0] = '\0';
-        s = solo_serial_open(pts, &opts, err_buf, sizeof(err_buf));
+        s = cais_serial_open(pts, &opts, err_buf, sizeof(err_buf));
         ASSERT_EQ(NULL, s);
         ASSERT(strlen(err_buf) > 0);
     }
@@ -320,57 +320,57 @@ TEST test_serial_pty_exhaustive(void)
     opts.parity = 'e';
     opts.stop_bits = 1;
     err_buf[0] = '\0';
-    s = solo_serial_open(pts, &opts, err_buf, sizeof(err_buf));
+    s = cais_serial_open(pts, &opts, err_buf, sizeof(err_buf));
     ASSERT(s != NULL);
-    solo_serial_close(s);
+    cais_serial_close(s);
 
     opts.parity = 'o';
     err_buf[0] = '\0';
-    s = solo_serial_open(pts, &opts, err_buf, sizeof(err_buf));
+    s = cais_serial_open(pts, &opts, err_buf, sizeof(err_buf));
     ASSERT(s != NULL);
-    solo_serial_close(s);
+    cais_serial_close(s);
 
     opts.parity = 'z';
     err_buf[0] = '\0';
-    s = solo_serial_open(pts, &opts, err_buf, sizeof(err_buf));
+    s = cais_serial_open(pts, &opts, err_buf, sizeof(err_buf));
     ASSERT_EQ(NULL, s);
     ASSERT(strlen(err_buf) > 0);
 
     opts.parity = 'x';
     err_buf[0] = '\0';
-    s = solo_serial_open(pts, &opts, err_buf, sizeof(err_buf));
+    s = cais_serial_open(pts, &opts, err_buf, sizeof(err_buf));
     ASSERT_EQ(NULL, s);
     ASSERT(strlen(err_buf) > 0);
 
     /* 4. Open working PTY port with default configuration */
     err_buf[0] = '\0';
-    s = solo_serial_open(pts, NULL, err_buf, sizeof(err_buf));
+    s = cais_serial_open(pts, NULL, err_buf, sizeof(err_buf));
     ASSERT(s != NULL);
 
-    /* Zero-length write returns SOLO_OK without error */
+    /* Zero-length write returns CAIS_OK without error */
     written = 999;
-    ASSERT_EQ(SOLO_OK, solo_serial_write(s, "hello", 0, &written));
+    ASSERT_EQ(CAIS_OK, cais_serial_write(s, "hello", 0, &written));
     ASSERT_EQ(0, (int)written);
 
-    /* Non-blocking read (timeout_ms = 0) on empty queue returns SOLO_AGAIN immediately */
+    /* Non-blocking read (timeout_ms = 0) on empty queue returns CAIS_AGAIN immediately */
     read_bytes = 999;
-    ASSERT_EQ(SOLO_AGAIN, solo_serial_read(s, rbuf, sizeof(rbuf), &read_bytes, 0));
+    ASSERT_EQ(CAIS_AGAIN, cais_serial_read(s, rbuf, sizeof(rbuf), &read_bytes, 0));
     ASSERT_EQ(0, (int)read_bytes);
 
-    /* Timed read (timeout_ms = 20) on empty queue returns SOLO_AGAIN upon expiration */
+    /* Timed read (timeout_ms = 20) on empty queue returns CAIS_AGAIN upon expiration */
     read_bytes = 999;
-    ASSERT_EQ(SOLO_AGAIN, solo_serial_read(s, rbuf, sizeof(rbuf), &read_bytes, 20));
+    ASSERT_EQ(CAIS_AGAIN, cais_serial_read(s, rbuf, sizeof(rbuf), &read_bytes, 20));
     ASSERT_EQ(0, (int)read_bytes);
 
-    /* Runtime timeout manipulation via solo_serial_set_timeout() */
-    ASSERT_EQ(SOLO_SERIAL_OK, solo_serial_set_timeout(s, 0));
+    /* Runtime timeout manipulation via cais_serial_set_timeout() */
+    ASSERT_EQ(CAIS_SERIAL_OK, cais_serial_set_timeout(s, 0));
     read_bytes = 999;
-    ASSERT_EQ(SOLO_AGAIN, solo_serial_read(s, rbuf, sizeof(rbuf), &read_bytes, -1)); /* -1 uses installed port timeout */
+    ASSERT_EQ(CAIS_AGAIN, cais_serial_read(s, rbuf, sizeof(rbuf), &read_bytes, -1)); /* -1 uses installed port timeout */
     ASSERT_EQ(0, (int)read_bytes);
 
-    ASSERT_EQ(SOLO_SERIAL_OK, solo_serial_set_timeout(s, 20));
+    ASSERT_EQ(CAIS_SERIAL_OK, cais_serial_set_timeout(s, 20));
     read_bytes = 999;
-    ASSERT_EQ(SOLO_AGAIN, solo_serial_read(s, rbuf, sizeof(rbuf), &read_bytes, -1));
+    ASSERT_EQ(CAIS_AGAIN, cais_serial_read(s, rbuf, sizeof(rbuf), &read_bytes, -1));
     ASSERT_EQ(0, (int)read_bytes);
 
     /* 5. Bidirectional 1024-byte full buffer binary transfer */
@@ -378,8 +378,8 @@ TEST test_serial_pty_exhaustive(void)
         sbuf[i] = (char)(i & 0xFF);
     }
     written = 0;
-    r = solo_serial_write(s, sbuf, 1024, &written);
-    ASSERT_EQ(SOLO_OK, r);
+    r = cais_serial_write(s, sbuf, 1024, &written);
+    ASSERT_EQ(CAIS_OK, r);
     ASSERT_EQ(1024, (int)written);
 
     memset(rbuf, 0, sizeof(rbuf));
@@ -387,31 +387,31 @@ TEST test_serial_pty_exhaustive(void)
     ASSERT_EQ(1024, n);
     ASSERT_EQ(0, memcmp(sbuf, rbuf, 1024));
 
-    /* Master writes 1024 bytes -> solo serial driver reads and compares byte-by-byte */
+    /* Master writes 1024 bytes -> cais serial driver reads and compares byte-by-byte */
     n = write(master_fd, sbuf, 1024);
     ASSERT_EQ(1024, n);
 
     memset(rbuf, 0, sizeof(rbuf));
     read_bytes = 0;
-    r = solo_serial_read(s, rbuf, 1024, &read_bytes, 1000);
-    ASSERT_EQ(SOLO_OK, r);
+    r = cais_serial_read(s, rbuf, 1024, &read_bytes, 1000);
+    ASSERT_EQ(CAIS_OK, r);
     ASSERT_EQ(1024, (int)read_bytes);
     ASSERT_EQ(0, memcmp(sbuf, rbuf, 1024));
 
     /* 6. Modem line operations on PTY (ENOTTY expected without physical UART lines) */
-    (void)solo_serial_set_rts(s, SOLO_SERIAL_LINE_ON);
-    (void)solo_serial_set_rts(s, SOLO_SERIAL_LINE_OFF);
-    (void)solo_serial_set_dtr(s, SOLO_SERIAL_LINE_ON);
-    (void)solo_serial_set_dtr(s, SOLO_SERIAL_LINE_OFF);
-    (void)solo_serial_get_cts(s);
-    (void)solo_serial_get_dsr(s);
-    (void)solo_serial_get_cd(s);
-    (void)solo_serial_get_ri(s);
+    (void)cais_serial_set_rts(s, CAIS_SERIAL_LINE_ON);
+    (void)cais_serial_set_rts(s, CAIS_SERIAL_LINE_OFF);
+    (void)cais_serial_set_dtr(s, CAIS_SERIAL_LINE_ON);
+    (void)cais_serial_set_dtr(s, CAIS_SERIAL_LINE_OFF);
+    (void)cais_serial_get_cts(s);
+    (void)cais_serial_get_dsr(s);
+    (void)cais_serial_get_cd(s);
+    (void)cais_serial_get_ri(s);
 
     /* Hardware output drain */
-    ASSERT_EQ(SOLO_OK, solo_serial_drain(s));
+    ASSERT_EQ(CAIS_OK, cais_serial_drain(s));
 
-    solo_serial_close(s);
+    cais_serial_close(s);
     close(master_fd);
 #endif
 

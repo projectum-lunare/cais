@@ -1,16 +1,16 @@
 # Quickstart Guide
 
-This guide walks you through integrating `solo` into your project, whether you are writing modern C, ANSI C89 systems code, or building applications in Lua.
+This guide walks you through integrating `cais` into your project, whether you are writing modern C, ANSI C89 systems code, or building applications in Lua.
 
 ---
 
 ## 1. Choosing Your Integration Path
 
-`solo` can be consumed in three distinct ways:
+`cais` can be consumed in three distinct ways:
 
-1. **C Static Library (`libsolo.a`):** For statically linked executables with zero runtime dependencies.
-2. **C Dynamic Shared Object (`solo.so` / `solo.dll`):** For modular deployment or standard dynamic linking.
-3. **Lua Native Modules (`solo.*`):** Require the full umbrella library or load isolated, ultra-compact submodules directly.
+1. **C Static Library (`libcais.a`):** For statically linked executables with zero runtime dependencies.
+2. **C Dynamic Shared Object (`cais.so` / `cais.dll`):** For modular deployment or standard dynamic linking.
+3. **Lua Native Modules (`cais.*`):** Require the full umbrella library or load isolated, ultra-compact submodules directly.
 
 ---
 
@@ -20,15 +20,15 @@ Save as `main.c`:
 
 ```c
 #include <stdio.h>
-#include <solo/solo.h>
+#include <cais/cais.h>
 
 int main(void) {
-    printf("solo version: %s\n", solo_version());
-    printf("Host Operating System: %s\n", solo_platform_os());
-    printf("Host Architecture:     %s\n", solo_platform_arch());
+    printf("cais version: %s\n", cais_version());
+    printf("Host Operating System: %s\n", cais_platform_os());
+    printf("Host Architecture:     %s\n", cais_platform_arch());
 
     /* Canonical boolean predicate */
-    if (solo_platform_is_64bit() == SOLO_TRUE) {
+    if (cais_platform_is_64bit() == CAIS_TRUE) {
         printf("Environment is 64-bit.\n");
     } else {
         printf("Environment is 32-bit (or 16-bit).\n");
@@ -40,7 +40,7 @@ int main(void) {
 
 Compile with standard GCC/Clang:
 ```bash
-gcc -std=c89 -Wall -Wextra -Iinclude main.c -Lbuild/linux/x86_64/release -lsolo -o main
+gcc -std=c89 -Wall -Wextra -Iinclude main.c -Lbuild/linux/x86_64/release -lcais -o main
 ./main
 ```
 
@@ -51,13 +51,13 @@ gcc -std=c89 -Wall -Wextra -Iinclude main.c -Lbuild/linux/x86_64/release -lsolo 
 Save as `example.lua`:
 
 ```lua
-local solo = require("solo")
+local cais = require("cais")
 
-print("OS: " .. solo.platform.os)
-print("Arch: " .. solo.platform.arch)
+print("OS: " .. cais.platform.os)
+print("Arch: " .. cais.platform.arch)
 
 -- Verify path existence using canonical boolean return
-if solo.fs.exists("main.c") then
+if cais.fs.exists("main.c") then
     print("Source code file is present on disk.")
 end
 ```

@@ -1,6 +1,6 @@
 /*
- * solo - Physical I/O, System Foundations & Hardware Abstractions
- * Projectum Lunare <https://github.com/projectum-lunare/solo>
+ * cais - Physical I/O, System Foundations & Hardware Abstractions
+ * Projectum Lunare <https://github.com/projectum-lunare/cais>
  * Copyright (C) 2026 Gustavo Veiga <gustavo.veiga@outlook.com.br>
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
@@ -15,9 +15,9 @@
 #define _DEFAULT_SOURCE
 #endif
 
-#include <solo/platform.h>
+#include <cais/platform.h>
 
-#if SOLO_IS_POSIX
+#if CAIS_IS_POSIX
 
 #include <errno.h>
 #include <fcntl.h>
@@ -43,19 +43,19 @@
 #endif
 #endif
 
-#include <solo/parallel.h>
+#include <cais/parallel.h>
 
 struct parallel_port {
     int fd;
     int is_rdwr;
 };
 
-solo_parallel_t *solo_parallel_open(const char *path, char *err_buf, size_t err_cap)
+cais_parallel_t *cais_parallel_open(const char *path, char *err_buf, size_t err_cap)
 {
     const char *target = (path && path[0] != '\0') ? path : "/dev/lp0";
     int fd;
     int is_rdwr = 1;
-    solo_parallel_t *port;
+    cais_parallel_t *port;
 
     if (err_buf != NULL && err_cap > 0) {
         err_buf[0] = '\0';
@@ -69,14 +69,14 @@ solo_parallel_t *solo_parallel_open(const char *path, char *err_buf, size_t err_
     }
 
     if (fd < 0) {
-        solo_set_err_fmt(err_buf, err_cap, "Cannot open parallel device '%.128s': %s", target, strerror(errno));
+        cais_set_err_fmt(err_buf, err_cap, "Cannot open parallel device '%.128s': %s", target, strerror(errno));
         return NULL;
     }
 
-    port = (solo_parallel_t *)malloc(sizeof(solo_parallel_t));
+    port = (cais_parallel_t *)malloc(sizeof(cais_parallel_t));
     if (port == NULL) {
         close(fd);
-        solo_set_err(err_buf, err_cap, "Memory allocation failure");
+        cais_set_err(err_buf, err_cap, "Memory allocation failure");
         return NULL;
     }
 
@@ -85,7 +85,7 @@ solo_parallel_t *solo_parallel_open(const char *path, char *err_buf, size_t err_
     return port;
 }
 
-solo_status_t solo_parallel_write(solo_parallel_t *port, const char *buf, size_t len, size_t *written_bytes)
+cais_status_t cais_parallel_write(cais_parallel_t *port, const char *buf, size_t len, size_t *written_bytes)
 {
     ssize_t written;
     size_t total = 0;
@@ -95,10 +95,10 @@ solo_status_t solo_parallel_write(solo_parallel_t *port, const char *buf, size_t
     }
 
     if (port == NULL || port->fd < 0 || buf == NULL) {
-        return SOLO_ERROR;
+        return CAIS_ERROR;
     }
     if (len == 0) {
-        return SOLO_OK;
+        return CAIS_OK;
     }
 
     while (total < len) {
@@ -107,7 +107,7 @@ solo_status_t solo_parallel_write(solo_parallel_t *port, const char *buf, size_t
             if (errno == EINTR)
                 continue;
             if (written_bytes != NULL) *written_bytes = total;
-            return (total > 0) ? SOLO_OK : SOLO_ERROR;
+            return (total > 0) ? CAIS_OK : CAIS_ERROR;
         }
         if (written == 0) {
             break;
@@ -118,10 +118,10 @@ solo_status_t solo_parallel_write(solo_parallel_t *port, const char *buf, size_t
     if (written_bytes != NULL) {
         *written_bytes = total;
     }
-    return SOLO_OK;
+    return CAIS_OK;
 }
 
-solo_status_t solo_parallel_read(solo_parallel_t *port, char *buf, size_t max_len, size_t *read_bytes)
+cais_status_t cais_parallel_read(cais_parallel_t *port, char *buf, size_t max_len, size_t *read_bytes)
 {
     ssize_t n;
 
@@ -130,7 +130,7 @@ solo_status_t solo_parallel_read(solo_parallel_t *port, char *buf, size_t max_le
     }
 
     if (port == NULL || port->fd < 0 || buf == NULL || max_len == 0) {
-        return SOLO_ERROR;
+        return CAIS_ERROR;
     }
 
     do {
@@ -138,22 +138,22 @@ solo_status_t solo_parallel_read(solo_parallel_t *port, char *buf, size_t max_le
     } while (n < 0 && errno == EINTR);
 
     if (n < 0) {
-        return SOLO_ERROR;
+        return CAIS_ERROR;
     }
     if (n == 0) {
-        return SOLO_EOF;
+        return CAIS_EOF;
     }
 
     if (read_bytes != NULL) {
         *read_bytes = (size_t)n;
     }
-    return SOLO_OK;
+    return CAIS_OK;
 }
 
-solo_parallel_status_t solo_parallel_get_status(solo_parallel_t *port, int *pins_out)
+cais_parallel_status_t cais_parallel_get_status(cais_parallel_t *port, int *pins_out)
 {
     if (port == NULL || port->fd < 0 || pins_out == NULL) {
-        return SOLO_PARALLEL_ERROR;
+        return CAIS_PARALLEL_ERROR;
     }
 
 #if defined(__linux__) && defined(LPGETSTATUS)
@@ -166,56 +166,56 @@ solo_parallel_status_t solo_parallel_get_status(solo_parallel_t *port, int *pins
              * 0 = printer is BUSY
              * 1 = printer is NOT busy (idle / ready)
              */
-            if (!(st & LP_PBUSY)) pins |= SOLO_PARALLEL_PIN_BUSY;
-            if (!(st & LP_PACK)) pins |= SOLO_PARALLEL_PIN_ACK;
-            if (st & LP_POUTPA) pins |= SOLO_PARALLEL_PIN_PE;
-            if (st & LP_PSELECD) pins |= SOLO_PARALLEL_PIN_SLCT;
-            if (!(st & LP_PERRORP)) pins |= SOLO_PARALLEL_PIN_FAULT;
+            if (!(st & LP_PBUSY)) pins |= CAIS_PARALLEL_PIN_BUSY;
+            if (!(st & LP_PACK)) pins |= CAIS_PARALLEL_PIN_ACK;
+            if (st & LP_POUTPA) pins |= CAIS_PARALLEL_PIN_PE;
+            if (st & LP_PSELECD) pins |= CAIS_PARALLEL_PIN_SLCT;
+            if (!(st & LP_PERRORP)) pins |= CAIS_PARALLEL_PIN_FAULT;
             *pins_out = pins;
-            return SOLO_PARALLEL_OK;
+            return CAIS_PARALLEL_OK;
         }
     }
 #endif
 
     *pins_out = 0;
-    return SOLO_PARALLEL_UNSUPPORTED;
+    return CAIS_PARALLEL_UNSUPPORTED;
 }
 
-solo_parallel_status_t solo_parallel_set_mode(solo_parallel_t *port, solo_parallel_mode_t mode)
+cais_parallel_status_t cais_parallel_set_mode(cais_parallel_t *port, cais_parallel_mode_t mode)
 {
     if (port == NULL || port->fd < 0) {
-        return SOLO_PARALLEL_ERROR;
+        return CAIS_PARALLEL_ERROR;
     }
-    if (mode == SOLO_PARALLEL_MODE_SPP) {
-        return SOLO_PARALLEL_OK;
+    if (mode == CAIS_PARALLEL_MODE_SPP) {
+        return CAIS_PARALLEL_OK;
     }
-    return SOLO_PARALLEL_UNSUPPORTED;
+    return CAIS_PARALLEL_UNSUPPORTED;
 }
 
-solo_parallel_status_t solo_parallel_drain(solo_parallel_t *port)
+cais_parallel_status_t cais_parallel_drain(cais_parallel_t *port)
 {
     int pins = 0;
     int timeout_count = 1000;
 
     if (port == NULL || port->fd < 0) {
-        return SOLO_PARALLEL_ERROR;
+        return CAIS_PARALLEL_ERROR;
     }
 
     fsync(port->fd);
 
     /* Poll hardware status pin until printer is no longer busy */
-    while (solo_parallel_get_status(port, &pins) == SOLO_PARALLEL_OK &&
-           (pins & SOLO_PARALLEL_PIN_BUSY)) {
+    while (cais_parallel_get_status(port, &pins) == CAIS_PARALLEL_OK &&
+           (pins & CAIS_PARALLEL_PIN_BUSY)) {
         if (--timeout_count <= 0) {
-            return SOLO_PARALLEL_ERROR; /* Printer still busy after timeout */
+            return CAIS_PARALLEL_ERROR; /* Printer still busy after timeout */
         }
         usleep(1000); /* 1 ms */
     }
 
-    return SOLO_PARALLEL_OK;
+    return CAIS_PARALLEL_OK;
 }
 
-void solo_parallel_close(solo_parallel_t *port)
+void cais_parallel_close(cais_parallel_t *port)
 {
     if (port != NULL) {
         if (port->fd >= 0) {
@@ -230,4 +230,4 @@ void solo_parallel_close(solo_parallel_t *port)
 #else
 /* ISO C forbids an empty translation unit */
 typedef int make_iso_compilers_happy_parallel_posix;
-#endif /* SOLO_IS_POSIX */
+#endif /* CAIS_IS_POSIX */

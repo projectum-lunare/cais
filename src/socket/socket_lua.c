@@ -1,6 +1,6 @@
 /*
- * solo - Physical I/O, System Foundations & Hardware Abstractions
- * Projectum Lunare <https://github.com/projectum-lunare/solo>
+ * cais - Physical I/O, System Foundations & Hardware Abstractions
+ * Projectum Lunare <https://github.com/projectum-lunare/cais>
  * Copyright (C) 2026 Gustavo Veiga <gustavo.veiga@outlook.com.br>
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
@@ -23,9 +23,9 @@
 #include <lualib.h>
 #include <lauxlib.h>
 
-#include <solo/socket.h>
+#include <cais/socket.h>
 
-#define SOCKET_MT "solo.socket"
+#define SOCKET_MT "cais.socket"
 
 #if LUA_VERSION_NUM < 504
 #define lua_newuserdatauv(L, sz, nuv) ((void)(nuv), lua_newuserdata(L, sz))
@@ -36,10 +36,10 @@
 #endif
 
 typedef struct {
-    solo_socket_t *handle;
+    cais_socket_t *handle;
 } lsocket_t;
 
-static lsocket_t *push_socket_udata(lua_State *L, solo_socket_t *handle)
+static lsocket_t *push_socket_udata(lua_State *L, cais_socket_t *handle)
 {
     lsocket_t *s = (lsocket_t *)lua_newuserdatauv(L, sizeof(lsocket_t), 0);
     s->handle = handle;
@@ -48,41 +48,41 @@ static lsocket_t *push_socket_udata(lua_State *L, solo_socket_t *handle)
     return s;
 }
 
-static solo_socket_mode_t parse_mode(lua_State *L, int idx, solo_socket_mode_t default_mode)
+static cais_socket_mode_t parse_mode(lua_State *L, int idx, cais_socket_mode_t default_mode)
 {
     if (lua_isnoneornil(L, idx)) {
         return default_mode;
     }
     if (lua_isboolean(L, idx)) {
-        return lua_toboolean(L, idx) ? SOLO_SOCK_BLOCKING : SOLO_SOCK_NONBLOCKING;
+        return lua_toboolean(L, idx) ? CAIS_SOCK_BLOCKING : CAIS_SOCK_NONBLOCKING;
     }
     if (lua_isnumber(L, idx)) {
         int m = (int)lua_tointeger(L, idx);
-        return (m == SOLO_SOCK_NONBLOCKING) ? SOLO_SOCK_NONBLOCKING : SOLO_SOCK_BLOCKING;
+        return (m == CAIS_SOCK_NONBLOCKING) ? CAIS_SOCK_NONBLOCKING : CAIS_SOCK_BLOCKING;
     }
     if (lua_isstring(L, idx)) {
         const char *s = lua_tostring(L, idx);
         if (strcmp(s, "nonblocking") == 0 || strcmp(s, "async") == 0) {
-            return SOLO_SOCK_NONBLOCKING;
+            return CAIS_SOCK_NONBLOCKING;
         }
-        return SOLO_SOCK_BLOCKING;
+        return CAIS_SOCK_BLOCKING;
     }
     return default_mode;
 }
 
-static solo_socket_type_t parse_type(lua_State *L, int idx)
+static cais_socket_type_t parse_type(lua_State *L, int idx)
 {
     if (lua_isnumber(L, idx)) {
         int t = (int)lua_tointeger(L, idx);
-        return (t == SOLO_SOCK_UDP) ? SOLO_SOCK_UDP : SOLO_SOCK_TCP;
+        return (t == CAIS_SOCK_UDP) ? CAIS_SOCK_UDP : CAIS_SOCK_TCP;
     }
     if (lua_isstring(L, idx)) {
         const char *s = lua_tostring(L, idx);
         if (strcmp(s, "udp") == 0 || strcmp(s, "dgram") == 0) {
-            return SOLO_SOCK_UDP;
+            return CAIS_SOCK_UDP;
         }
     }
-    return SOLO_SOCK_TCP;
+    return CAIS_SOCK_TCP;
 }
 
 /* =============================================================================
@@ -95,19 +95,19 @@ static int lsocket_send(lua_State *L)
     size_t len;
     const char *data = luaL_checklstring(L, 2, &len);
     size_t sent = 0;
-    solo_socket_status_t st;
+    cais_socket_status_t st;
 
     if (s->handle == NULL) {
         return luaL_error(L, "attempt to send on closed socket");
     }
 
-    st = solo_socket_send(s->handle, data, len, &sent);
-    if (st == SOLO_SOCK_AGAIN) {
+    st = cais_socket_send(s->handle, data, len, &sent);
+    if (st == CAIS_SOCK_AGAIN) {
         lua_pushnil(L);
         lua_pushstring(L, "again");
         return 2;
     }
-    if (st != SOLO_SOCK_OK) {
+    if (st != CAIS_SOCK_OK) {
         lua_pushnil(L);
         lua_pushstring(L, "send failed");
         return 2;
@@ -123,7 +123,7 @@ static int lsocket_recv(lua_State *L)
     lua_Integer max_len = luaL_optinteger(L, 2, 4096);
     char *buf;
     size_t received = 0;
-    solo_socket_status_t st;
+    cais_socket_status_t st;
 
     if (s->handle == NULL) {
         return luaL_error(L, "attempt to recv on closed socket");
@@ -139,22 +139,22 @@ static int lsocket_recv(lua_State *L)
         return luaL_error(L, "out of memory in socket recv");
     }
 
-    st = solo_socket_recv(s->handle, buf, (size_t)max_len, &received);
-    if (st == SOLO_SOCK_AGAIN) {
+    st = cais_socket_recv(s->handle, buf, (size_t)max_len, &received);
+    if (st == CAIS_SOCK_AGAIN) {
         free(buf);
         lua_pushnil(L);
         lua_pushstring(L, "again");
         return 2;
     }
 
-    if (st == SOLO_SOCK_CLOSED) {
+    if (st == CAIS_SOCK_CLOSED) {
         free(buf);
         lua_pushnil(L);
         lua_pushstring(L, "closed");
         return 2;
     }
 
-    if (st != SOLO_SOCK_OK) {
+    if (st != CAIS_SOCK_OK) {
         free(buf);
         lua_pushnil(L);
         lua_pushstring(L, "recv error");
@@ -174,19 +174,19 @@ static int lsocket_sendto(lua_State *L)
     const char *host = luaL_checkstring(L, 3);
     int port = (int)luaL_checkinteger(L, 4);
     size_t sent = 0;
-    solo_socket_status_t st;
+    cais_socket_status_t st;
 
     if (s->handle == NULL) {
         return luaL_error(L, "attempt to sendto on closed socket");
     }
 
-    st = solo_socket_sendto(s->handle, data, len, host, port, &sent);
-    if (st == SOLO_SOCK_AGAIN) {
+    st = cais_socket_sendto(s->handle, data, len, host, port, &sent);
+    if (st == CAIS_SOCK_AGAIN) {
         lua_pushnil(L);
         lua_pushstring(L, "again");
         return 2;
     }
-    if (st != SOLO_SOCK_OK) {
+    if (st != CAIS_SOCK_OK) {
         lua_pushnil(L);
         lua_pushstring(L, "sendto failed");
         return 2;
@@ -204,7 +204,7 @@ static int lsocket_recvfrom(lua_State *L)
     int src_port = 0;
     char *buf;
     size_t received = 0;
-    solo_socket_status_t st;
+    cais_socket_status_t st;
 
     if (s->handle == NULL) {
         return luaL_error(L, "attempt to recvfrom on closed socket");
@@ -222,22 +222,22 @@ static int lsocket_recvfrom(lua_State *L)
         return luaL_error(L, "out of memory in socket recvfrom");
     }
 
-    st = solo_socket_recvfrom(s->handle, buf, (size_t)max_len, src_ip, sizeof(src_ip), &src_port, &received);
-    if (st == SOLO_SOCK_AGAIN) {
+    st = cais_socket_recvfrom(s->handle, buf, (size_t)max_len, src_ip, sizeof(src_ip), &src_port, &received);
+    if (st == CAIS_SOCK_AGAIN) {
         free(buf);
         lua_pushnil(L);
         lua_pushstring(L, "again");
         return 2;
     }
 
-    if (st == SOLO_SOCK_CLOSED) {
+    if (st == CAIS_SOCK_CLOSED) {
         free(buf);
         lua_pushnil(L);
         lua_pushstring(L, "closed");
         return 2;
     }
 
-    if (st != SOLO_SOCK_OK) {
+    if (st != CAIS_SOCK_OK) {
         free(buf);
         lua_pushnil(L);
         lua_pushstring(L, "recvfrom error");
@@ -264,7 +264,7 @@ static int lsocket_bind_sock(lua_State *L)
         return luaL_error(L, "attempt to bind closed socket");
     }
 
-    if (solo_socket_bind_sock(s->handle, host, port, backlog, err_buf, sizeof(err_buf)) != SOLO_SOCK_OK) {
+    if (cais_socket_bind_sock(s->handle, host, port, backlog, err_buf, sizeof(err_buf)) != CAIS_SOCK_OK) {
         lua_pushnil(L);
         if (err_buf[0] != '\0') {
             lua_pushstring(L, err_buf);
@@ -284,20 +284,20 @@ static int lsocket_connect_sock(lua_State *L)
     const char *host = luaL_checkstring(L, 2);
     int port = (int)luaL_checkinteger(L, 3);
     char err_buf[256];
-    solo_socket_status_t res;
+    cais_socket_status_t res;
 
     err_buf[0] = '\0';
     if (s->handle == NULL) {
         return luaL_error(L, "attempt to connect closed socket");
     }
 
-    res = solo_socket_connect_sock(s->handle, host, port, err_buf, sizeof(err_buf));
-    if (res == SOLO_SOCK_AGAIN) {
+    res = cais_socket_connect_sock(s->handle, host, port, err_buf, sizeof(err_buf));
+    if (res == CAIS_SOCK_AGAIN) {
         lua_pushnil(L);
         lua_pushstring(L, "again");
         return 2;
     }
-    if (res != SOLO_SOCK_OK) {
+    if (res != CAIS_SOCK_OK) {
         lua_pushnil(L);
         if (err_buf[0] != '\0') {
             lua_pushstring(L, err_buf);
@@ -317,7 +317,7 @@ static int lsocket_accept(lua_State *L)
     char client_ip[64];
     int client_port = 0;
     char err_buf[256];
-    solo_socket_t *client_handle;
+    cais_socket_t *client_handle;
 
     err_buf[0] = '\0';
     if (server->handle == NULL) {
@@ -325,7 +325,7 @@ static int lsocket_accept(lua_State *L)
     }
 
     client_handle =
-        solo_socket_accept(server->handle, client_ip, sizeof(client_ip), &client_port, err_buf, sizeof(err_buf));
+        cais_socket_accept(server->handle, client_ip, sizeof(client_ip), &client_port, err_buf, sizeof(err_buf));
     if (client_handle == NULL) {
         lua_pushnil(L);
         if (err_buf[0] != '\0') {
@@ -345,7 +345,7 @@ static int lsocket_accept(lua_State *L)
 static int lsocket_set_mode(lua_State *L)
 {
     lsocket_t *s = (lsocket_t *)luaL_checkudata(L, 1, SOCKET_MT);
-    solo_socket_mode_t mode = parse_mode(L, 2, SOLO_SOCK_BLOCKING);
+    cais_socket_mode_t mode = parse_mode(L, 2, CAIS_SOCK_BLOCKING);
     char err_buf[256];
 
     err_buf[0] = '\0';
@@ -353,7 +353,7 @@ static int lsocket_set_mode(lua_State *L)
         return luaL_error(L, "attempt to set mode on closed socket");
     }
 
-    if (solo_socket_set_mode(s->handle, mode, err_buf, sizeof(err_buf)) != SOLO_SOCK_OK) {
+    if (cais_socket_set_mode(s->handle, mode, err_buf, sizeof(err_buf)) != CAIS_SOCK_OK) {
         lua_pushnil(L);
         if (err_buf[0] != '\0') {
             lua_pushstring(L, err_buf);
@@ -378,7 +378,7 @@ static int lsocket_set_blocking(lua_State *L)
         return luaL_error(L, "attempt to set mode on closed socket");
     }
 
-    if (solo_socket_set_mode(s->handle, blk ? SOLO_SOCK_BLOCKING : SOLO_SOCK_NONBLOCKING, err_buf, sizeof(err_buf)) != SOLO_SOCK_OK) {
+    if (cais_socket_set_mode(s->handle, blk ? CAIS_SOCK_BLOCKING : CAIS_SOCK_NONBLOCKING, err_buf, sizeof(err_buf)) != CAIS_SOCK_OK) {
         lua_pushnil(L);
         if (err_buf[0] != '\0') {
             lua_pushstring(L, err_buf);
@@ -398,7 +398,7 @@ static int lsocket_get_mode(lua_State *L)
     if (s->handle == NULL) {
         return luaL_error(L, "attempt to get mode on closed socket");
     }
-    lua_pushinteger(L, (lua_Integer)solo_socket_get_mode(s->handle));
+    lua_pushinteger(L, (lua_Integer)cais_socket_get_mode(s->handle));
     return 1;
 }
 
@@ -408,7 +408,7 @@ static int lsocket_is_blocking(lua_State *L)
     if (s->handle == NULL) {
         return luaL_error(L, "attempt to check blocking on closed socket");
     }
-    lua_pushboolean(L, solo_socket_is_blocking(s->handle) == SOLO_TRUE);
+    lua_pushboolean(L, cais_socket_is_blocking(s->handle) == CAIS_TRUE);
     return 1;
 }
 
@@ -418,7 +418,7 @@ static int lsocket_is_nonblocking(lua_State *L)
     if (s->handle == NULL) {
         return luaL_error(L, "attempt to check non-blocking on closed socket");
     }
-    lua_pushboolean(L, solo_socket_is_nonblocking(s->handle) == SOLO_TRUE);
+    lua_pushboolean(L, cais_socket_is_nonblocking(s->handle) == CAIS_TRUE);
     return 1;
 }
 
@@ -433,7 +433,7 @@ static int lsocket_set_timeout(lua_State *L)
         return luaL_error(L, "attempt to set timeout on closed socket");
     }
 
-    if (solo_socket_set_timeout(s->handle, timeout_ms, err_buf, sizeof(err_buf)) != SOLO_SOCK_OK) {
+    if (cais_socket_set_timeout(s->handle, timeout_ms, err_buf, sizeof(err_buf)) != CAIS_SOCK_OK) {
         lua_pushnil(L);
         if (err_buf[0] != '\0') {
             lua_pushstring(L, err_buf);
@@ -450,7 +450,7 @@ static int lsocket_set_timeout(lua_State *L)
 static int lsocket_wait(lua_State *L)
 {
     lsocket_t *s = (lsocket_t *)luaL_checkudata(L, 1, SOCKET_MT);
-    int events = SOLO_SOCK_POLL_READ;
+    int events = CAIS_SOCK_POLL_READ;
     int timeout_ms = (int)luaL_optinteger(L, 3, -1);
     int res;
 
@@ -463,12 +463,12 @@ static int lsocket_wait(lua_State *L)
     } else if (lua_type(L, 2) == LUA_TSTRING) {
         const char *ev = lua_tostring(L, 2);
         events = 0;
-        if (strchr(ev, 'r') != NULL) events |= SOLO_SOCK_POLL_READ;
-        if (strchr(ev, 'w') != NULL) events |= SOLO_SOCK_POLL_WRITE;
-        if (events == 0) events = SOLO_SOCK_POLL_READ;
+        if (strchr(ev, 'r') != NULL) events |= CAIS_SOCK_POLL_READ;
+        if (strchr(ev, 'w') != NULL) events |= CAIS_SOCK_POLL_WRITE;
+        if (events == 0) events = CAIS_SOCK_POLL_READ;
     }
 
-    res = solo_socket_wait(s->handle, events, timeout_ms);
+    res = cais_socket_wait(s->handle, events, timeout_ms);
     if (res < 0) {
         lua_pushnil(L);
         lua_pushstring(L, "wait error");
@@ -480,11 +480,11 @@ static int lsocket_wait(lua_State *L)
         return 2;
     }
 
-    if ((res & SOLO_SOCK_POLL_READ) && (res & SOLO_SOCK_POLL_WRITE)) {
+    if ((res & CAIS_SOCK_POLL_READ) && (res & CAIS_SOCK_POLL_WRITE)) {
         lua_pushstring(L, "rw");
-    } else if (res & SOLO_SOCK_POLL_READ) {
+    } else if (res & CAIS_SOCK_POLL_READ) {
         lua_pushstring(L, "r");
-    } else if (res & SOLO_SOCK_POLL_WRITE) {
+    } else if (res & CAIS_SOCK_POLL_WRITE) {
         lua_pushstring(L, "w");
     } else {
         lua_pushstring(L, "err");
@@ -498,7 +498,7 @@ static int lsocket_get_fd(lua_State *L)
     if (s->handle == NULL) {
         lua_pushinteger(L, -1);
     } else {
-        lua_pushinteger(L, solo_socket_get_fd(s->handle));
+        lua_pushinteger(L, cais_socket_get_fd(s->handle));
     }
     return 1;
 }
@@ -510,7 +510,7 @@ static int lsocket_type(lua_State *L)
         lua_pushnil(L);
         return 1;
     }
-    lua_pushstring(L, (solo_socket_get_type(s->handle) == SOLO_SOCK_UDP) ? "udp" : "tcp");
+    lua_pushstring(L, (cais_socket_get_type(s->handle) == CAIS_SOCK_UDP) ? "udp" : "tcp");
     return 1;
 }
 
@@ -518,7 +518,7 @@ static int lsocket_close(lua_State *L)
 {
     lsocket_t *s = (lsocket_t *)luaL_checkudata(L, 1, SOCKET_MT);
     if (s->handle != NULL) {
-        solo_socket_close(s->handle);
+        cais_socket_close(s->handle);
         s->handle = NULL;
     }
     return 0;
@@ -529,15 +529,15 @@ static int lsocket_tostring(lua_State *L)
     lsocket_t *s = (lsocket_t *)luaL_checkudata(L, 1, SOCKET_MT);
     char buf[128];
     if (s->handle == NULL) {
-        lua_pushstring(L, "solo.socket (closed)");
+        lua_pushstring(L, "cais.socket (closed)");
     } else {
-        solo_socket_type_t t = solo_socket_get_type(s->handle);
-        solo_socket_mode_t m = solo_socket_get_mode(s->handle);
-        int fd = solo_socket_get_fd(s->handle);
-        snprintf(buf, sizeof(buf), "solo.socket (%s, fd: %d, %s)",
-                 (t == SOLO_SOCK_UDP) ? "udp" : "tcp",
+        cais_socket_type_t t = cais_socket_get_type(s->handle);
+        cais_socket_mode_t m = cais_socket_get_mode(s->handle);
+        int fd = cais_socket_get_fd(s->handle);
+        snprintf(buf, sizeof(buf), "cais.socket (%s, fd: %d, %s)",
+                 (t == CAIS_SOCK_UDP) ? "udp" : "tcp",
                  fd,
-                 (m == SOLO_SOCK_NONBLOCKING) ? "nonblocking" : "blocking");
+                 (m == CAIS_SOCK_NONBLOCKING) ? "nonblocking" : "blocking");
         lua_pushstring(L, buf);
     }
     return 1;
@@ -549,13 +549,13 @@ static int lsocket_tostring(lua_State *L)
 
 static int lsocket_create(lua_State *L)
 {
-    solo_socket_type_t type = parse_type(L, 1);
-    solo_socket_mode_t mode = parse_mode(L, 2, SOLO_SOCK_BLOCKING);
+    cais_socket_type_t type = parse_type(L, 1);
+    cais_socket_mode_t mode = parse_mode(L, 2, CAIS_SOCK_BLOCKING);
     char err_buf[256];
-    solo_socket_t *sock;
+    cais_socket_t *sock;
 
     err_buf[0] = '\0';
-    sock = solo_socket_create(type, mode, err_buf, sizeof(err_buf));
+    sock = cais_socket_create(type, mode, err_buf, sizeof(err_buf));
     if (sock == NULL) {
         lua_pushnil(L);
         if (err_buf[0] != '\0') {
@@ -572,12 +572,12 @@ static int lsocket_create(lua_State *L)
 
 static int lsocket_tcp(lua_State *L)
 {
-    solo_socket_mode_t mode = parse_mode(L, 1, SOLO_SOCK_BLOCKING);
+    cais_socket_mode_t mode = parse_mode(L, 1, CAIS_SOCK_BLOCKING);
     char err_buf[256];
-    solo_socket_t *sock;
+    cais_socket_t *sock;
 
     err_buf[0] = '\0';
-    sock = solo_socket_tcp(mode, err_buf, sizeof(err_buf));
+    sock = cais_socket_tcp(mode, err_buf, sizeof(err_buf));
     if (sock == NULL) {
         lua_pushnil(L);
         if (err_buf[0] != '\0') {
@@ -595,17 +595,17 @@ static int lsocket_tcp(lua_State *L)
 static int lsocket_udp(lua_State *L)
 {
     char err_buf[256];
-    solo_socket_t *sock;
+    cais_socket_t *sock;
 
     err_buf[0] = '\0';
     if (lua_gettop(L) >= 2 && lua_isstring(L, 1) && lua_isnumber(L, 2)) {
         const char *host = lua_tostring(L, 1);
         int port = (int)lua_tointeger(L, 2);
-        solo_socket_mode_t mode = parse_mode(L, 3, SOLO_SOCK_BLOCKING);
-        sock = solo_socket_udp_bind(host, port, mode, err_buf, sizeof(err_buf));
+        cais_socket_mode_t mode = parse_mode(L, 3, CAIS_SOCK_BLOCKING);
+        sock = cais_socket_udp_bind(host, port, mode, err_buf, sizeof(err_buf));
     } else {
-        solo_socket_mode_t mode = parse_mode(L, 1, SOLO_SOCK_BLOCKING);
-        sock = solo_socket_udp(mode, err_buf, sizeof(err_buf));
+        cais_socket_mode_t mode = parse_mode(L, 1, CAIS_SOCK_BLOCKING);
+        sock = cais_socket_udp(mode, err_buf, sizeof(err_buf));
     }
 
     if (sock == NULL) {
@@ -626,12 +626,12 @@ static int lsocket_udp_bind(lua_State *L)
 {
     const char *host = luaL_optstring(L, 1, "0.0.0.0");
     int port = (int)luaL_optinteger(L, 2, 9100);
-    solo_socket_mode_t mode = parse_mode(L, 3, SOLO_SOCK_BLOCKING);
+    cais_socket_mode_t mode = parse_mode(L, 3, CAIS_SOCK_BLOCKING);
     char err_buf[256];
-    solo_socket_t *sock;
+    cais_socket_t *sock;
 
     err_buf[0] = '\0';
-    sock = solo_socket_udp_bind(host, port, mode, err_buf, sizeof(err_buf));
+    sock = cais_socket_udp_bind(host, port, mode, err_buf, sizeof(err_buf));
     if (sock == NULL) {
         lua_pushnil(L);
         if (err_buf[0] != '\0') {
@@ -650,12 +650,12 @@ static int lsocket_connect(lua_State *L)
 {
     const char *host = luaL_checkstring(L, 1);
     int port = (int)luaL_checkinteger(L, 2);
-    solo_socket_mode_t mode = parse_mode(L, 3, SOLO_SOCK_BLOCKING);
+    cais_socket_mode_t mode = parse_mode(L, 3, CAIS_SOCK_BLOCKING);
     char err_buf[256];
-    solo_socket_t *sock;
+    cais_socket_t *sock;
 
     err_buf[0] = '\0';
-    sock = solo_socket_connect(host, port, mode, err_buf, sizeof(err_buf));
+    sock = cais_socket_connect(host, port, mode, err_buf, sizeof(err_buf));
     if (sock == NULL) {
         lua_pushnil(L);
         if (err_buf[0] != '\0') {
@@ -675,12 +675,12 @@ static int lsocket_bind(lua_State *L)
     const char *host = luaL_optstring(L, 1, "0.0.0.0");
     int port = (int)luaL_optinteger(L, 2, 9100);
     int backlog = (int)luaL_optinteger(L, 3, 128);
-    solo_socket_mode_t mode = parse_mode(L, 4, SOLO_SOCK_BLOCKING);
+    cais_socket_mode_t mode = parse_mode(L, 4, CAIS_SOCK_BLOCKING);
     char err_buf[256];
-    solo_socket_t *sock;
+    cais_socket_t *sock;
 
     err_buf[0] = '\0';
-    sock = solo_socket_bind(host, port, backlog, mode, err_buf, sizeof(err_buf));
+    sock = cais_socket_bind(host, port, backlog, mode, err_buf, sizeof(err_buf));
     if (sock == NULL) {
         lua_pushnil(L);
         if (err_buf[0] != '\0') {
@@ -697,8 +697,8 @@ static int lsocket_bind(lua_State *L)
 
 static int lsocket_select(lua_State *L)
 {
-    solo_pollfd_t local_pfds[16];
-    solo_pollfd_t *pfds = local_pfds;
+    cais_pollfd_t local_pfds[16];
+    cais_pollfd_t *pfds = local_pfds;
     size_t num_readers = 0;
     size_t num_writers = 0;
     size_t total_fds = 0;
@@ -720,7 +720,7 @@ static int lsocket_select(lua_State *L)
 
     total_fds = num_readers + num_writers;
     if (total_fds > 16) {
-        pfds = (solo_pollfd_t *)malloc(total_fds * sizeof(solo_pollfd_t));
+        pfds = (cais_pollfd_t *)malloc(total_fds * sizeof(cais_pollfd_t));
         if (pfds == NULL) {
             return luaL_error(L, "out of memory in select");
         }
@@ -733,7 +733,7 @@ static int lsocket_select(lua_State *L)
         s = (lsocket_t *)luaL_testudata(L, -1, SOCKET_MT);
         if (s != NULL && s->handle != NULL) {
             pfds[idx].sock = s->handle;
-            pfds[idx].events = SOLO_SOCK_POLL_READ;
+            pfds[idx].events = CAIS_SOCK_POLL_READ;
             pfds[idx].revents = 0;
             idx++;
         }
@@ -750,14 +750,14 @@ static int lsocket_select(lua_State *L)
             int found = 0;
             for (j = 0; j < idx; j++) {
                 if (pfds[j].sock == s->handle) {
-                    pfds[j].events |= SOLO_SOCK_POLL_WRITE;
+                    pfds[j].events |= CAIS_SOCK_POLL_WRITE;
                     found = 1;
                     break;
                 }
             }
             if (!found) {
                 pfds[idx].sock = s->handle;
-                pfds[idx].events = SOLO_SOCK_POLL_WRITE;
+                pfds[idx].events = CAIS_SOCK_POLL_WRITE;
                 pfds[idx].revents = 0;
                 idx++;
             }
@@ -765,7 +765,7 @@ static int lsocket_select(lua_State *L)
         lua_pop(L, 1);
     }
 
-    ret = solo_socket_poll(pfds, idx, timeout_ms);
+    ret = cais_socket_poll(pfds, idx, timeout_ms);
     if (ret < 0) {
         if (pfds != local_pfds) {
             free(pfds);
@@ -788,7 +788,7 @@ static int lsocket_select(lua_State *L)
                     size_t j;
                     for (j = 0; j < idx; j++) {
                         if (pfds[j].sock == s->handle &&
-                            (pfds[j].revents & (SOLO_SOCK_POLL_READ | SOLO_SOCK_POLL_ERR))) {
+                            (pfds[j].revents & (CAIS_SOCK_POLL_READ | CAIS_SOCK_POLL_ERR))) {
                             lua_pushvalue(L, -1);
                             lua_rawseti(L, -4, out_r_idx++);
                             break;
@@ -808,7 +808,7 @@ static int lsocket_select(lua_State *L)
                     size_t j;
                     for (j = 0; j < idx; j++) {
                         if (pfds[j].sock == s->handle &&
-                            (pfds[j].revents & (SOLO_SOCK_POLL_WRITE | SOLO_SOCK_POLL_ERR))) {
+                            (pfds[j].revents & (CAIS_SOCK_POLL_WRITE | CAIS_SOCK_POLL_ERR))) {
                             lua_pushvalue(L, -1);
                             lua_rawseti(L, -3, out_w_idx++);
                             break;
@@ -865,41 +865,41 @@ static const luaL_Reg socket_funcs[] = {
 
 static void register_enums(lua_State *L)
 {
-    /* solo.socket.type */
+    /* cais.socket.type */
     lua_newtable(L);
-    lua_pushinteger(L, SOLO_SOCK_TCP); lua_setfield(L, -2, "TCP");
-    lua_pushinteger(L, SOLO_SOCK_UDP); lua_setfield(L, -2, "UDP");
+    lua_pushinteger(L, CAIS_SOCK_TCP); lua_setfield(L, -2, "TCP");
+    lua_pushinteger(L, CAIS_SOCK_UDP); lua_setfield(L, -2, "UDP");
     lua_setfield(L, -2, "type");
 
-    /* solo.socket.mode */
+    /* cais.socket.mode */
     lua_newtable(L);
-    lua_pushinteger(L, SOLO_SOCK_BLOCKING);    lua_setfield(L, -2, "BLOCKING");
-    lua_pushinteger(L, SOLO_SOCK_NONBLOCKING); lua_setfield(L, -2, "NONBLOCKING");
+    lua_pushinteger(L, CAIS_SOCK_BLOCKING);    lua_setfield(L, -2, "BLOCKING");
+    lua_pushinteger(L, CAIS_SOCK_NONBLOCKING); lua_setfield(L, -2, "NONBLOCKING");
     lua_setfield(L, -2, "mode");
 
-    /* solo.socket.status */
+    /* cais.socket.status */
     lua_newtable(L);
-    lua_pushinteger(L, SOLO_SOCK_OK);     lua_setfield(L, -2, "OK");
-    lua_pushinteger(L, SOLO_SOCK_ERROR);  lua_setfield(L, -2, "ERROR");
-    lua_pushinteger(L, SOLO_SOCK_AGAIN);  lua_setfield(L, -2, "AGAIN");
-    lua_pushinteger(L, SOLO_SOCK_CLOSED); lua_setfield(L, -2, "CLOSED");
+    lua_pushinteger(L, CAIS_SOCK_OK);     lua_setfield(L, -2, "OK");
+    lua_pushinteger(L, CAIS_SOCK_ERROR);  lua_setfield(L, -2, "ERROR");
+    lua_pushinteger(L, CAIS_SOCK_AGAIN);  lua_setfield(L, -2, "AGAIN");
+    lua_pushinteger(L, CAIS_SOCK_CLOSED); lua_setfield(L, -2, "CLOSED");
     lua_setfield(L, -2, "status");
 
-    /* solo.socket.event */
+    /* cais.socket.event */
     lua_newtable(L);
-    lua_pushinteger(L, SOLO_SOCK_POLL_READ);  lua_setfield(L, -2, "READ");
-    lua_pushinteger(L, SOLO_SOCK_POLL_WRITE); lua_setfield(L, -2, "WRITE");
-    lua_pushinteger(L, SOLO_SOCK_POLL_ERR);   lua_setfield(L, -2, "ERR");
+    lua_pushinteger(L, CAIS_SOCK_POLL_READ);  lua_setfield(L, -2, "READ");
+    lua_pushinteger(L, CAIS_SOCK_POLL_WRITE); lua_setfield(L, -2, "WRITE");
+    lua_pushinteger(L, CAIS_SOCK_POLL_ERR);   lua_setfield(L, -2, "ERR");
     lua_setfield(L, -2, "event");
 
     /* Direct enum constants */
-    lua_pushinteger(L, SOLO_SOCK_TCP);         lua_setfield(L, -2, "TCP");
-    lua_pushinteger(L, SOLO_SOCK_UDP);         lua_setfield(L, -2, "UDP");
-    lua_pushinteger(L, SOLO_SOCK_BLOCKING);    lua_setfield(L, -2, "BLOCKING");
-    lua_pushinteger(L, SOLO_SOCK_NONBLOCKING); lua_setfield(L, -2, "NONBLOCKING");
+    lua_pushinteger(L, CAIS_SOCK_TCP);         lua_setfield(L, -2, "TCP");
+    lua_pushinteger(L, CAIS_SOCK_UDP);         lua_setfield(L, -2, "UDP");
+    lua_pushinteger(L, CAIS_SOCK_BLOCKING);    lua_setfield(L, -2, "BLOCKING");
+    lua_pushinteger(L, CAIS_SOCK_NONBLOCKING); lua_setfield(L, -2, "NONBLOCKING");
 }
 
-int luaopen_solo_socket(lua_State *L)
+int luaopen_cais_socket(lua_State *L)
 {
     if (luaL_newmetatable(L, SOCKET_MT)) {
         lua_pushvalue(L, -1);

@@ -2,7 +2,7 @@
 
 Systems programming across 10 operating system families requires navigating subtle architectural differences, historical ABI decisions, and kernel quirks.
 
-This document serves as an engineering post-mortem of how `solo` resolves these challenges.
+This document serves as an engineering post-mortem of how `cais` resolves these challenges.
 
 ---
 
@@ -15,7 +15,7 @@ On POSIX systems, `fd_set` is a **fixed-size bitmask** containing an array of in
 * Bit `n` corresponds to file descriptor integer `n`.
 * If a high-volume server process has opened many files (pipes, logs, database connections) and receives socket file descriptor `1024` or higher, calling `FD_SET(1024, &fds)` writes past the bounds of the stack bitmask.
 * **The Result:** Silent stack corruption and random memory crashes.
-* **The `solo` Solution:** On POSIX, `solo` uses native `poll(2)` (`solo_posix_poll`), which accepts a dynamic array of `struct pollfd`. High descriptor IDs ($fd \ge 1024$) are handled transparently with zero risk of buffer overflows.
+* **The `cais` Solution:** On POSIX, `cais` uses native `poll(2)` (`cais_posix_poll`), which accepts a dynamic array of `struct pollfd`. High descriptor IDs ($fd \ge 1024$) are handled transparently with zero risk of buffer overflows.
 
 ### In Winsock (Windows NT 3.51 to 11)
 Microsoft chose a completely different ABI for Winsock in 1993:
@@ -45,13 +45,13 @@ If that executable is launched on **Windows NT 3.51, Windows NT 4.0, Windows 200
 
 > *"The procedure entry point WSAPoll could not be located in the dynamic link library WS2_32.DLL"*
 
-### The `solo` Solution
-`solo` uses dynamic runtime probing:
+### The `cais` Solution
+`cais` uses dynamic runtime probing:
 1. `GetModuleHandleA("ws2_32.dll")` is called.
 2. `GetProcAddress(hws2, "WSAPoll")` queries the function pointer.
-3. `solo` clones the exact memory ABI in [`solo_wsapollfd_t`](file:///home/gustavo/Projetos/solo/src/socket/socket_bsd.c).
+3. `cais` clones the exact memory ABI in [`cais_wsapollfd_t`](file:///home/gustavo/Projetos/cais/src/socket/socket_bsd.c).
 4. If found (Vista..11), `WSAPoll` is invoked.
-5. If `NULL` (NT 3.51..XP), execution transparently routes to `solo_poll_via_select()`.
+5. If `NULL` (NT 3.51..XP), execution transparently routes to `cais_poll_via_select()`.
 
 ---
 
@@ -63,7 +63,7 @@ AmigaOS is not POSIX and lacks hardware interrupt signals like `SIGALRM` or `SIG
 * Each Amiga task has 32 signal bits allocated.
 * When a network socket receives data, `bsdsocket.library` asserts an Exec Signal bit assigned to that process.
 * Multiplexing is implemented via `WaitSelect()`, which maps BSD `select()` descriptor masks to Exec signal masks.
-* **The Gotcha:** Trying to include `<poll.h>` or invoke `poll(2)` on AmigaOS will fail to compile. `solo` recognizes `SOLO_IS_AMIGA` and keeps network multiplexing directly on the native BSD `select()` engine.
+* **The Gotcha:** Trying to include `<poll.h>` or invoke `poll(2)` on AmigaOS will fail to compile. `cais` recognizes `CAIS_IS_AMIGA` and keeps network multiplexing directly on the native BSD `select()` engine.
 
 ---
 
@@ -72,7 +72,7 @@ AmigaOS is not POSIX and lacks hardware interrupt signals like `SIGALRM` or `SIG
 In 16-bit and 32-bit MS-DOS:
 * Network cards use **Packet Drivers** (Class 1 Ethernet interface, hooked onto interrupt vectors between `0x60` and `0x7F`).
 * There is no preemptive multitasking in the OS; background packet processing occurs during BIOS timer ticks (`INT 08h` / `INT 1Ch`) and serial UART interrupts.
-* **WATT-32 Integration:** `solo` links with Waterloo TCP/IP (WATT-32). In non-blocking loops, `select_s` regularly calls `dbug_yield()` to allow DOS packet drivers to service the NIC ring buffers.
+* **WATT-32 Integration:** `cais` links with Waterloo TCP/IP (WATT-32). In non-blocking loops, `select_s` regularly calls `dbug_yield()` to allow DOS packet drivers to service the NIC ring buffers.
 
 ---
 
@@ -87,4 +87,4 @@ Kernel-level sandboxing models differ radically across operating systems:
 | **Model** | Filesystem Path Restriction | Syscall Allowlist + Path Restriction | File Descriptor Rights |
 | **Inheritance** | Strictly inherited by `fork()` and `clone()` | Inherited by `fork()`, dropped by `execve()` | Inherited across descriptors |
 
-`solo` bridges these paradigms into a uniform API: `unveil()` defines allowed filesystem scopes, and `lock()` seals the process.
+`cais` bridges these paradigms into a uniform API: `unveil()` defines allowed filesystem scopes, and `lock()` seals the process.

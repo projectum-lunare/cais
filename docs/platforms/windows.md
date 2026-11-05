@@ -1,6 +1,6 @@
 # Windows (NT 3.51..11, CE)
 
-`solo` maintains runtime binary and source compatibility across 30 years of Windows versions, from **Windows NT 3.51 (1995)** to modern **Windows 11 (2026)** and **Windows CE 3.0 / Pocket PC**.
+`cais` maintains runtime binary and source compatibility across 30 years of Windows versions, from **Windows NT 3.51 (1995)** to modern **Windows 11 (2026)** and **Windows CE 3.0 / Pocket PC**.
 
 ---
 
@@ -12,10 +12,10 @@ Calling functions introduced in modern Windows directly (such as `WSAPoll`, intr
 "The procedure entry point WSAPoll could not be located in the dynamic link library WS2_32.DLL"
 ```
 
-To ensure `solo` binaries boot and run flawlessly on vintage NT:
+To ensure `cais` binaries boot and run flawlessly on vintage NT:
 1. `WSAPoll` is never statically linked.
 2. The runtime engine calls `GetProcAddress(GetModuleHandleA("ws2_32.dll"), "WSAPoll")`.
-3. If `WSAPoll` is not present, `solo` transparently routes polling requests to `solo_poll_via_select()`.
+3. If `WSAPoll` is not present, `cais` transparently routes polling requests to `cais_poll_via_select()`.
 
 ---
 
@@ -30,4 +30,4 @@ typedef struct fd_set {
 } fd_set;
 ```
 
-`solo` defines `#define FD_SETSIZE 1024` before including `<winsock2.h>`. This allows the `select()` engine on Windows NT 3.51, 4.0, and 2000 to safely monitor up to 1024 concurrent sockets with zero memory safety issues.
+`cais` defines `#define FD_SETSIZE 1024` before including `<winsock2.h>`. This allows the `select()` engine on Windows NT 3.51, 4.0, and 2000 to safely monitor up to 1024 concurrent sockets with zero memory safety issues.

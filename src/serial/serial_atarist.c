@@ -1,6 +1,6 @@
 /*
- * solo - Physical I/O, System Foundations & Hardware Abstractions
- * Projectum Lunare <https://github.com/projectum-lunare/solo>
+ * cais - Physical I/O, System Foundations & Hardware Abstractions
+ * Projectum Lunare <https://github.com/projectum-lunare/cais>
  * Copyright (C) 2026 Gustavo Veiga <gustavo.veiga@outlook.com.br>
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
@@ -8,9 +8,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-#include <solo/platform.h>
+#include <cais/platform.h>
 
-#if SOLO_IS_ATARIST
+#if CAIS_IS_ATARIST
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,7 +18,7 @@
 #include <time.h>
 #include <osbind.h>
 
-#include <solo/serial.h>
+#include <cais/serial.h>
 
 struct serial_port {
     short dev_id; /* BIOS device 1 = AUX: (RS-232 / Modem) */
@@ -100,18 +100,18 @@ static short compute_atari_ucr(int data_bits, char parity, int stop_bits)
     return ucr;
 }
 
-solo_serial_t *solo_serial_open(const char *path, const solo_serial_opts_t *opts, char *err_buf, size_t err_cap)
+cais_serial_t *cais_serial_open(const char *path, const cais_serial_opts_t *opts, char *err_buf, size_t err_cap)
 {
-    solo_serial_t *port;
+    cais_serial_t *port;
     (void)path;
 
     if (err_buf != NULL && err_cap > 0) {
         err_buf[0] = '\0';
     }
 
-    port = (solo_serial_t *)malloc(sizeof(solo_serial_t));
+    port = (cais_serial_t *)malloc(sizeof(cais_serial_t));
     if (port == NULL) {
-        solo_set_err(err_buf, err_cap, "Out of memory allocating serial port handle");
+        cais_set_err(err_buf, err_cap, "Out of memory allocating serial port handle");
         return NULL;
     }
 
@@ -138,17 +138,17 @@ solo_serial_t *solo_serial_open(const char *path, const solo_serial_opts_t *opts
 
         /* Initial modem line states */
         if (opts->rts != -1) {
-            solo_serial_set_rts(port, (solo_serial_line_t)opts->rts);
+            cais_serial_set_rts(port, (cais_serial_line_t)opts->rts);
         }
         if (opts->dtr != -1) {
-            solo_serial_set_dtr(port, (solo_serial_line_t)opts->dtr);
+            cais_serial_set_dtr(port, (cais_serial_line_t)opts->dtr);
         }
     }
 
     return port;
 }
 
-solo_status_t solo_serial_write(solo_serial_t *port, const char *buf, size_t len, size_t *written_bytes)
+cais_status_t cais_serial_write(cais_serial_t *port, const char *buf, size_t len, size_t *written_bytes)
 {
     size_t i;
     clock_t start = 0;
@@ -160,10 +160,10 @@ solo_status_t solo_serial_write(solo_serial_t *port, const char *buf, size_t len
     }
 
     if (port == NULL || buf == NULL) {
-        return SOLO_ERROR;
+        return CAIS_ERROR;
     }
     if (len == 0) {
-        return SOLO_OK;
+        return CAIS_OK;
     }
 
     if (port->timeout_ms > 0) {
@@ -178,13 +178,13 @@ solo_status_t solo_serial_write(solo_serial_t *port, const char *buf, size_t len
             while (Bcostat(port->dev_id) == 0) {
                 if ((clock() - start) >= wait_ticks) {
                     if (written_bytes != NULL) *written_bytes = i;
-                    return (i > 0) ? SOLO_OK : SOLO_AGAIN;
+                    return (i > 0) ? CAIS_OK : CAIS_AGAIN;
                 }
             }
         } else if (port->timeout_ms == 0) {
             if (Bcostat(port->dev_id) == 0) {
                 if (written_bytes != NULL) *written_bytes = i;
-                return (i > 0) ? SOLO_OK : SOLO_AGAIN;
+                return (i > 0) ? CAIS_OK : CAIS_AGAIN;
             }
         } else {
             while (Bcostat(port->dev_id) == 0) {
@@ -198,10 +198,10 @@ solo_status_t solo_serial_write(solo_serial_t *port, const char *buf, size_t len
     if (written_bytes != NULL) {
         *written_bytes = len;
     }
-    return SOLO_OK;
+    return CAIS_OK;
 }
 
-solo_status_t solo_serial_read(solo_serial_t *port, char *buf, size_t max_len, size_t *read_bytes, int timeout_ms)
+cais_status_t cais_serial_read(cais_serial_t *port, char *buf, size_t max_len, size_t *read_bytes, int timeout_ms)
 {
     int eff_timeout;
 
@@ -210,7 +210,7 @@ solo_status_t solo_serial_read(solo_serial_t *port, char *buf, size_t max_len, s
     }
 
     if (port == NULL || buf == NULL || max_len == 0) {
-        return SOLO_ERROR;
+        return CAIS_ERROR;
     }
 
     eff_timeout = (timeout_ms >= 0) ? timeout_ms : port->timeout_ms;
@@ -221,12 +221,12 @@ solo_status_t solo_serial_read(solo_serial_t *port, char *buf, size_t max_len, s
         if (wait_ticks == 0) wait_ticks = 1;
         while (Bconstat(port->dev_id) == 0) {
             if ((clock() - start) >= wait_ticks) {
-                return SOLO_AGAIN; /* Timeout */
+                return CAIS_AGAIN; /* Timeout */
             }
         }
     } else if (eff_timeout == 0) {
         if (Bconstat(port->dev_id) == 0) {
-            return SOLO_AGAIN; /* Would block */
+            return CAIS_AGAIN; /* Would block */
         }
     } else {
         while (Bconstat(port->dev_id) == 0) {
@@ -238,75 +238,75 @@ solo_status_t solo_serial_read(solo_serial_t *port, char *buf, size_t max_len, s
     if (read_bytes != NULL) {
         *read_bytes = 1;
     }
-    return SOLO_OK;
+    return CAIS_OK;
 }
 
-solo_serial_status_t solo_serial_set_timeout(solo_serial_t *port, int timeout_ms)
+cais_serial_status_t cais_serial_set_timeout(cais_serial_t *port, int timeout_ms)
 {
     if (port == NULL) {
-        return SOLO_SERIAL_ERROR;
+        return CAIS_SERIAL_ERROR;
     }
     port->timeout_ms = timeout_ms;
-    return SOLO_SERIAL_OK;
+    return CAIS_SERIAL_OK;
 }
 
-solo_line_state_t solo_serial_get_cts(solo_serial_t *port)
+cais_line_state_t cais_serial_get_cts(cais_serial_t *port)
 {
     (void)port;
-    return SOLO_LINE_ERROR;
+    return CAIS_LINE_ERROR;
 }
 
-solo_line_state_t solo_serial_get_dsr(solo_serial_t *port)
+cais_line_state_t cais_serial_get_dsr(cais_serial_t *port)
 {
     (void)port;
-    return SOLO_LINE_ERROR;
+    return CAIS_LINE_ERROR;
 }
 
-solo_line_state_t solo_serial_get_cd(solo_serial_t *port)
+cais_line_state_t cais_serial_get_cd(cais_serial_t *port)
 {
     (void)port;
-    return SOLO_LINE_ERROR;
+    return CAIS_LINE_ERROR;
 }
 
-solo_line_state_t solo_serial_get_ri(solo_serial_t *port)
+cais_line_state_t cais_serial_get_ri(cais_serial_t *port)
 {
     (void)port;
-    return SOLO_LINE_ERROR;
+    return CAIS_LINE_ERROR;
 }
 
-solo_serial_status_t solo_serial_drain(solo_serial_t *port)
+cais_serial_status_t cais_serial_drain(cais_serial_t *port)
 {
     long timeout = 2000000L;
 
     if (port == NULL) {
-        return SOLO_SERIAL_ERROR;
+        return CAIS_SERIAL_ERROR;
     }
 
     /* Wait until transmitter buffer has emptied */
     while (Bcostat(port->dev_id) == 0) {
         if (--timeout <= 0) {
-            return SOLO_SERIAL_ERROR;
+            return CAIS_SERIAL_ERROR;
         }
     }
 
-    return SOLO_SERIAL_OK;
+    return CAIS_SERIAL_OK;
 }
 
-solo_serial_status_t solo_serial_set_rts(solo_serial_t *port, solo_serial_line_t state)
+cais_serial_status_t cais_serial_set_rts(cais_serial_t *port, cais_serial_line_t state)
 {
     if (port == NULL) {
-        return SOLO_SERIAL_ERROR;
+        return CAIS_SERIAL_ERROR;
     }
 
     /* Toggle RTS control via XBIOS Rsconf */
-    Rsconf(-1, (state == SOLO_SERIAL_LINE_ON || (int)state == 1) ? 2 : 0, -1, -1, -1, -1);
-    return SOLO_SERIAL_OK;
+    Rsconf(-1, (state == CAIS_SERIAL_LINE_ON || (int)state == 1) ? 2 : 0, -1, -1, -1, -1);
+    return CAIS_SERIAL_OK;
 }
 
-solo_serial_status_t solo_serial_set_dtr(solo_serial_t *port, solo_serial_line_t state)
+cais_serial_status_t cais_serial_set_dtr(cais_serial_t *port, cais_serial_line_t state)
 {
     if (port == NULL) {
-        return SOLO_SERIAL_ERROR;
+        return CAIS_SERIAL_ERROR;
     }
 
     /*
@@ -315,15 +315,15 @@ solo_serial_status_t solo_serial_set_dtr(solo_serial_t *port, solo_serial_line_t
      * - Offgibit clears bit 4 (asserting DTR high)
      * - Ongibit sets bit 4 (deasserting DTR low)
      */
-    if (state == SOLO_SERIAL_LINE_ON || (int)state == 1) {
+    if (state == CAIS_SERIAL_LINE_ON || (int)state == 1) {
         Offgibit((short)~0x10);
     } else {
         Ongibit(0x10);
     }
-    return SOLO_SERIAL_OK;
+    return CAIS_SERIAL_OK;
 }
 
-void solo_serial_close(solo_serial_t *port)
+void cais_serial_close(cais_serial_t *port)
 {
     if (port != NULL) {
         free(port);
@@ -333,4 +333,4 @@ void solo_serial_close(solo_serial_t *port)
 #else
 /* ISO C forbids an empty translation unit */
 typedef int make_iso_compilers_happy_serial_atarist;
-#endif /* SOLO_IS_ATARIST */
+#endif /* CAIS_IS_ATARIST */

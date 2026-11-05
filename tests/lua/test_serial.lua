@@ -1,6 +1,6 @@
 --
--- solo - Physical I/O, System Foundations & Hardware Abstractions
--- Projectum Lunare <https://github.com/projectum-lunare/solo>
+-- cais - Physical I/O, System Foundations & Hardware Abstractions
+-- Projectum Lunare <https://github.com/projectum-lunare/cais>
 -- Copyright (C) 2026 Gustavo Veiga <gustavo.veiga@outlook.com.br>
 -- Mozilla Public License Version 2.0
 --
@@ -12,19 +12,19 @@ local T = require("tests.harness")
 local describe, test = T.describe, T.test
 local assert_eq, assert_nil = T.assert_eq, T.assert_nil
 
-local solo = require("solo")
+local cais = require("cais")
 
 -- ============================================================================
--- solo.serial (Serial RS-232 Driver Tests)
+-- cais.serial (Serial RS-232 Driver Tests)
 -- ============================================================================
 -- Tests the serial port driver in Lua, verifying enum tables, table-based and
 -- positional open constructors, option defaults, timeout handling, and input
 -- validation for baud rates and parity modes.
-describe("solo.serial (Physical Serial RS-232 Driver Signatures)", function()
+describe("cais.serial (Physical Serial RS-232 Driver Signatures)", function()
 
     -- 1. Serial configuration enum tables and constants
     test("defines serial flow, parity, stop, data, baud, line and status enum tables", function()
-        local s = solo.serial
+        local s = cais.serial
 
         -- Hardware / software flow control
         assert_eq(type(s.flow), "table")
@@ -83,11 +83,11 @@ describe("solo.serial (Physical Serial RS-232 Driver Signatures)", function()
     -- 2. Table-based options constructor
     test("serial open accepts options table and string parity/flow", function()
         -- Calling open with an options table; on nonexistent device, returns nil, error_string
-        local port, err = solo.serial.open("/nonexistent_tty_device_12345", {
-            baud = solo.serial.baud.B115200,
-            data_bits = solo.serial.data_bits.EIGHT,
+        local port, err = cais.serial.open("/nonexistent_tty_device_12345", {
+            baud = cais.serial.baud.B115200,
+            data_bits = cais.serial.data_bits.EIGHT,
             parity = "none",
-            stop_bits = solo.serial.stop_bits.ONE,
+            stop_bits = cais.serial.stop_bits.ONE,
             flow = "hardware",
             rts = true,
             dtr = true
@@ -99,14 +99,14 @@ describe("solo.serial (Physical Serial RS-232 Driver Signatures)", function()
     -- 3. Positional arguments constructor
     test("serial open accepts positional arguments with string parity", function()
         -- Signature: open(path, baud, data_bits, parity, stop_bits, flow)
-        local port, err = solo.serial.open("/nonexistent_tty_device_12345", 9600, 8, "n", 1, 1)
+        local port, err = cais.serial.open("/nonexistent_tty_device_12345", 9600, 8, "n", 1, 1)
         assert_nil(port)
         assert_eq(type(err), "string")
     end)
 
     -- 4. Timeout option and flow defaults in table
     test("serial open accepts timeout option and defaults flow to none", function()
-        local port, err = solo.serial.open("/nonexistent_tty_device_flow_none", {
+        local port, err = cais.serial.open("/nonexistent_tty_device_flow_none", {
             baud = 9600,
             flow = "none",
             timeout = 500
@@ -118,25 +118,25 @@ describe("solo.serial (Physical Serial RS-232 Driver Signatures)", function()
     -- 5. Positional arguments with timeout as 9th argument
     test("serial open accepts positional arguments with timeout", function()
         -- Signature: open(path, baud, data_bits, parity, stop_bits, flow, rts, dtr, timeout)
-        local port, err = solo.serial.open("/nonexistent_tty_device_pos_timeout", 9600, 8, "n", 1, "none", true, true, 500)
+        local port, err = cais.serial.open("/nonexistent_tty_device_pos_timeout", 9600, 8, "n", 1, "none", true, true, 500)
         assert_nil(port)
         assert_eq(type(err), "string")
     end)
 
     -- 6. Rejection of invalid baud and parity parameters
     test("serial open rejects invalid baud and parity without crashing", function()
-        local p1, err1 = solo.serial.open("/nonexistent_dev_bad_baud", { baud = 12345 })
+        local p1, err1 = cais.serial.open("/nonexistent_dev_bad_baud", { baud = 12345 })
         assert_nil(p1)
         assert_eq(type(err1), "string")
 
-        local p2, err2 = solo.serial.open("/nonexistent_dev_bad_parity", { parity = "invalid_parity" })
+        local p2, err2 = cais.serial.open("/nonexistent_dev_bad_parity", { parity = "invalid_parity" })
         assert_nil(p2)
         assert_eq(type(err2), "string")
     end)
 
     -- 7. Modem line predicate aliases
     test("exposes modem line predicate methods is_cts, is_dsr, is_cd, is_ri", function()
-        local mt = debug.getregistry()["solo.serial.port"]
+        local mt = debug.getregistry()["cais.serial.port"]
         assert_eq(type(mt.get_cts), "function")
         assert_eq(type(mt.is_cts), "function")
         assert_eq(type(mt.is_dsr), "function")

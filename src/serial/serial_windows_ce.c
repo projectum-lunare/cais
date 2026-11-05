@@ -1,6 +1,6 @@
 /*
- * solo - Physical I/O, System Foundations & Hardware Abstractions
- * Projectum Lunare <https://github.com/projectum-lunare/solo>
+ * cais - Physical I/O, System Foundations & Hardware Abstractions
+ * Projectum Lunare <https://github.com/projectum-lunare/cais>
  * Copyright (C) 2026 Gustavo Veiga <gustavo.veiga@outlook.com.br>
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
@@ -8,15 +8,15 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-#include <solo/platform.h>
+#include <cais/platform.h>
 
-#if SOLO_IS_WINDOWS_CE
+#if CAIS_IS_WINDOWS_CE
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <solo/serial.h>
+#include <cais/serial.h>
 
 #include <windows.h>
 
@@ -26,7 +26,7 @@ struct serial_port {
     int timeout_ms;
 };
 
-static solo_serial_status_t solo_serial_apply_comm_timeouts(HANDLE handle, int timeout_ms)
+static cais_serial_status_t cais_serial_apply_comm_timeouts(HANDLE handle, int timeout_ms)
 {
     COMMTIMEOUTS to;
     memset(&to, 0, sizeof(to));
@@ -52,15 +52,15 @@ static solo_serial_status_t solo_serial_apply_comm_timeouts(HANDLE handle, int t
         to.WriteTotalTimeoutMultiplier = 0;
         to.WriteTotalTimeoutConstant = 0; /* 0 means infinite wait in Comm API */
     }
-    return SetCommTimeouts(handle, &to) ? SOLO_SERIAL_OK : SOLO_SERIAL_ERROR;
+    return SetCommTimeouts(handle, &to) ? CAIS_SERIAL_OK : CAIS_SERIAL_ERROR;
 }
 
-solo_serial_t *solo_serial_open(const char *path, const solo_serial_opts_t *opts, char *err_buf, size_t err_cap)
+cais_serial_t *cais_serial_open(const char *path, const cais_serial_opts_t *opts, char *err_buf, size_t err_cap)
 {
     HANDLE h;
-    solo_serial_t *port;
+    cais_serial_t *port;
     DCB dcb;
-    solo_serial_opts_t default_opts;
+    cais_serial_opts_t default_opts;
     WCHAR target_path[64];
     char buf[64];
     size_t len;
@@ -96,15 +96,15 @@ solo_serial_t *solo_serial_open(const char *path, const solo_serial_opts_t *opts
     h = CreateFileW(target_path, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
 
     if (h == INVALID_HANDLE_VALUE) {
-        solo_set_err_fmt(err_buf, err_cap, "CreateFileW(%s) failed (error %lu)", path,
+        cais_set_err_fmt(err_buf, err_cap, "CreateFileW(%s) failed (error %lu)", path,
                          (unsigned long)GetLastError());
         return NULL;
     }
 
-    port = (solo_serial_t *)malloc(sizeof(solo_serial_t));
+    port = (cais_serial_t *)malloc(sizeof(cais_serial_t));
     if (port == NULL) {
         CloseHandle(h);
-        solo_set_err(err_buf, err_cap, "Memory allocation failure");
+        cais_set_err(err_buf, err_cap, "Memory allocation failure");
         return NULL;
     }
     port->handle = h;
@@ -113,7 +113,7 @@ solo_serial_t *solo_serial_open(const char *path, const solo_serial_opts_t *opts
     memset(&port->orig_dcb, 0, sizeof(DCB));
     port->orig_dcb.DCBlength = sizeof(DCB);
     if (!GetCommState(h, &port->orig_dcb)) {
-        solo_set_err(err_buf, err_cap, "GetCommState failed");
+        cais_set_err(err_buf, err_cap, "GetCommState failed");
         CloseHandle(h);
         free(port);
         return NULL;
@@ -164,7 +164,7 @@ solo_serial_t *solo_serial_open(const char *path, const solo_serial_opts_t *opts
     dcb.fDtrControl = (opts->dtr) ? DTR_CONTROL_ENABLE : DTR_CONTROL_DISABLE;
 
     if (!SetCommState(h, &dcb)) {
-        solo_set_err_fmt(err_buf, err_cap, "SetCommState failed (error %lu)",
+        cais_set_err_fmt(err_buf, err_cap, "SetCommState failed (error %lu)",
                          (unsigned long)GetLastError());
         CloseHandle(h);
         free(port);
@@ -172,7 +172,7 @@ solo_serial_t *solo_serial_open(const char *path, const solo_serial_opts_t *opts
     }
 
     /* Configure communication timeouts */
-    solo_serial_apply_comm_timeouts(h, port->timeout_ms);
+    cais_serial_apply_comm_timeouts(h, port->timeout_ms);
 
     /* Assert or clear RTS/DTR lines if specified */
     if (opts->rts >= 0) {
@@ -185,23 +185,23 @@ solo_serial_t *solo_serial_open(const char *path, const solo_serial_opts_t *opts
     return port;
 }
 
-solo_serial_status_t solo_serial_set_rts(solo_serial_t *port, solo_serial_line_t state)
+cais_serial_status_t cais_serial_set_rts(cais_serial_t *port, cais_serial_line_t state)
 {
     if (port == NULL || port->handle == INVALID_HANDLE_VALUE) {
-        return SOLO_SERIAL_ERROR;
+        return CAIS_SERIAL_ERROR;
     }
-    return EscapeCommFunction(port->handle, (state == SOLO_SERIAL_LINE_ON || (int)state == 1) ? SETRTS : CLRRTS) ? SOLO_SERIAL_OK : SOLO_SERIAL_ERROR;
+    return EscapeCommFunction(port->handle, (state == CAIS_SERIAL_LINE_ON || (int)state == 1) ? SETRTS : CLRRTS) ? CAIS_SERIAL_OK : CAIS_SERIAL_ERROR;
 }
 
-solo_serial_status_t solo_serial_set_dtr(solo_serial_t *port, solo_serial_line_t state)
+cais_serial_status_t cais_serial_set_dtr(cais_serial_t *port, cais_serial_line_t state)
 {
     if (port == NULL || port->handle == INVALID_HANDLE_VALUE) {
-        return SOLO_SERIAL_ERROR;
+        return CAIS_SERIAL_ERROR;
     }
-    return EscapeCommFunction(port->handle, (state == SOLO_SERIAL_LINE_ON || (int)state == 1) ? SETDTR : CLRDTR) ? SOLO_SERIAL_OK : SOLO_SERIAL_ERROR;
+    return EscapeCommFunction(port->handle, (state == CAIS_SERIAL_LINE_ON || (int)state == 1) ? SETDTR : CLRDTR) ? CAIS_SERIAL_OK : CAIS_SERIAL_ERROR;
 }
 
-solo_status_t solo_serial_write(solo_serial_t *port, const char *buf, size_t len, size_t *written_bytes)
+cais_status_t cais_serial_write(cais_serial_t *port, const char *buf, size_t len, size_t *written_bytes)
 {
     DWORD written = 0;
     size_t total = 0;
@@ -211,18 +211,18 @@ solo_status_t solo_serial_write(solo_serial_t *port, const char *buf, size_t len
     }
 
     if (port == NULL || port->handle == INVALID_HANDLE_VALUE || buf == NULL) {
-        return SOLO_ERROR;
+        return CAIS_ERROR;
     }
 
     if (len == 0) {
-        return SOLO_OK;
+        return CAIS_OK;
     }
 
     while (total < len) {
         DWORD chunk = (DWORD)(len - total);
         if (!WriteFile(port->handle, buf + total, chunk, &written, NULL)) {
             if (written_bytes != NULL) *written_bytes = total;
-            return (total > 0) ? SOLO_OK : SOLO_ERROR;
+            return (total > 0) ? CAIS_OK : CAIS_ERROR;
         }
         if (written == 0) {
             break;
@@ -233,10 +233,10 @@ solo_status_t solo_serial_write(solo_serial_t *port, const char *buf, size_t len
     if (written_bytes != NULL) {
         *written_bytes = total;
     }
-    return (total > 0 || len == 0) ? SOLO_OK : SOLO_AGAIN;
+    return (total > 0 || len == 0) ? CAIS_OK : CAIS_AGAIN;
 }
 
-solo_status_t solo_serial_read(solo_serial_t *port, char *buf, size_t max_len, size_t *read_bytes, int timeout_ms)
+cais_status_t cais_serial_read(cais_serial_t *port, char *buf, size_t max_len, size_t *read_bytes, int timeout_ms)
 {
     DWORD read_len = 0;
     int need_restore = 0;
@@ -246,89 +246,89 @@ solo_status_t solo_serial_read(solo_serial_t *port, char *buf, size_t max_len, s
     }
 
     if (port == NULL || port->handle == INVALID_HANDLE_VALUE || buf == NULL || max_len == 0) {
-        return SOLO_ERROR;
+        return CAIS_ERROR;
     }
 
     if (timeout_ms >= 0 && timeout_ms != port->timeout_ms) {
-        if (solo_serial_apply_comm_timeouts(port->handle, timeout_ms) == SOLO_SERIAL_OK) {
+        if (cais_serial_apply_comm_timeouts(port->handle, timeout_ms) == CAIS_SERIAL_OK) {
             need_restore = 1;
         }
     }
 
     if (!ReadFile(port->handle, buf, (DWORD)max_len, &read_len, NULL)) {
         if (need_restore) {
-            solo_serial_apply_comm_timeouts(port->handle, port->timeout_ms);
+            cais_serial_apply_comm_timeouts(port->handle, port->timeout_ms);
         }
-        return SOLO_ERROR;
+        return CAIS_ERROR;
     }
 
     if (need_restore) {
-        solo_serial_apply_comm_timeouts(port->handle, port->timeout_ms);
+        cais_serial_apply_comm_timeouts(port->handle, port->timeout_ms);
     }
 
     if (read_len == 0) {
-        return SOLO_AGAIN; /* Timeout */
+        return CAIS_AGAIN; /* Timeout */
     }
 
     if (read_bytes != NULL) {
         *read_bytes = (size_t)read_len;
     }
-    return SOLO_OK;
+    return CAIS_OK;
 }
 
-solo_serial_status_t solo_serial_set_timeout(solo_serial_t *port, int timeout_ms)
+cais_serial_status_t cais_serial_set_timeout(cais_serial_t *port, int timeout_ms)
 {
     if (port == NULL || port->handle == INVALID_HANDLE_VALUE) {
-        return SOLO_SERIAL_ERROR;
+        return CAIS_SERIAL_ERROR;
     }
-    if (solo_serial_apply_comm_timeouts(port->handle, timeout_ms) != SOLO_SERIAL_OK) {
-        return SOLO_SERIAL_ERROR;
+    if (cais_serial_apply_comm_timeouts(port->handle, timeout_ms) != CAIS_SERIAL_OK) {
+        return CAIS_SERIAL_ERROR;
     }
     port->timeout_ms = timeout_ms;
-    return SOLO_SERIAL_OK;
+    return CAIS_SERIAL_OK;
 }
 
-solo_line_state_t solo_serial_get_cts(solo_serial_t *port)
+cais_line_state_t cais_serial_get_cts(cais_serial_t *port)
 {
     DWORD modem_stat = 0;
-    if (port == NULL || port->handle == INVALID_HANDLE_VALUE) return SOLO_LINE_ERROR;
-    if (!GetCommModemStatus(port->handle, &modem_stat)) return SOLO_LINE_ERROR;
-    return (modem_stat & MS_CTS_ON) ? SOLO_LINE_HIGH : SOLO_LINE_LOW;
+    if (port == NULL || port->handle == INVALID_HANDLE_VALUE) return CAIS_LINE_ERROR;
+    if (!GetCommModemStatus(port->handle, &modem_stat)) return CAIS_LINE_ERROR;
+    return (modem_stat & MS_CTS_ON) ? CAIS_LINE_HIGH : CAIS_LINE_LOW;
 }
 
-solo_line_state_t solo_serial_get_dsr(solo_serial_t *port)
+cais_line_state_t cais_serial_get_dsr(cais_serial_t *port)
 {
     DWORD modem_stat = 0;
-    if (port == NULL || port->handle == INVALID_HANDLE_VALUE) return SOLO_LINE_ERROR;
-    if (!GetCommModemStatus(port->handle, &modem_stat)) return SOLO_LINE_ERROR;
-    return (modem_stat & MS_DSR_ON) ? SOLO_LINE_HIGH : SOLO_LINE_LOW;
+    if (port == NULL || port->handle == INVALID_HANDLE_VALUE) return CAIS_LINE_ERROR;
+    if (!GetCommModemStatus(port->handle, &modem_stat)) return CAIS_LINE_ERROR;
+    return (modem_stat & MS_DSR_ON) ? CAIS_LINE_HIGH : CAIS_LINE_LOW;
 }
 
-solo_line_state_t solo_serial_get_cd(solo_serial_t *port)
+cais_line_state_t cais_serial_get_cd(cais_serial_t *port)
 {
     DWORD modem_stat = 0;
-    if (port == NULL || port->handle == INVALID_HANDLE_VALUE) return SOLO_LINE_ERROR;
-    if (!GetCommModemStatus(port->handle, &modem_stat)) return SOLO_LINE_ERROR;
-    return (modem_stat & MS_RLSD_ON) ? SOLO_LINE_HIGH : SOLO_LINE_LOW;
+    if (port == NULL || port->handle == INVALID_HANDLE_VALUE) return CAIS_LINE_ERROR;
+    if (!GetCommModemStatus(port->handle, &modem_stat)) return CAIS_LINE_ERROR;
+    return (modem_stat & MS_RLSD_ON) ? CAIS_LINE_HIGH : CAIS_LINE_LOW;
 }
 
-solo_line_state_t solo_serial_get_ri(solo_serial_t *port)
+cais_line_state_t cais_serial_get_ri(cais_serial_t *port)
 {
     DWORD modem_stat = 0;
-    if (port == NULL || port->handle == INVALID_HANDLE_VALUE) return SOLO_LINE_ERROR;
-    if (!GetCommModemStatus(port->handle, &modem_stat)) return SOLO_LINE_ERROR;
-    return (modem_stat & MS_RING_ON) ? SOLO_LINE_HIGH : SOLO_LINE_LOW;
+    if (port == NULL || port->handle == INVALID_HANDLE_VALUE) return CAIS_LINE_ERROR;
+    if (!GetCommModemStatus(port->handle, &modem_stat)) return CAIS_LINE_ERROR;
+    return (modem_stat & MS_RING_ON) ? CAIS_LINE_HIGH : CAIS_LINE_LOW;
 }
 
-solo_serial_status_t solo_serial_drain(solo_serial_t *port)
+cais_serial_status_t cais_serial_drain(cais_serial_t *port)
 {
     if (port == NULL || port->handle == INVALID_HANDLE_VALUE) {
-        return SOLO_SERIAL_ERROR;
+        return CAIS_SERIAL_ERROR;
     }
-    return FlushFileBuffers(port->handle) ? SOLO_SERIAL_OK : SOLO_SERIAL_ERROR;
+    return FlushFileBuffers(port->handle) ? CAIS_SERIAL_OK : CAIS_SERIAL_ERROR;
 }
 
-void solo_serial_close(solo_serial_t *port)
+void cais_serial_close(cais_serial_t *port)
 {
     if (port != NULL) {
         if (port->handle != INVALID_HANDLE_VALUE) {
@@ -344,4 +344,4 @@ void solo_serial_close(solo_serial_t *port)
 #else
 /* ISO C forbids an empty translation unit */
 typedef int make_iso_compilers_happy_serial_windows_ce;
-#endif /* SOLO_IS_WINDOWS_CE */
+#endif /* CAIS_IS_WINDOWS_CE */

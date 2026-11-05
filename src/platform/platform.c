@@ -1,6 +1,6 @@
 /*
- * solo - Physical I/O, System Foundations & Hardware Abstractions
- * Projectum Lunare <https://github.com/projectum-lunare/solo>
+ * cais - Physical I/O, System Foundations & Hardware Abstractions
+ * Projectum Lunare <https://github.com/projectum-lunare/cais>
  * Copyright (C) 2026 Gustavo Veiga <gustavo.veiga@outlook.com.br>
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
@@ -12,45 +12,45 @@
 #define _POSIX_C_SOURCE 200112L
 #endif
 
-#include <solo/platform.h>
+#include <cais/platform.h>
 
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
 
-const char *solo_platform_os(void)
+const char *cais_platform_os(void)
 {
-    return SOLO_OS_NAME;
+    return CAIS_OS_NAME;
 }
 
-const char *solo_platform_arch(void)
+const char *cais_platform_arch(void)
 {
-    return SOLO_ARCH_NAME;
+    return CAIS_ARCH_NAME;
 }
 
-int solo_platform_bits(void)
+int cais_platform_bits(void)
 {
-    return SOLO_BITS;
+    return CAIS_BITS;
 }
 
-const char *solo_platform_endian(void)
+const char *cais_platform_endian(void)
 {
-    return SOLO_GET_ENDIAN_NAME();
+    return CAIS_GET_ENDIAN_NAME();
 }
 
-const char *solo_strerror(solo_status_t status)
+const char *cais_strerror(cais_status_t status)
 {
     switch (status) {
-    case SOLO_OK:          return "Success";
-    case SOLO_ERROR:       return "I/O or system error";
-    case SOLO_AGAIN:       return "Operation would block or timeout expired";
-    case SOLO_EOF:         return "End of stream / connection closed";
-    case SOLO_UNSUPPORTED: return "Operation not supported on platform";
+    case CAIS_OK:          return "Success";
+    case CAIS_ERROR:       return "I/O or system error";
+    case CAIS_AGAIN:       return "Operation would block or timeout expired";
+    case CAIS_EOF:         return "End of stream / connection closed";
+    case CAIS_UNSUPPORTED: return "Operation not supported on platform";
     default:               return "Unknown error";
     }
 }
 
-void solo_set_err(char *err_buf, size_t err_cap, const char *msg)
+void cais_set_err(char *err_buf, size_t err_cap, const char *msg)
 {
     if (err_buf != NULL && err_cap > 0) {
         if (msg != NULL) {
@@ -66,7 +66,7 @@ void solo_set_err(char *err_buf, size_t err_cap, const char *msg)
     }
 }
 
-void solo_set_err_fmt(char *err_buf, size_t err_cap, const char *fmt, ...)
+void cais_set_err_fmt(char *err_buf, size_t err_cap, const char *fmt, ...)
 {
     if (err_buf != NULL && err_cap > 0) {
         if (fmt != NULL) {

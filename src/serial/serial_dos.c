@@ -1,6 +1,6 @@
 /*
- * solo - Physical I/O, System Foundations & Hardware Abstractions
- * Projectum Lunare <https://github.com/projectum-lunare/solo>
+ * cais - Physical I/O, System Foundations & Hardware Abstractions
+ * Projectum Lunare <https://github.com/projectum-lunare/cais>
  * Copyright (C) 2026 Gustavo Veiga <gustavo.veiga@outlook.com.br>
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
@@ -8,9 +8,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-#include <solo/platform.h>
+#include <cais/platform.h>
 
-#if SOLO_IS_DOS
+#if CAIS_IS_DOS
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,7 +21,7 @@
 #include <bios.h>
 #include <conio.h>
 
-#include <solo/serial.h>
+#include <cais/serial.h>
 
 struct serial_port {
     int fd;                 /* DOS file handle (or -1 if using pure hardware/BIOS) */
@@ -31,15 +31,15 @@ struct serial_port {
     char name[8];           /* "COM1", "COM2", etc. */
 };
 
-solo_serial_t *solo_serial_open(const char *path, const solo_serial_opts_t *opts, char *err_buf, size_t err_cap)
+cais_serial_t *cais_serial_open(const char *path, const cais_serial_opts_t *opts, char *err_buf, size_t err_cap)
 {
-    solo_serial_t *port;
+    cais_serial_t *port;
     char dos_name[8];
     unsigned int bios_port = 0;
     unsigned short base_io = 0x3F8;
     int fd;
     unsigned short init_byte = 0;
-    solo_serial_opts_t default_opts;
+    cais_serial_opts_t default_opts;
     const char *p = (path && path[0] != '\0') ? path : "COM1";
 
     if ((p[0] == 'C' || p[0] == 'c') && (p[1] == 'O' || p[1] == 'o') &&
@@ -141,11 +141,11 @@ solo_serial_t *solo_serial_open(const char *path, const solo_serial_opts_t *opts
     /* 4. Open DOS device handle */
     fd = open(dos_name, O_RDWR | O_BINARY);
 
-    port = (solo_serial_t *)malloc(sizeof(solo_serial_t));
+    port = (cais_serial_t *)malloc(sizeof(cais_serial_t));
     if (port == NULL) {
         if (fd >= 0)
             close(fd);
-        solo_set_err(err_buf, err_cap, "Memory allocation failure for DOS serial port");
+        cais_set_err(err_buf, err_cap, "Memory allocation failure for DOS serial port");
         return NULL;
     }
 
@@ -174,43 +174,43 @@ solo_serial_t *solo_serial_open(const char *path, const solo_serial_opts_t *opts
     return port;
 }
 
-solo_serial_status_t solo_serial_set_rts(solo_serial_t *port, solo_serial_line_t state)
+cais_serial_status_t cais_serial_set_rts(cais_serial_t *port, cais_serial_line_t state)
 {
     unsigned char mcr;
     if (port == NULL)
-        return SOLO_SERIAL_ERROR;
+        return CAIS_SERIAL_ERROR;
     mcr = (unsigned char)inp(port->base_io + 4);
-    if (state == SOLO_SERIAL_LINE_ON || (int)state == 1)
+    if (state == CAIS_SERIAL_LINE_ON || (int)state == 1)
         mcr |= 0x02; /* Bit 1: RTS */
     else
         mcr &= ~0x02;
     outp(port->base_io + 4, mcr);
-    return SOLO_SERIAL_OK;
+    return CAIS_SERIAL_OK;
 }
 
-solo_serial_status_t solo_serial_set_dtr(solo_serial_t *port, solo_serial_line_t state)
+cais_serial_status_t cais_serial_set_dtr(cais_serial_t *port, cais_serial_line_t state)
 {
     unsigned char mcr;
     if (port == NULL)
-        return SOLO_SERIAL_ERROR;
+        return CAIS_SERIAL_ERROR;
     mcr = (unsigned char)inp(port->base_io + 4);
-    if (state == SOLO_SERIAL_LINE_ON || (int)state == 1)
+    if (state == CAIS_SERIAL_LINE_ON || (int)state == 1)
         mcr |= 0x01; /* Bit 0: DTR */
     else
         mcr &= ~0x01;
     outp(port->base_io + 4, mcr);
-    return SOLO_SERIAL_OK;
+    return CAIS_SERIAL_OK;
 }
 
-solo_status_t solo_serial_write(solo_serial_t *port, const char *buf, size_t len, size_t *written_bytes)
+cais_status_t cais_serial_write(cais_serial_t *port, const char *buf, size_t len, size_t *written_bytes)
 {
     if (written_bytes != NULL) {
         *written_bytes = 0;
     }
     if (port == NULL || buf == NULL)
-        return SOLO_ERROR;
+        return CAIS_ERROR;
     if (len == 0)
-        return SOLO_OK;
+        return CAIS_OK;
 
     /* Primary: direct UART THR with timeout deadline */
     if (port->base_io != 0) {
@@ -231,14 +231,14 @@ solo_status_t solo_serial_write(solo_serial_t *port, const char *buf, size_t len
                 while ((inp(port->base_io + 5) & 0x20) == 0) {
                     if ((clock() - start) >= wait_ticks) {
                         if (written_bytes != NULL) *written_bytes = i;
-                        return (i > 0) ? SOLO_OK : SOLO_AGAIN;
+                        return (i > 0) ? CAIS_OK : CAIS_AGAIN;
                     }
                 }
             } else if (port->timeout_ms == 0) {
                 /* Non-blocking: check if transmitter ready */
                 if ((inp(port->base_io + 5) & 0x20) == 0) {
                     if (written_bytes != NULL) *written_bytes = i;
-                    return (i > 0) ? SOLO_OK : SOLO_AGAIN;
+                    return (i > 0) ? CAIS_OK : CAIS_AGAIN;
                 }
             } else {
                 /* Blocking indefinitely */
@@ -249,7 +249,7 @@ solo_status_t solo_serial_write(solo_serial_t *port, const char *buf, size_t len
             outp(port->base_io + 0, (unsigned char)buf[i]);
         }
         if (written_bytes != NULL) *written_bytes = len;
-        return SOLO_OK;
+        return CAIS_OK;
     }
 
     /* Fallback: write via DOS handle */
@@ -257,22 +257,22 @@ solo_status_t solo_serial_write(solo_serial_t *port, const char *buf, size_t len
         int n = write(port->fd, buf, len);
         if (n >= 0) {
             if (written_bytes != NULL) *written_bytes = (size_t)n;
-            return SOLO_OK;
+            return CAIS_OK;
         }
-        return SOLO_ERROR;
+        return CAIS_ERROR;
     }
 
-    return SOLO_ERROR;
+    return CAIS_ERROR;
 }
 
-solo_status_t solo_serial_read(solo_serial_t *port, char *buf, size_t max_len, size_t *read_bytes, int timeout_ms)
+cais_status_t cais_serial_read(cais_serial_t *port, char *buf, size_t max_len, size_t *read_bytes, int timeout_ms)
 {
     int eff_timeout;
     if (read_bytes != NULL) {
         *read_bytes = 0;
     }
     if (port == NULL || buf == NULL || max_len == 0)
-        return SOLO_ERROR;
+        return CAIS_ERROR;
 
     eff_timeout = (timeout_ms >= 0) ? timeout_ms : port->timeout_ms;
 
@@ -283,12 +283,12 @@ solo_status_t solo_serial_read(solo_serial_t *port, char *buf, size_t max_len, s
             if (wait_ticks == 0) wait_ticks = 1;
             while ((inp(port->base_io + 5) & 0x01) == 0) {
                 if ((clock() - start) >= wait_ticks) {
-                    return SOLO_AGAIN; /* Timeout */
+                    return CAIS_AGAIN; /* Timeout */
                 }
             }
         } else if (eff_timeout == 0) {
             if ((inp(port->base_io + 5) & 0x01) == 0) {
-                return SOLO_AGAIN; /* Would block */
+                return CAIS_AGAIN; /* Would block */
             }
         } else {
             while ((inp(port->base_io + 5) & 0x01) == 0) {
@@ -297,57 +297,57 @@ solo_status_t solo_serial_read(solo_serial_t *port, char *buf, size_t max_len, s
         }
         buf[0] = (char)inp(port->base_io + 0);
         if (read_bytes != NULL) *read_bytes = 1;
-        return SOLO_OK;
+        return CAIS_OK;
     }
 
     if (port->fd >= 0) {
         int n = read(port->fd, buf, max_len);
         if (n >= 0) {
             if (read_bytes != NULL) *read_bytes = (size_t)n;
-            return SOLO_OK;
+            return CAIS_OK;
         }
-        return SOLO_ERROR;
+        return CAIS_ERROR;
     }
-    return SOLO_ERROR;
+    return CAIS_ERROR;
 }
 
-solo_serial_status_t solo_serial_set_timeout(solo_serial_t *port, int timeout_ms)
+cais_serial_status_t cais_serial_set_timeout(cais_serial_t *port, int timeout_ms)
 {
     if (port == NULL)
-        return SOLO_SERIAL_ERROR;
+        return CAIS_SERIAL_ERROR;
     port->timeout_ms = timeout_ms;
-    return SOLO_SERIAL_OK;
+    return CAIS_SERIAL_OK;
 }
 
-solo_line_state_t solo_serial_get_cts(solo_serial_t *port)
+cais_line_state_t cais_serial_get_cts(cais_serial_t *port)
 {
-    if (port == NULL) return SOLO_LINE_ERROR;
-    return (inp(port->base_io + 6) & 0x10) ? SOLO_LINE_HIGH : SOLO_LINE_LOW;
+    if (port == NULL) return CAIS_LINE_ERROR;
+    return (inp(port->base_io + 6) & 0x10) ? CAIS_LINE_HIGH : CAIS_LINE_LOW;
 }
 
-solo_line_state_t solo_serial_get_dsr(solo_serial_t *port)
+cais_line_state_t cais_serial_get_dsr(cais_serial_t *port)
 {
-    if (port == NULL) return SOLO_LINE_ERROR;
-    return (inp(port->base_io + 6) & 0x20) ? SOLO_LINE_HIGH : SOLO_LINE_LOW;
+    if (port == NULL) return CAIS_LINE_ERROR;
+    return (inp(port->base_io + 6) & 0x20) ? CAIS_LINE_HIGH : CAIS_LINE_LOW;
 }
 
-solo_line_state_t solo_serial_get_ri(solo_serial_t *port)
+cais_line_state_t cais_serial_get_ri(cais_serial_t *port)
 {
-    if (port == NULL) return SOLO_LINE_ERROR;
-    return (inp(port->base_io + 6) & 0x40) ? SOLO_LINE_HIGH : SOLO_LINE_LOW;
+    if (port == NULL) return CAIS_LINE_ERROR;
+    return (inp(port->base_io + 6) & 0x40) ? CAIS_LINE_HIGH : CAIS_LINE_LOW;
 }
 
-solo_line_state_t solo_serial_get_cd(solo_serial_t *port)
+cais_line_state_t cais_serial_get_cd(cais_serial_t *port)
 {
-    if (port == NULL) return SOLO_LINE_ERROR;
-    return (inp(port->base_io + 6) & 0x80) ? SOLO_LINE_HIGH : SOLO_LINE_LOW;
+    if (port == NULL) return CAIS_LINE_ERROR;
+    return (inp(port->base_io + 6) & 0x80) ? CAIS_LINE_HIGH : CAIS_LINE_LOW;
 }
 
-solo_serial_status_t solo_serial_drain(solo_serial_t *port)
+cais_serial_status_t cais_serial_drain(cais_serial_t *port)
 {
     int timeout = 100000;
     if (port == NULL)
-        return SOLO_SERIAL_ERROR;
+        return CAIS_SERIAL_ERROR;
 
     if (port->fd >= 0) {
         _commit(port->fd);
@@ -357,10 +357,10 @@ solo_serial_status_t solo_serial_drain(solo_serial_t *port)
     while ((inp(port->base_io + 5) & 0x40) == 0 && --timeout > 0) {
         /* spin wait */
     }
-    return (timeout > 0) ? SOLO_SERIAL_OK : SOLO_SERIAL_ERROR;
+    return (timeout > 0) ? CAIS_SERIAL_OK : CAIS_SERIAL_ERROR;
 }
 
-void solo_serial_close(solo_serial_t *port)
+void cais_serial_close(cais_serial_t *port)
 {
     if (port != NULL) {
         if (port->fd >= 0) {
@@ -374,4 +374,4 @@ void solo_serial_close(solo_serial_t *port)
 #else
 /* ISO C forbids an empty translation unit */
 typedef int make_iso_compilers_happy_serial_dos;
-#endif /* SOLO_IS_DOS */
+#endif /* CAIS_IS_DOS */

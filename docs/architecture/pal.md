@@ -8,11 +8,11 @@ The **Platform Abstraction Layer (PAL)** decouples high-level public APIs and Lu
 
 Each subsystem contains a dedicated `*_pal.h` file that detects the host environment and provides unified internal signatures:
 
-- [`src/socket/socket_pal.h`](file:///home/gustavo/Projetos/solo/src/socket/socket_pal.h)
-- [`src/serial/serial_pal.h`](file:///home/gustavo/Projetos/solo/src/serial/serial_pal.h)
-- [`src/filesystem/filesystem_pal.h`](file:///home/gustavo/Projetos/solo/src/filesystem/filesystem_pal.h)
-- [`src/parallel/parallel_pal.h`](file:///home/gustavo/Projetos/solo/src/parallel/parallel_pal.h)
-- [`src/sandbox/sandbox_pal.h`](file:///home/gustavo/Projetos/solo/src/sandbox/sandbox_pal.h)
+- [`src/socket/socket_pal.h`](file:///home/gustavo/Projetos/cais/src/socket/socket_pal.h)
+- [`src/serial/serial_pal.h`](file:///home/gustavo/Projetos/cais/src/serial/serial_pal.h)
+- [`src/filesystem/filesystem_pal.h`](file:///home/gustavo/Projetos/cais/src/filesystem/filesystem_pal.h)
+- [`src/parallel/parallel_pal.h`](file:///home/gustavo/Projetos/cais/src/parallel/parallel_pal.h)
+- [`src/sandbox/sandbox_pal.h`](file:///home/gustavo/Projetos/cais/src/sandbox/sandbox_pal.h)
 
 ---
 
@@ -20,12 +20,12 @@ Each subsystem contains a dedicated `*_pal.h` file that detects the host environ
 
 ```mermaid
 flowchart TD
-    PublicAPI["Public C API (include/solo/*.h)"]
+    PublicAPI["Public C API (include/cais/*.h)"]
     LuaBinding["Lua Binding (src/*/*_lua.c)"]
     
     BackendDispatch["Subsystem Core Engine"]
     
-    PALDetect["PAL Macro Detection<br/>SOLO_IS_POSIX, SOLO_IS_WINDOWS, SOLO_IS_DOS, etc."]
+    PALDetect["PAL Macro Detection<br/>CAIS_IS_POSIX, CAIS_IS_WINDOWS, CAIS_IS_DOS, etc."]
     
     DriverPOSIX["POSIX Driver (termios, poll, dirent)"]
     DriverWin32["Win32 Driver (Comm API, WSAPoll/select, FindFirstFile)"]
@@ -44,6 +44,6 @@ flowchart TD
 
 ## PAL Rules for Contributors
 
-1. **No direct standard includes in public headers:** User code including `<solo/solo.h>` should not leak `<windows.h>`, `<sys/socket.h>`, or `<dos.h>`.
-2. **Abstract socket types:** Use `SOLO_PAL_SOCK_T` and `SOLO_SOCK_IS_VALID()` because Windows uses `SOCKET` (unsigned integer) while POSIX uses `int` (signed integer).
-3. **Interrupt Handling:** Loop on transient interrupt signals (`EINTR` on POSIX, `WSAEINTR` on Windows) via `SOLO_PAL_IS_INTR(err)`.
+1. **No direct standard includes in public headers:** User code including `<cais/cais.h>` should not leak `<windows.h>`, `<sys/socket.h>`, or `<dos.h>`.
+2. **Abstract socket types:** Use `CAIS_PAL_SOCK_T` and `CAIS_SOCK_IS_VALID()` because Windows uses `SOCKET` (unsigned integer) while POSIX uses `int` (signed integer).
+3. **Interrupt Handling:** Loop on transient interrupt signals (`EINTR` on POSIX, `WSAEINTR` on Windows) via `CAIS_PAL_IS_INTR(err)`.

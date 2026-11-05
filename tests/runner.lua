@@ -1,6 +1,6 @@
 --
--- solo - Physical I/O, System Foundations & Hardware Abstractions
--- Projectum Lunare <https://github.com/projectum-lunare/solo>
+-- cais - Physical I/O, System Foundations & Hardware Abstractions
+-- Projectum Lunare <https://github.com/projectum-lunare/cais>
 -- Copyright (C) 2026 Gustavo Veiga <gustavo.veiga@outlook.com.br>
 -- Mozilla Public License Version 2.0
 --
@@ -11,7 +11,7 @@ package.cpath = "./build/lua/?.so;./build/lua/?/init.so;./?.so;./?.dylib;./?.dll
 
 local harness = require("tests.harness")
 
-io.write("==> Running Solo Lua Test Suite...\n")
+io.write("==> Running Cais Lua Test Suite...\n")
 
 -- Modular Lua test suites under tests/lua/
 local suites = {

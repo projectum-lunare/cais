@@ -1,6 +1,6 @@
 /*
- * solo - Physical I/O, System Foundations & Hardware Abstractions
- * Projectum Lunare <https://github.com/projectum-lunare/solo>
+ * cais - Physical I/O, System Foundations & Hardware Abstractions
+ * Projectum Lunare <https://github.com/projectum-lunare/cais>
  * Copyright (C) 2026 Gustavo Veiga <gustavo.veiga@outlook.com.br>
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
@@ -26,7 +26,7 @@
  * Shared Address Engine
  * ============================================================================= */
 
-const char *solo_socket_normalize_bind_host(const char *host)
+const char *cais_socket_normalize_bind_host(const char *host)
 {
     if (host == NULL || host[0] == '\0' ||
         strcmp(host, "0.0.0.0") == 0 || strcmp(host, "*") == 0) {
@@ -35,7 +35,7 @@ const char *solo_socket_normalize_bind_host(const char *host)
     return host;
 }
 
-const char *solo_socket_normalize_connect_host(const char *host)
+const char *cais_socket_normalize_connect_host(const char *host)
 {
     if (host == NULL || host[0] == '\0') {
         return "127.0.0.1";
@@ -43,7 +43,7 @@ const char *solo_socket_normalize_connect_host(const char *host)
     return host;
 }
 
-int solo_socket_parse_ipv4(const char *host, unsigned long *out_ip_be)
+int cais_socket_parse_ipv4(const char *host, unsigned long *out_ip_be)
 {
     unsigned int a, b, c, d;
     char tail[2];
@@ -66,7 +66,7 @@ int solo_socket_parse_ipv4(const char *host, unsigned long *out_ip_be)
     return 0;
 }
 
-int solo_socket_format_ipv4(unsigned long ip_be, char *buf, size_t len)
+int cais_socket_format_ipv4(unsigned long ip_be, char *buf, size_t len)
 {
     unsigned int a = (unsigned int)((ip_be >> 24) & 0xFF);
     unsigned int b = (unsigned int)((ip_be >> 16) & 0xFF);
@@ -82,7 +82,7 @@ int solo_socket_format_ipv4(unsigned long ip_be, char *buf, size_t len)
     return (n > 0 && (size_t)n < len) ? 0 : -1;
 }
 
-int solo_socket_format_port(int port, char *buf, size_t len)
+int cais_socket_format_port(int port, char *buf, size_t len)
 {
     int n;
     if (buf == NULL || len == 0 || port < 0 || port > 65535) {
@@ -96,12 +96,12 @@ int solo_socket_format_port(int port, char *buf, size_t len)
  * Shared Timeout Engine
  * ============================================================================= */
 
-int solo_socket_normalize_timeout(int timeout_ms)
+int cais_socket_normalize_timeout(int timeout_ms)
 {
     return (timeout_ms < 0) ? 0 : timeout_ms;
 }
 
-void solo_socket_ms_to_timeval(int timeout_ms, long *sec, long *usec)
+void cais_socket_ms_to_timeval(int timeout_ms, long *sec, long *usec)
 {
     if (timeout_ms < 0) {
         timeout_ms = 0;
@@ -118,77 +118,77 @@ void solo_socket_ms_to_timeval(int timeout_ms, long *sec, long *usec)
  * Lifecycle & Creation Wrappers
  * ============================================================================= */
 
-solo_socket_t *solo_socket_tcp(solo_socket_mode_t mode, char *err_buf, size_t err_cap)
+cais_socket_t *cais_socket_tcp(cais_socket_mode_t mode, char *err_buf, size_t err_cap)
 {
-    return solo_socket_create(SOLO_SOCK_TCP, mode, err_buf, err_cap);
+    return cais_socket_create(CAIS_SOCK_TCP, mode, err_buf, err_cap);
 }
 
-solo_socket_t *solo_socket_udp(solo_socket_mode_t mode, char *err_buf, size_t err_cap)
+cais_socket_t *cais_socket_udp(cais_socket_mode_t mode, char *err_buf, size_t err_cap)
 {
-    return solo_socket_create(SOLO_SOCK_UDP, mode, err_buf, err_cap);
+    return cais_socket_create(CAIS_SOCK_UDP, mode, err_buf, err_cap);
 }
 
-void solo_socket_close(solo_socket_t *sock)
+void cais_socket_close(cais_socket_t *sock)
 {
     if (sock != NULL) {
-        solo_socket_backend_close(sock);
+        cais_socket_backend_close(sock);
         free(sock);
     }
 }
 
-solo_socket_t *solo_socket_bind(const char *host, int port, int backlog, solo_socket_mode_t mode, char *err_buf, size_t err_cap)
+cais_socket_t *cais_socket_bind(const char *host, int port, int backlog, cais_socket_mode_t mode, char *err_buf, size_t err_cap)
 {
-    solo_socket_t *sock;
+    cais_socket_t *sock;
     if (err_buf != NULL && err_cap > 0) {
         err_buf[0] = '\0';
     }
-    sock = solo_socket_tcp(mode, err_buf, err_cap);
+    sock = cais_socket_tcp(mode, err_buf, err_cap);
     if (sock == NULL) {
         return NULL;
     }
 
-    if (solo_socket_bind_sock(sock, host, port, backlog, err_buf, err_cap) != SOLO_SOCK_OK) {
-        solo_socket_close(sock);
+    if (cais_socket_bind_sock(sock, host, port, backlog, err_buf, err_cap) != CAIS_SOCK_OK) {
+        cais_socket_close(sock);
         return NULL;
     }
 
     return sock;
 }
 
-solo_socket_t *solo_socket_udp_bind(const char *host, int port, solo_socket_mode_t mode, char *err_buf, size_t err_cap)
+cais_socket_t *cais_socket_udp_bind(const char *host, int port, cais_socket_mode_t mode, char *err_buf, size_t err_cap)
 {
-    solo_socket_t *sock;
+    cais_socket_t *sock;
     if (err_buf != NULL && err_cap > 0) {
         err_buf[0] = '\0';
     }
-    sock = solo_socket_udp(mode, err_buf, err_cap);
+    sock = cais_socket_udp(mode, err_buf, err_cap);
     if (sock == NULL) {
         return NULL;
     }
 
-    if (solo_socket_bind_sock(sock, host, port, 0, err_buf, err_cap) != SOLO_SOCK_OK) {
-        solo_socket_close(sock);
+    if (cais_socket_bind_sock(sock, host, port, 0, err_buf, err_cap) != CAIS_SOCK_OK) {
+        cais_socket_close(sock);
         return NULL;
     }
 
     return sock;
 }
 
-solo_socket_t *solo_socket_connect(const char *host, int port, solo_socket_mode_t mode, char *err_buf, size_t err_cap)
+cais_socket_t *cais_socket_connect(const char *host, int port, cais_socket_mode_t mode, char *err_buf, size_t err_cap)
 {
-    solo_socket_status_t st;
-    solo_socket_t *sock;
+    cais_socket_status_t st;
+    cais_socket_t *sock;
     if (err_buf != NULL && err_cap > 0) {
         err_buf[0] = '\0';
     }
-    sock = solo_socket_tcp(mode, err_buf, err_cap);
+    sock = cais_socket_tcp(mode, err_buf, err_cap);
     if (sock == NULL) {
         return NULL;
     }
 
-    st = solo_socket_connect_sock(sock, host, port, err_buf, err_cap);
-    if (st != SOLO_SOCK_OK && st != SOLO_SOCK_AGAIN) {
-        solo_socket_close(sock);
+    st = cais_socket_connect_sock(sock, host, port, err_buf, err_cap);
+    if (st != CAIS_SOCK_OK && st != CAIS_SOCK_AGAIN) {
+        cais_socket_close(sock);
         return NULL;
     }
 
@@ -199,34 +199,34 @@ solo_socket_t *solo_socket_connect(const char *host, int port, solo_socket_mode_
  * Stream & Datagram I/O
  * ============================================================================= */
 
-solo_socket_status_t solo_socket_write(solo_socket_t *sock, const char *buf, size_t len, size_t *sent)
+cais_socket_status_t cais_socket_write(cais_socket_t *sock, const char *buf, size_t len, size_t *sent)
 {
-    return solo_socket_send(sock, buf, len, sent);
+    return cais_socket_send(sock, buf, len, sent);
 }
 
-solo_socket_status_t solo_socket_read(solo_socket_t *sock, char *buf, size_t max_len, size_t *received)
+cais_socket_status_t cais_socket_read(cais_socket_t *sock, char *buf, size_t max_len, size_t *received)
 {
-    return solo_socket_recv(sock, buf, max_len, received);
+    return cais_socket_recv(sock, buf, max_len, received);
 }
 
-solo_socket_status_t solo_socket_send(solo_socket_t *sock, const char *buf, size_t len, size_t *sent)
+cais_socket_status_t cais_socket_send(cais_socket_t *sock, const char *buf, size_t len, size_t *sent)
 {
     size_t total = 0;
     if (sent != NULL) {
         *sent = 0;
     }
-    if (!SOLO_SOCK_IS_VALID(sock) || buf == NULL) {
-        return SOLO_SOCK_ERROR;
+    if (!CAIS_SOCK_IS_VALID(sock) || buf == NULL) {
+        return CAIS_SOCK_ERROR;
     }
     if (len == 0) {
-        return SOLO_SOCK_OK;
+        return CAIS_SOCK_OK;
     }
 
     /* Datagram (UDP) or non-blocking: execute single raw send attempt */
-    if (sock->mode == SOLO_SOCK_NONBLOCKING || sock->type == SOLO_SOCK_UDP) {
+    if (sock->mode == CAIS_SOCK_NONBLOCKING || sock->type == CAIS_SOCK_UDP) {
         size_t n = 0;
-        solo_socket_status_t st = solo_socket_backend_send(sock, buf, len, &n);
-        if (st == SOLO_SOCK_OK && sent != NULL) {
+        cais_socket_status_t st = cais_socket_backend_send(sock, buf, len, &n);
+        if (st == CAIS_SOCK_OK && sent != NULL) {
             *sent = n;
         }
         return st;
@@ -235,20 +235,20 @@ solo_socket_status_t solo_socket_send(solo_socket_t *sock, const char *buf, size
     /* Blocking TCP stream send: loop ensuring complete delivery of all bytes */
     while (total < len) {
         size_t chunk = 0;
-        solo_socket_status_t st = solo_socket_backend_send(sock, buf + total, len - total, &chunk);
-        if (st == SOLO_SOCK_OK) {
+        cais_socket_status_t st = cais_socket_backend_send(sock, buf + total, len - total, &chunk);
+        if (st == CAIS_SOCK_OK) {
             if (chunk == 0) {
                 break;
             }
             total += chunk;
-        } else if (st == SOLO_SOCK_AGAIN) {
+        } else if (st == CAIS_SOCK_AGAIN) {
             if (sock->timeout_ms > 0) {
-                int ev = solo_socket_wait(sock, SOLO_SOCK_POLL_WRITE, sock->timeout_ms);
+                int ev = cais_socket_wait(sock, CAIS_SOCK_POLL_WRITE, sock->timeout_ms);
                 if (ev <= 0) {
                     if (sent != NULL) {
                         *sent = total;
                     }
-                    return (ev == 0) ? SOLO_SOCK_AGAIN : SOLO_SOCK_ERROR;
+                    return (ev == 0) ? CAIS_SOCK_AGAIN : CAIS_SOCK_ERROR;
                 }
             }
             continue;
@@ -256,104 +256,104 @@ solo_socket_status_t solo_socket_send(solo_socket_t *sock, const char *buf, size
             if (sent != NULL) {
                 *sent = total;
             }
-            return SOLO_SOCK_ERROR;
+            return CAIS_SOCK_ERROR;
         }
     }
 
     if (sent != NULL) {
         *sent = total;
     }
-    return SOLO_SOCK_OK;
+    return CAIS_SOCK_OK;
 }
 
 /* =============================================================================
  * Mode, Timeout, Polling & Properties
  * ============================================================================= */
 
-solo_socket_mode_t solo_socket_get_mode(const solo_socket_t *sock)
+cais_socket_mode_t cais_socket_get_mode(const cais_socket_t *sock)
 {
-    return sock ? sock->mode : SOLO_SOCK_BLOCKING;
+    return sock ? sock->mode : CAIS_SOCK_BLOCKING;
 }
 
-solo_bool_t solo_socket_is_blocking(const solo_socket_t *sock)
+cais_bool_t cais_socket_is_blocking(const cais_socket_t *sock)
 {
-    if (sock == NULL) return SOLO_FALSE;
-    return (sock->mode == SOLO_SOCK_BLOCKING) ? SOLO_TRUE : SOLO_FALSE;
+    if (sock == NULL) return CAIS_FALSE;
+    return (sock->mode == CAIS_SOCK_BLOCKING) ? CAIS_TRUE : CAIS_FALSE;
 }
 
-solo_bool_t solo_socket_is_nonblocking(const solo_socket_t *sock)
+cais_bool_t cais_socket_is_nonblocking(const cais_socket_t *sock)
 {
-    if (sock == NULL) return SOLO_FALSE;
-    return (sock->mode == SOLO_SOCK_NONBLOCKING) ? SOLO_TRUE : SOLO_FALSE;
+    if (sock == NULL) return CAIS_FALSE;
+    return (sock->mode == CAIS_SOCK_NONBLOCKING) ? CAIS_TRUE : CAIS_FALSE;
 }
 
-solo_socket_type_t solo_socket_get_type(const solo_socket_t *sock)
+cais_socket_type_t cais_socket_get_type(const cais_socket_t *sock)
 {
-    return sock ? sock->type : SOLO_SOCK_TCP;
+    return sock ? sock->type : CAIS_SOCK_TCP;
 }
 
-int solo_socket_get_fd(const solo_socket_t *sock)
+int cais_socket_get_fd(const cais_socket_t *sock)
 {
-    return SOLO_SOCK_FD(sock);
+    return CAIS_SOCK_FD(sock);
 }
 
-solo_socket_status_t solo_socket_set_mode(solo_socket_t *sock, solo_socket_mode_t mode, char *err_buf, size_t err_cap)
+cais_socket_status_t cais_socket_set_mode(cais_socket_t *sock, cais_socket_mode_t mode, char *err_buf, size_t err_cap)
 {
     if (err_buf != NULL && err_cap > 0) {
         err_buf[0] = '\0';
     }
-    if (!SOLO_SOCK_IS_VALID(sock)) {
-        solo_socket_set_err(err_buf, err_cap, "invalid socket handle");
-        return SOLO_SOCK_ERROR;
+    if (!CAIS_SOCK_IS_VALID(sock)) {
+        cais_socket_set_err(err_buf, err_cap, "invalid socket handle");
+        return CAIS_SOCK_ERROR;
     }
-    if (solo_socket_backend_set_mode(sock, mode, err_buf, err_cap) != SOLO_SOCK_OK) {
-        return SOLO_SOCK_ERROR;
+    if (cais_socket_backend_set_mode(sock, mode, err_buf, err_cap) != CAIS_SOCK_OK) {
+        return CAIS_SOCK_ERROR;
     }
     sock->mode = mode;
-    return SOLO_SOCK_OK;
+    return CAIS_SOCK_OK;
 }
 
-solo_socket_status_t solo_socket_set_timeout(solo_socket_t *sock, int timeout_ms, char *err_buf, size_t err_cap)
+cais_socket_status_t cais_socket_set_timeout(cais_socket_t *sock, int timeout_ms, char *err_buf, size_t err_cap)
 {
     if (err_buf != NULL && err_cap > 0) {
         err_buf[0] = '\0';
     }
-    if (!SOLO_SOCK_IS_VALID(sock)) {
-        solo_socket_set_err(err_buf, err_cap, "invalid socket handle");
-        return SOLO_SOCK_ERROR;
+    if (!CAIS_SOCK_IS_VALID(sock)) {
+        cais_socket_set_err(err_buf, err_cap, "invalid socket handle");
+        return CAIS_SOCK_ERROR;
     }
-    timeout_ms = solo_socket_normalize_timeout(timeout_ms);
-    if (solo_socket_backend_set_timeout(sock, timeout_ms, err_buf, err_cap) != SOLO_SOCK_OK) {
-        return SOLO_SOCK_ERROR;
+    timeout_ms = cais_socket_normalize_timeout(timeout_ms);
+    if (cais_socket_backend_set_timeout(sock, timeout_ms, err_buf, err_cap) != CAIS_SOCK_OK) {
+        return CAIS_SOCK_ERROR;
     }
     sock->timeout_ms = timeout_ms;
-    return SOLO_SOCK_OK;
+    return CAIS_SOCK_OK;
 }
 
-int solo_socket_poll(solo_pollfd_t *fds, size_t nfds, int timeout_ms)
+int cais_socket_poll(cais_pollfd_t *fds, size_t nfds, int timeout_ms)
 {
     if (fds == NULL && nfds > 0) {
-        return SOLO_SOCK_ERROR;
+        return CAIS_SOCK_ERROR;
     }
-    return solo_socket_backend_poll(fds, nfds, timeout_ms);
+    return cais_socket_backend_poll(fds, nfds, timeout_ms);
 }
 
-int solo_socket_wait(solo_socket_t *sock, int events, int timeout_ms)
+int cais_socket_wait(cais_socket_t *sock, int events, int timeout_ms)
 {
-    solo_pollfd_t pfd;
+    cais_pollfd_t pfd;
     int ret;
 
-    if (!SOLO_SOCK_IS_VALID(sock)) {
-        return SOLO_SOCK_ERROR;
+    if (!CAIS_SOCK_IS_VALID(sock)) {
+        return CAIS_SOCK_ERROR;
     }
 
     pfd.sock = sock;
     pfd.events = events;
     pfd.revents = 0;
 
-    ret = solo_socket_poll(&pfd, 1, timeout_ms);
+    ret = cais_socket_poll(&pfd, 1, timeout_ms);
     if (ret < 0) {
-        return SOLO_SOCK_ERROR;
+        return CAIS_SOCK_ERROR;
     }
     if (ret == 0) {
         return 0; /* Timeout */

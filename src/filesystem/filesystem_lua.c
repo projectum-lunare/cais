@@ -1,6 +1,6 @@
 /*
- * solo - Physical I/O, System Foundations & Hardware Abstractions
- * Projectum Lunare <https://github.com/projectum-lunare/solo>
+ * cais - Physical I/O, System Foundations & Hardware Abstractions
+ * Projectum Lunare <https://github.com/projectum-lunare/cais>
  * Copyright (C) 2026 Gustavo Veiga <gustavo.veiga@outlook.com.br>
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
@@ -16,38 +16,38 @@
 #include <lualib.h>
 #include <lauxlib.h>
 
-#include <solo/filesystem.h>
+#include <cais/filesystem.h>
 
 #if LUA_VERSION_NUM < 504
 #define lua_newuserdatauv(L, sz, nuv) ((void)(nuv), lua_newuserdata(L, sz))
 #endif
 
-#define SOLO_FILE_MT "solo.filesystem.file"
-#define SOLO_DIR_MT  "solo.filesystem.dir"
+#define CAIS_FILE_MT "cais.filesystem.file"
+#define CAIS_DIR_MT  "cais.filesystem.dir"
 
 typedef struct {
-    solo_file_t *handle;
-} lsolo_file_t;
+    cais_file_t *handle;
+} lcais_file_t;
 
 typedef struct {
-    solo_fs_dir_t *handle;
+    cais_fs_dir_t *handle;
     int closed;
-} lsolo_dir_t;
+} lcais_dir_t;
 
-static const char *fs_type_to_string(solo_fs_type_t t)
+static const char *fs_type_to_string(cais_fs_type_t t)
 {
     switch (t) {
-    case SOLO_FS_TYPE_FILE:    return "file";
-    case SOLO_FS_TYPE_DIR:     return "dir";
-    case SOLO_FS_TYPE_SYMLINK: return "symlink";
-    case SOLO_FS_TYPE_DEVICE:  return "device";
-    case SOLO_FS_TYPE_FIFO:    return "fifo";
-    case SOLO_FS_TYPE_SOCKET:  return "socket";
+    case CAIS_FS_TYPE_FILE:    return "file";
+    case CAIS_FS_TYPE_DIR:     return "dir";
+    case CAIS_FS_TYPE_SYMLINK: return "symlink";
+    case CAIS_FS_TYPE_DEVICE:  return "device";
+    case CAIS_FS_TYPE_FIFO:    return "fifo";
+    case CAIS_FS_TYPE_SOCKET:  return "socket";
     default:                   return "unknown";
     }
 }
 
-static void push_stat_table(lua_State *L, const solo_fs_stat_t *st)
+static void push_stat_table(lua_State *L, const cais_fs_stat_t *st)
 {
     lua_createtable(L, 0, 7);
 
@@ -72,7 +72,7 @@ static void push_stat_table(lua_State *L, const solo_fs_stat_t *st)
     lua_pushinteger(L, (lua_Integer)st->mode);
     lua_setfield(L, -2, "mode");
 
-    lua_pushboolean(L, st->is_readonly == SOLO_TRUE);
+    lua_pushboolean(L, st->is_readonly == CAIS_TRUE);
     lua_setfield(L, -2, "is_readonly");
 }
 
@@ -87,7 +87,7 @@ static int lfs_exists(lua_State *L)
         lua_pushboolean(L, 0);
         return 1;
     }
-    lua_pushboolean(L, solo_fs_exists(path) == SOLO_TRUE);
+    lua_pushboolean(L, cais_fs_exists(path) == CAIS_TRUE);
     return 1;
 }
 
@@ -95,10 +95,10 @@ static int lfs_stat(lua_State *L)
 {
     const char *path = luaL_checkstring(L, 1);
     char err_buf[128];
-    solo_fs_stat_t st;
+    cais_fs_stat_t st;
     err_buf[0] = '\0';
 
-    if (solo_fs_stat(path, &st, err_buf, sizeof(err_buf)) != SOLO_OK) {
+    if (cais_fs_stat(path, &st, err_buf, sizeof(err_buf)) != CAIS_OK) {
         lua_pushnil(L);
         lua_pushstring(L, err_buf[0] ? err_buf : "stat failed");
         return 2;
@@ -112,10 +112,10 @@ static int lfs_lstat(lua_State *L)
 {
     const char *path = luaL_checkstring(L, 1);
     char err_buf[128];
-    solo_fs_stat_t st;
+    cais_fs_stat_t st;
     err_buf[0] = '\0';
 
-    if (solo_fs_lstat(path, &st, err_buf, sizeof(err_buf)) != SOLO_OK) {
+    if (cais_fs_lstat(path, &st, err_buf, sizeof(err_buf)) != CAIS_OK) {
         lua_pushnil(L);
         lua_pushstring(L, err_buf[0] ? err_buf : "lstat failed");
         return 2;
@@ -128,29 +128,29 @@ static int lfs_lstat(lua_State *L)
 static int lfs_is_file(lua_State *L)
 {
     const char *path = luaL_checkstring(L, 1);
-    lua_pushboolean(L, solo_fs_is_file(path) == SOLO_TRUE);
+    lua_pushboolean(L, cais_fs_is_file(path) == CAIS_TRUE);
     return 1;
 }
 
 static int lfs_is_dir(lua_State *L)
 {
     const char *path = luaL_checkstring(L, 1);
-    lua_pushboolean(L, solo_fs_is_dir(path) == SOLO_TRUE);
+    lua_pushboolean(L, cais_fs_is_dir(path) == CAIS_TRUE);
     return 1;
 }
 
 static int lfs_is_symlink(lua_State *L)
 {
     const char *path = luaL_checkstring(L, 1);
-    lua_pushboolean(L, solo_fs_is_symlink(path) == SOLO_TRUE);
+    lua_pushboolean(L, cais_fs_is_symlink(path) == CAIS_TRUE);
     return 1;
 }
 
 static int lfs_file_size(lua_State *L)
 {
     const char *path = luaL_checkstring(L, 1);
-    solo_fsize_t size = 0;
-    if (solo_fs_file_size(path, &size) != SOLO_OK) {
+    cais_fsize_t size = 0;
+    if (cais_fs_file_size(path, &size) != CAIS_OK) {
         lua_pushnil(L);
         lua_pushliteral(L, "failed to query file size");
         return 2;
@@ -171,7 +171,7 @@ static int lfs_read(lua_State *L)
     size_t len = 0;
     err_buf[0] = '\0';
 
-    if (solo_fs_read_file(path, &buf, &len, err_buf, sizeof(err_buf)) != SOLO_OK) {
+    if (cais_fs_read_file(path, &buf, &len, err_buf, sizeof(err_buf)) != CAIS_OK) {
         lua_pushnil(L);
         lua_pushstring(L, err_buf[0] ? err_buf : "read failed");
         return 2;
@@ -190,7 +190,7 @@ static int lfs_write(lua_State *L)
     char err_buf[128];
     err_buf[0] = '\0';
 
-    if (solo_fs_write_file(path, data, len, err_buf, sizeof(err_buf)) != SOLO_OK) {
+    if (cais_fs_write_file(path, data, len, err_buf, sizeof(err_buf)) != CAIS_OK) {
         lua_pushnil(L);
         lua_pushstring(L, err_buf[0] ? err_buf : "write failed");
         return 2;
@@ -208,7 +208,7 @@ static int lfs_append(lua_State *L)
     char err_buf[128];
     err_buf[0] = '\0';
 
-    if (solo_fs_append_file(path, data, len, err_buf, sizeof(err_buf)) != SOLO_OK) {
+    if (cais_fs_append_file(path, data, len, err_buf, sizeof(err_buf)) != CAIS_OK) {
         lua_pushnil(L);
         lua_pushstring(L, err_buf[0] ? err_buf : "append failed");
         return 2;
@@ -228,16 +228,16 @@ static int lfs_mkdir(lua_State *L)
     int recursive = lua_toboolean(L, 2);
     int mode = (int)luaL_optinteger(L, 3, 0777);
     char err_buf[128];
-    solo_status_t st;
+    cais_status_t st;
     err_buf[0] = '\0';
 
     if (recursive) {
-        st = solo_fs_mkdir_p(path, mode, err_buf, sizeof(err_buf));
+        st = cais_fs_mkdir_p(path, mode, err_buf, sizeof(err_buf));
     } else {
-        st = solo_fs_mkdir(path, mode, err_buf, sizeof(err_buf));
+        st = cais_fs_mkdir(path, mode, err_buf, sizeof(err_buf));
     }
 
-    if (st != SOLO_OK) {
+    if (st != CAIS_OK) {
         lua_pushnil(L);
         lua_pushstring(L, err_buf[0] ? err_buf : "mkdir failed");
         return 2;
@@ -253,7 +253,7 @@ static int lfs_rmdir(lua_State *L)
     char err_buf[128];
     err_buf[0] = '\0';
 
-    if (solo_fs_rmdir(path, err_buf, sizeof(err_buf)) != SOLO_OK) {
+    if (cais_fs_rmdir(path, err_buf, sizeof(err_buf)) != CAIS_OK) {
         lua_pushnil(L);
         lua_pushstring(L, err_buf[0] ? err_buf : "rmdir failed");
         return 2;
@@ -268,16 +268,16 @@ static int lfs_remove(lua_State *L)
     const char *path = luaL_checkstring(L, 1);
     int recursive = lua_toboolean(L, 2);
     char err_buf[128];
-    solo_status_t st;
+    cais_status_t st;
     err_buf[0] = '\0';
 
     if (recursive) {
-        st = solo_fs_remove_all(path, err_buf, sizeof(err_buf));
+        st = cais_fs_remove_all(path, err_buf, sizeof(err_buf));
     } else {
-        st = solo_fs_remove(path, err_buf, sizeof(err_buf));
+        st = cais_fs_remove(path, err_buf, sizeof(err_buf));
     }
 
-    if (st != SOLO_OK) {
+    if (st != CAIS_OK) {
         lua_pushnil(L);
         lua_pushstring(L, err_buf[0] ? err_buf : "remove failed");
         return 2;
@@ -294,7 +294,7 @@ static int lfs_rename(lua_State *L)
     char err_buf[128];
     err_buf[0] = '\0';
 
-    if (solo_fs_rename(oldpath, newpath, err_buf, sizeof(err_buf)) != SOLO_OK) {
+    if (cais_fs_rename(oldpath, newpath, err_buf, sizeof(err_buf)) != CAIS_OK) {
         lua_pushnil(L);
         lua_pushstring(L, err_buf[0] ? err_buf : "rename failed");
         return 2;
@@ -308,11 +308,11 @@ static int lfs_copy(lua_State *L)
 {
     const char *src = luaL_checkstring(L, 1);
     const char *dst = luaL_checkstring(L, 2);
-    solo_bool_t overwrite = lua_isnoneornil(L, 3) ? SOLO_TRUE : (lua_toboolean(L, 3) ? SOLO_TRUE : SOLO_FALSE);
+    cais_bool_t overwrite = lua_isnoneornil(L, 3) ? CAIS_TRUE : (lua_toboolean(L, 3) ? CAIS_TRUE : CAIS_FALSE);
     char err_buf[128];
     err_buf[0] = '\0';
 
-    if (solo_fs_copy_file(src, dst, overwrite, err_buf, sizeof(err_buf)) != SOLO_OK) {
+    if (cais_fs_copy_file(src, dst, overwrite, err_buf, sizeof(err_buf)) != CAIS_OK) {
         lua_pushnil(L);
         lua_pushstring(L, err_buf[0] ? err_buf : "copy failed");
         return 2;
@@ -329,7 +329,7 @@ static int lfs_chmod(lua_State *L)
     char err_buf[128];
     err_buf[0] = '\0';
 
-    if (solo_fs_chmod(path, mode, err_buf, sizeof(err_buf)) != SOLO_OK) {
+    if (cais_fs_chmod(path, mode, err_buf, sizeof(err_buf)) != CAIS_OK) {
         lua_pushnil(L);
         lua_pushstring(L, err_buf[0] ? err_buf : "chmod failed");
         return 2;
@@ -349,7 +349,7 @@ static int lfs_cwd(lua_State *L)
     char err_buf[128];
     err_buf[0] = '\0';
 
-    if (solo_fs_getcwd(buf, sizeof(buf), err_buf, sizeof(err_buf)) != SOLO_OK) {
+    if (cais_fs_getcwd(buf, sizeof(buf), err_buf, sizeof(err_buf)) != CAIS_OK) {
         lua_pushnil(L);
         lua_pushstring(L, err_buf[0] ? err_buf : "getcwd failed");
         return 2;
@@ -365,7 +365,7 @@ static int lfs_chdir(lua_State *L)
     char err_buf[128];
     err_buf[0] = '\0';
 
-    if (solo_fs_setcwd(path, err_buf, sizeof(err_buf)) != SOLO_OK) {
+    if (cais_fs_setcwd(path, err_buf, sizeof(err_buf)) != CAIS_OK) {
         lua_pushnil(L);
         lua_pushstring(L, err_buf[0] ? err_buf : "chdir failed");
         return 2;
@@ -381,7 +381,7 @@ static int lfs_temp_dir(lua_State *L)
     char err_buf[128];
     err_buf[0] = '\0';
 
-    if (solo_fs_temp_dir(buf, sizeof(buf), err_buf, sizeof(err_buf)) != SOLO_OK) {
+    if (cais_fs_temp_dir(buf, sizeof(buf), err_buf, sizeof(err_buf)) != CAIS_OK) {
         lua_pushnil(L);
         lua_pushstring(L, err_buf[0] ? err_buf : "temp_dir failed");
         return 2;
@@ -397,17 +397,17 @@ static int lfs_temp_dir(lua_State *L)
 
 static int dir_iter(lua_State *L)
 {
-    lsolo_dir_t *d = (lsolo_dir_t *)lua_touserdata(L, lua_upvalueindex(1));
-    solo_fs_dirent_t ent;
-    solo_status_t st;
+    lcais_dir_t *d = (lcais_dir_t *)lua_touserdata(L, lua_upvalueindex(1));
+    cais_fs_dirent_t ent;
+    cais_status_t st;
 
     if (d == NULL || d->closed || d->handle == NULL) {
         return 0;
     }
 
-    st = solo_fs_dir_next(d->handle, &ent);
-    if (st != SOLO_OK) {
-        solo_fs_dir_close(d->handle);
+    st = cais_fs_dir_next(d->handle, &ent);
+    if (st != CAIS_OK) {
+        cais_fs_dir_close(d->handle);
         d->handle = NULL;
         d->closed = 1;
         return 0;
@@ -425,9 +425,9 @@ static int dir_iter(lua_State *L)
 
 static int dir_gc(lua_State *L)
 {
-    lsolo_dir_t *d = (lsolo_dir_t *)luaL_testudata(L, 1, SOLO_DIR_MT);
+    lcais_dir_t *d = (lcais_dir_t *)luaL_testudata(L, 1, CAIS_DIR_MT);
     if (d != NULL && !d->closed && d->handle != NULL) {
-        solo_fs_dir_close(d->handle);
+        cais_fs_dir_close(d->handle);
         d->handle = NULL;
         d->closed = 1;
     }
@@ -438,22 +438,22 @@ static int lfs_dir(lua_State *L)
 {
     const char *path = luaL_checkstring(L, 1);
     char err_buf[128];
-    solo_fs_dir_t *dir;
-    lsolo_dir_t *ud;
+    cais_fs_dir_t *dir;
+    lcais_dir_t *ud;
     err_buf[0] = '\0';
 
-    dir = solo_fs_dir_open(path, err_buf, sizeof(err_buf));
+    dir = cais_fs_dir_open(path, err_buf, sizeof(err_buf));
     if (dir == NULL) {
         lua_pushnil(L);
         lua_pushstring(L, err_buf[0] ? err_buf : "failed to open directory");
         return 2;
     }
 
-    ud = (lsolo_dir_t *)lua_newuserdatauv(L, sizeof(lsolo_dir_t), 0);
+    ud = (lcais_dir_t *)lua_newuserdatauv(L, sizeof(lcais_dir_t), 0);
     ud->handle = dir;
     ud->closed = 0;
 
-    luaL_getmetatable(L, SOLO_DIR_MT);
+    luaL_getmetatable(L, CAIS_DIR_MT);
     lua_setmetatable(L, -2);
 
     lua_pushcclosure(L, dir_iter, 1);
@@ -464,12 +464,12 @@ static int lfs_list(lua_State *L)
 {
     const char *path = luaL_checkstring(L, 1);
     char err_buf[128];
-    solo_fs_dir_t *dir;
-    solo_fs_dirent_t ent;
+    cais_fs_dir_t *dir;
+    cais_fs_dirent_t ent;
     int idx = 1;
     err_buf[0] = '\0';
 
-    dir = solo_fs_dir_open(path, err_buf, sizeof(err_buf));
+    dir = cais_fs_dir_open(path, err_buf, sizeof(err_buf));
     if (dir == NULL) {
         lua_pushnil(L);
         lua_pushstring(L, err_buf[0] ? err_buf : "failed to open directory");
@@ -478,7 +478,7 @@ static int lfs_list(lua_State *L)
 
     lua_newtable(L);
 
-    while (solo_fs_dir_next(dir, &ent) == SOLO_OK) {
+    while (cais_fs_dir_next(dir, &ent) == CAIS_OK) {
         lua_createtable(L, 0, 2);
         lua_pushstring(L, ent.name);
         lua_setfield(L, -2, "name");
@@ -488,7 +488,7 @@ static int lfs_list(lua_State *L)
         lua_rawseti(L, -2, idx++);
     }
 
-    solo_fs_dir_close(dir);
+    cais_fs_dir_close(dir);
     return 1;
 }
 
@@ -499,8 +499,8 @@ static int lfs_list(lua_State *L)
 static int lfs_path_join(lua_State *L)
 {
     int n = lua_gettop(L);
-    char current[SOLO_PATH_MAX];
-    char temp[SOLO_PATH_MAX];
+    char current[CAIS_PATH_MAX];
+    char temp[CAIS_PATH_MAX];
     int i;
 
     if (n == 0) {
@@ -511,7 +511,7 @@ static int lfs_path_join(lua_State *L)
     current[0] = '\0';
     for (i = 1; i <= n; i++) {
         const char *part = luaL_checkstring(L, i);
-        if (solo_fs_path_join(current, part, temp, sizeof(temp)) != SOLO_OK) {
+        if (cais_fs_path_join(current, part, temp, sizeof(temp)) != CAIS_OK) {
             return luaL_error(L, "path too long during join");
         }
         strcpy(current, temp);
@@ -524,8 +524,8 @@ static int lfs_path_join(lua_State *L)
 static int lfs_path_basename(lua_State *L)
 {
     const char *path = luaL_checkstring(L, 1);
-    char out[SOLO_PATH_MAX];
-    if (solo_fs_path_basename(path, out, sizeof(out)) != SOLO_OK) {
+    char out[CAIS_PATH_MAX];
+    if (cais_fs_path_basename(path, out, sizeof(out)) != CAIS_OK) {
         return luaL_error(L, "basename failed");
     }
     lua_pushstring(L, out);
@@ -535,8 +535,8 @@ static int lfs_path_basename(lua_State *L)
 static int lfs_path_dirname(lua_State *L)
 {
     const char *path = luaL_checkstring(L, 1);
-    char out[SOLO_PATH_MAX];
-    if (solo_fs_path_dirname(path, out, sizeof(out)) != SOLO_OK) {
+    char out[CAIS_PATH_MAX];
+    if (cais_fs_path_dirname(path, out, sizeof(out)) != CAIS_OK) {
         return luaL_error(L, "dirname failed");
     }
     lua_pushstring(L, out);
@@ -546,8 +546,8 @@ static int lfs_path_dirname(lua_State *L)
 static int lfs_path_ext(lua_State *L)
 {
     const char *path = luaL_checkstring(L, 1);
-    char out[SOLO_PATH_MAX];
-    if (solo_fs_path_ext(path, out, sizeof(out)) != SOLO_OK) {
+    char out[CAIS_PATH_MAX];
+    if (cais_fs_path_ext(path, out, sizeof(out)) != CAIS_OK) {
         return luaL_error(L, "ext failed");
     }
     lua_pushstring(L, out);
@@ -557,8 +557,8 @@ static int lfs_path_ext(lua_State *L)
 static int lfs_path_normalize(lua_State *L)
 {
     const char *path = luaL_checkstring(L, 1);
-    char out[SOLO_PATH_MAX];
-    if (solo_fs_path_normalize(path, out, sizeof(out)) != SOLO_OK) {
+    char out[CAIS_PATH_MAX];
+    if (cais_fs_path_normalize(path, out, sizeof(out)) != CAIS_OK) {
         return luaL_error(L, "normalize failed");
     }
     lua_pushstring(L, out);
@@ -568,22 +568,22 @@ static int lfs_path_normalize(lua_State *L)
 static int lfs_path_is_absolute(lua_State *L)
 {
     const char *path = luaL_checkstring(L, 1);
-    lua_pushboolean(L, solo_fs_path_is_absolute(path) == SOLO_TRUE);
+    lua_pushboolean(L, cais_fs_path_is_absolute(path) == CAIS_TRUE);
     return 1;
 }
 
 /* =============================================================================
- * File Streams (solo.file Userdata)
+ * File Streams (cais.file Userdata)
  * ============================================================================= */
 
-static int lsolo_file_read(lua_State *L)
+static int lcais_file_read(lua_State *L)
 {
-    lsolo_file_t *f = (lsolo_file_t *)luaL_checkudata(L, 1, SOLO_FILE_MT);
+    lcais_file_t *f = (lcais_file_t *)luaL_checkudata(L, 1, CAIS_FILE_MT);
     lua_Integer max_bytes = luaL_optinteger(L, 2, -1);
     char *buf;
     size_t count;
     size_t read_bytes = 0;
-    solo_status_t st;
+    cais_status_t st;
 
     if (f->handle == NULL) {
         return luaL_error(L, "attempt to read from closed file");
@@ -597,9 +597,9 @@ static int lsolo_file_read(lua_State *L)
     if (max_bytes < 0) {
         /* Read to end of file */
         long cur = 0, end = 0;
-        solo_file_tell(f->handle, &cur);
-        solo_file_seek(f->handle, 0, SOLO_FS_SEEK_END, &end);
-        solo_file_seek(f->handle, cur, SOLO_FS_SEEK_SET, NULL);
+        cais_file_tell(f->handle, &cur);
+        cais_file_seek(f->handle, 0, CAIS_FS_SEEK_END, &end);
+        cais_file_seek(f->handle, cur, CAIS_FS_SEEK_SET, NULL);
         count = (end > cur) ? (size_t)(end - cur) : 4096;
     } else {
         count = (size_t)max_bytes;
@@ -610,13 +610,13 @@ static int lsolo_file_read(lua_State *L)
         return luaL_error(L, "out of memory allocating read buffer");
     }
 
-    st = solo_file_read(f->handle, buf, count, &read_bytes);
-    if (st == SOLO_EOF || read_bytes == 0) {
+    st = cais_file_read(f->handle, buf, count, &read_bytes);
+    if (st == CAIS_EOF || read_bytes == 0) {
         free(buf);
         lua_pushnil(L);
         return 1;
     }
-    if (st != SOLO_OK) {
+    if (st != CAIS_OK) {
         free(buf);
         lua_pushnil(L);
         lua_pushliteral(L, "read error");
@@ -628,9 +628,9 @@ static int lsolo_file_read(lua_State *L)
     return 1;
 }
 
-static int lsolo_file_write(lua_State *L)
+static int lcais_file_write(lua_State *L)
 {
-    lsolo_file_t *f = (lsolo_file_t *)luaL_checkudata(L, 1, SOLO_FILE_MT);
+    lcais_file_t *f = (lcais_file_t *)luaL_checkudata(L, 1, CAIS_FILE_MT);
     size_t len = 0;
     const char *data = luaL_checklstring(L, 2, &len);
     size_t written = 0;
@@ -639,7 +639,7 @@ static int lsolo_file_write(lua_State *L)
         return luaL_error(L, "attempt to write to closed file");
     }
 
-    if (solo_file_write(f->handle, data, len, &written) != SOLO_OK) {
+    if (cais_file_write(f->handle, data, len, &written) != CAIS_OK) {
         lua_pushnil(L);
         lua_pushliteral(L, "write error");
         return 2;
@@ -649,24 +649,24 @@ static int lsolo_file_write(lua_State *L)
     return 1;
 }
 
-static int lsolo_file_seek(lua_State *L)
+static int lcais_file_seek(lua_State *L)
 {
-    lsolo_file_t *f = (lsolo_file_t *)luaL_checkudata(L, 1, SOLO_FILE_MT);
+    lcais_file_t *f = (lcais_file_t *)luaL_checkudata(L, 1, CAIS_FILE_MT);
     const char *whence_str = luaL_optstring(L, 2, "cur");
     long offset = (long)luaL_optinteger(L, 3, 0);
-    int whence = SOLO_FS_SEEK_CUR;
+    int whence = CAIS_FS_SEEK_CUR;
     long new_pos = 0;
 
     if (f->handle == NULL) {
         return luaL_error(L, "attempt to seek in closed file");
     }
 
-    if (strcmp(whence_str, "set") == 0) whence = SOLO_FS_SEEK_SET;
-    else if (strcmp(whence_str, "cur") == 0) whence = SOLO_FS_SEEK_CUR;
-    else if (strcmp(whence_str, "end") == 0) whence = SOLO_FS_SEEK_END;
+    if (strcmp(whence_str, "set") == 0) whence = CAIS_FS_SEEK_SET;
+    else if (strcmp(whence_str, "cur") == 0) whence = CAIS_FS_SEEK_CUR;
+    else if (strcmp(whence_str, "end") == 0) whence = CAIS_FS_SEEK_END;
     else return luaL_error(L, "invalid seek origin '%s'", whence_str);
 
-    if (solo_file_seek(f->handle, offset, whence, &new_pos) != SOLO_OK) {
+    if (cais_file_seek(f->handle, offset, whence, &new_pos) != CAIS_OK) {
         lua_pushnil(L);
         lua_pushliteral(L, "seek error");
         return 2;
@@ -676,16 +676,16 @@ static int lsolo_file_seek(lua_State *L)
     return 1;
 }
 
-static int lsolo_file_tell(lua_State *L)
+static int lcais_file_tell(lua_State *L)
 {
-    lsolo_file_t *f = (lsolo_file_t *)luaL_checkudata(L, 1, SOLO_FILE_MT);
+    lcais_file_t *f = (lcais_file_t *)luaL_checkudata(L, 1, CAIS_FILE_MT);
     long pos = 0;
 
     if (f->handle == NULL) {
         return luaL_error(L, "attempt to tell on closed file");
     }
 
-    if (solo_file_tell(f->handle, &pos) != SOLO_OK) {
+    if (cais_file_tell(f->handle, &pos) != CAIS_OK) {
         lua_pushnil(L);
         lua_pushliteral(L, "tell error");
         return 2;
@@ -695,13 +695,13 @@ static int lsolo_file_tell(lua_State *L)
     return 1;
 }
 
-static int lsolo_file_flush(lua_State *L)
+static int lcais_file_flush(lua_State *L)
 {
-    lsolo_file_t *f = (lsolo_file_t *)luaL_checkudata(L, 1, SOLO_FILE_MT);
+    lcais_file_t *f = (lcais_file_t *)luaL_checkudata(L, 1, CAIS_FILE_MT);
     if (f->handle == NULL) {
         return luaL_error(L, "attempt to flush closed file");
     }
-    if (solo_file_flush(f->handle) != SOLO_OK) {
+    if (cais_file_flush(f->handle) != CAIS_OK) {
         lua_pushnil(L);
         lua_pushliteral(L, "flush error");
         return 2;
@@ -710,11 +710,11 @@ static int lsolo_file_flush(lua_State *L)
     return 1;
 }
 
-static int lsolo_file_close(lua_State *L)
+static int lcais_file_close(lua_State *L)
 {
-    lsolo_file_t *f = (lsolo_file_t *)luaL_checkudata(L, 1, SOLO_FILE_MT);
+    lcais_file_t *f = (lcais_file_t *)luaL_checkudata(L, 1, CAIS_FILE_MT);
     if (f->handle != NULL) {
-        solo_file_close(f->handle);
+        cais_file_close(f->handle);
         f->handle = NULL;
     }
     lua_pushboolean(L, 1);
@@ -723,21 +723,21 @@ static int lsolo_file_close(lua_State *L)
 
 static int file_gc(lua_State *L)
 {
-    lsolo_file_t *f = (lsolo_file_t *)luaL_testudata(L, 1, SOLO_FILE_MT);
+    lcais_file_t *f = (lcais_file_t *)luaL_testudata(L, 1, CAIS_FILE_MT);
     if (f != NULL && f->handle != NULL) {
-        solo_file_close(f->handle);
+        cais_file_close(f->handle);
         f->handle = NULL;
     }
     return 0;
 }
 
-static int lsolo_file_tostring(lua_State *L)
+static int lcais_file_tostring(lua_State *L)
 {
-    lsolo_file_t *f = (lsolo_file_t *)luaL_checkudata(L, 1, SOLO_FILE_MT);
+    lcais_file_t *f = (lcais_file_t *)luaL_checkudata(L, 1, CAIS_FILE_MT);
     if (f->handle == NULL) {
-        lua_pushliteral(L, "solo.filesystem.file (closed)");
+        lua_pushliteral(L, "cais.filesystem.file (closed)");
     } else {
-        lua_pushliteral(L, "solo.filesystem.file (open)");
+        lua_pushliteral(L, "cais.filesystem.file (open)");
     }
     return 1;
 }
@@ -747,21 +747,21 @@ static int lfs_open(lua_State *L)
     const char *path = luaL_checkstring(L, 1);
     const char *mode = luaL_optstring(L, 2, "r");
     char err_buf[128];
-    solo_file_t *file;
-    lsolo_file_t *ud;
+    cais_file_t *file;
+    lcais_file_t *ud;
     err_buf[0] = '\0';
 
-    file = solo_file_open(path, mode, err_buf, sizeof(err_buf));
+    file = cais_file_open(path, mode, err_buf, sizeof(err_buf));
     if (file == NULL) {
         lua_pushnil(L);
         lua_pushstring(L, err_buf[0] ? err_buf : "failed to open file");
         return 2;
     }
 
-    ud = (lsolo_file_t *)lua_newuserdatauv(L, sizeof(lsolo_file_t), 0);
+    ud = (lcais_file_t *)lua_newuserdatauv(L, sizeof(lcais_file_t), 0);
     ud->handle = file;
 
-    luaL_getmetatable(L, SOLO_FILE_MT);
+    luaL_getmetatable(L, CAIS_FILE_MT);
     lua_setmetatable(L, -2);
     return 1;
 }
@@ -771,15 +771,15 @@ static int lfs_open(lua_State *L)
  * ============================================================================= */
 
 static const luaL_Reg file_methods[] = {
-    {"read",     lsolo_file_read},
-    {"write",    lsolo_file_write},
-    {"seek",     lsolo_file_seek},
-    {"tell",     lsolo_file_tell},
-    {"flush",    lsolo_file_flush},
-    {"close",    lsolo_file_close},
+    {"read",     lcais_file_read},
+    {"write",    lcais_file_write},
+    {"seek",     lcais_file_seek},
+    {"tell",     lcais_file_tell},
+    {"flush",    lcais_file_flush},
+    {"close",    lcais_file_close},
     {"__gc",     file_gc},
     {"__close",  file_gc},
-    {"__tostring", lsolo_file_tostring},
+    {"__tostring", lcais_file_tostring},
     {NULL, NULL}
 };
 
@@ -826,13 +826,13 @@ static const luaL_Reg fs_funcs[] = {
     {NULL, NULL}
 };
 
-int luaopen_solo_filesystem(lua_State *L);
-int luaopen_solo_fs(lua_State *L);
+int luaopen_cais_filesystem(lua_State *L);
+int luaopen_cais_fs(lua_State *L);
 
-int luaopen_solo_filesystem(lua_State *L)
+int luaopen_cais_filesystem(lua_State *L)
 {
-    /* 1. Register solo.filesystem.file metatable */
-    if (luaL_newmetatable(L, SOLO_FILE_MT)) {
+    /* 1. Register cais.filesystem.file metatable */
+    if (luaL_newmetatable(L, CAIS_FILE_MT)) {
         lua_pushvalue(L, -1);
         lua_setfield(L, -2, "__index");
 #if LUA_VERSION_NUM >= 502
@@ -843,8 +843,8 @@ int luaopen_solo_filesystem(lua_State *L)
     }
     lua_pop(L, 1);
 
-    /* 2. Register solo.filesystem.dir metatable */
-    if (luaL_newmetatable(L, SOLO_DIR_MT)) {
+    /* 2. Register cais.filesystem.dir metatable */
+    if (luaL_newmetatable(L, CAIS_DIR_MT)) {
 #if LUA_VERSION_NUM >= 502
         luaL_setfuncs(L, dir_methods, 0);
 #else
@@ -870,7 +870,7 @@ int luaopen_solo_filesystem(lua_State *L)
 #endif
     {
         char sep_str[2];
-        sep_str[0] = solo_fs_path_separator();
+        sep_str[0] = cais_fs_path_separator();
         sep_str[1] = '\0';
         lua_pushstring(L, sep_str);
         lua_setfield(L, -2, "separator");
@@ -879,27 +879,27 @@ int luaopen_solo_filesystem(lua_State *L)
 
     /* 5. Subtable fs.type */
     lua_createtable(L, 0, 7);
-    lua_pushinteger(L, SOLO_FS_TYPE_UNKNOWN); lua_setfield(L, -2, "UNKNOWN");
-    lua_pushinteger(L, SOLO_FS_TYPE_FILE);    lua_setfield(L, -2, "FILE");
-    lua_pushinteger(L, SOLO_FS_TYPE_DIR);     lua_setfield(L, -2, "DIR");
-    lua_pushinteger(L, SOLO_FS_TYPE_SYMLINK); lua_setfield(L, -2, "SYMLINK");
-    lua_pushinteger(L, SOLO_FS_TYPE_DEVICE);  lua_setfield(L, -2, "DEVICE");
-    lua_pushinteger(L, SOLO_FS_TYPE_FIFO);    lua_setfield(L, -2, "FIFO");
-    lua_pushinteger(L, SOLO_FS_TYPE_SOCKET);  lua_setfield(L, -2, "SOCKET");
+    lua_pushinteger(L, CAIS_FS_TYPE_UNKNOWN); lua_setfield(L, -2, "UNKNOWN");
+    lua_pushinteger(L, CAIS_FS_TYPE_FILE);    lua_setfield(L, -2, "FILE");
+    lua_pushinteger(L, CAIS_FS_TYPE_DIR);     lua_setfield(L, -2, "DIR");
+    lua_pushinteger(L, CAIS_FS_TYPE_SYMLINK); lua_setfield(L, -2, "SYMLINK");
+    lua_pushinteger(L, CAIS_FS_TYPE_DEVICE);  lua_setfield(L, -2, "DEVICE");
+    lua_pushinteger(L, CAIS_FS_TYPE_FIFO);    lua_setfield(L, -2, "FIFO");
+    lua_pushinteger(L, CAIS_FS_TYPE_SOCKET);  lua_setfield(L, -2, "SOCKET");
     lua_setfield(L, -2, "type");
 
     /* 6. Subtable fs.status */
     lua_createtable(L, 0, 4);
-    lua_pushinteger(L, SOLO_FS_OK);          lua_setfield(L, -2, "OK");
-    lua_pushinteger(L, SOLO_FS_ERROR);       lua_setfield(L, -2, "ERROR");
-    lua_pushinteger(L, SOLO_FS_UNSUPPORTED); lua_setfield(L, -2, "UNSUPPORTED");
-    lua_pushinteger(L, SOLO_FS_EOF);         lua_setfield(L, -2, "EOF");
+    lua_pushinteger(L, CAIS_FS_OK);          lua_setfield(L, -2, "OK");
+    lua_pushinteger(L, CAIS_FS_ERROR);       lua_setfield(L, -2, "ERROR");
+    lua_pushinteger(L, CAIS_FS_UNSUPPORTED); lua_setfield(L, -2, "UNSUPPORTED");
+    lua_pushinteger(L, CAIS_FS_EOF);         lua_setfield(L, -2, "EOF");
     lua_setfield(L, -2, "status");
 
     return 1;
 }
 
-int luaopen_solo_fs(lua_State *L)
+int luaopen_cais_fs(lua_State *L)
 {
-    return luaopen_solo_filesystem(L);
+    return luaopen_cais_filesystem(L);
 }

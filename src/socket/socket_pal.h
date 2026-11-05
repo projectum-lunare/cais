@@ -1,6 +1,6 @@
 /*
- * solo - Physical I/O, System Foundations & Hardware Abstractions
- * Projectum Lunare <https://github.com/projectum-lunare/solo>
+ * cais - Physical I/O, System Foundations & Hardware Abstractions
+ * Projectum Lunare <https://github.com/projectum-lunare/cais>
  * Copyright (C) 2026 Gustavo Veiga <gustavo.veiga@outlook.com.br>
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
@@ -8,19 +8,19 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-#ifndef SOLO_SOCKET_PAL_H
-#define SOLO_SOCKET_PAL_H
+#ifndef CAIS_SOCKET_PAL_H
+#define CAIS_SOCKET_PAL_H
 
-#include <solo/platform.h>
-#include <solo/types.h>
-#include <solo/socket.h>
+#include <cais/platform.h>
+#include <cais/types.h>
+#include <cais/socket.h>
 #include "socket_internal.h"
 #include <stddef.h>
 
 /* =============================================================================
  * 1. Windows (WinNT 3.51+, WinCE, MinGW, MSVC)
  * ============================================================================= */
-#if SOLO_IS_WINDOWS
+#if CAIS_IS_WINDOWS
 
 /*
  * Redefine FD_SETSIZE before including Winsock headers.
@@ -36,21 +36,21 @@
 #include <ws2tcpip.h>
 #include <windows.h>
 
-#define SOLO_PAL_SOCK_T           SOCKET
-#define SOLO_PAL_INVALID_SOCK     INVALID_SOCKET
-#define SOLO_PAL_CLOSESOCKET(s)   closesocket(s)
-#define SOLO_PAL_SOCK_ERRNO       WSAGetLastError()
-#define SOLO_PAL_IS_WOULDBLOCK(e) ((e) == WSAEWOULDBLOCK)
-#define SOLO_PAL_IS_INPROGRESS(e) ((e) == WSAEINPROGRESS || (e) == WSAEWOULDBLOCK)
-#define SOLO_PAL_IS_INTR(e)       ((e) == WSAEINTR)
+#define CAIS_PAL_SOCK_T           SOCKET
+#define CAIS_PAL_INVALID_SOCK     INVALID_SOCKET
+#define CAIS_PAL_CLOSESOCKET(s)   closesocket(s)
+#define CAIS_PAL_SOCK_ERRNO       WSAGetLastError()
+#define CAIS_PAL_IS_WOULDBLOCK(e) ((e) == WSAEWOULDBLOCK)
+#define CAIS_PAL_IS_INPROGRESS(e) ((e) == WSAEINPROGRESS || (e) == WSAEWOULDBLOCK)
+#define CAIS_PAL_IS_INTR(e)       ((e) == WSAEINTR)
 
-static int solo_pal_sock_init(char *err_buf, size_t err_cap)
+static int cais_pal_sock_init(char *err_buf, size_t err_cap)
 {
     static int inited = 0;
     if (!inited) {
         WSADATA wsa;
         if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
-            solo_set_err(err_buf, err_cap, "WSAStartup failed");
+            cais_set_err(err_buf, err_cap, "WSAStartup failed");
             return 0;
         }
         inited = 1;
@@ -58,13 +58,13 @@ static int solo_pal_sock_init(char *err_buf, size_t err_cap)
     return 1;
 }
 
-static int solo_pal_set_nonblocking(SOLO_PAL_SOCK_T s, int nb)
+static int cais_pal_set_nonblocking(CAIS_PAL_SOCK_T s, int nb)
 {
     u_long mode = (u_long)nb;
     return (ioctlsocket(s, FIONBIO, &mode) == 0) ? 0 : -1;
 }
 
-static int solo_pal_set_timeout(SOLO_PAL_SOCK_T s, int timeout_ms)
+static int cais_pal_set_timeout(CAIS_PAL_SOCK_T s, int timeout_ms)
 {
     DWORD ms = (DWORD)timeout_ms;
     if (setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (const char *)&ms, sizeof(ms)) != 0) return -1;
@@ -72,17 +72,17 @@ static int solo_pal_set_timeout(SOLO_PAL_SOCK_T s, int timeout_ms)
     return 0;
 }
 
-static void solo_pal_strerror(int err, char *err_buf, size_t err_cap)
+static void cais_pal_strerror(int err, char *err_buf, size_t err_cap)
 {
-    solo_set_err_fmt(err_buf, err_cap, "Winsock error %d", err);
+    cais_set_err_fmt(err_buf, err_cap, "Winsock error %d", err);
 }
 
-#define SOLO_PAL_SELECT(n, r, w, e, t) select((int)(n), (r), (w), (e), (t))
+#define CAIS_PAL_SELECT(n, r, w, e, t) select((int)(n), (r), (w), (e), (t))
 
 /* =============================================================================
  * 2. MS-DOS (WATT-32 TCP/IP stack)
  * ============================================================================= */
-#elif SOLO_IS_DOS
+#elif CAIS_IS_DOS
 
 #if defined(USE_WATT32)
 #include <tcp.h>
@@ -97,21 +97,21 @@ static void solo_pal_strerror(int err, char *err_buf, size_t err_cap)
 #define FIONBIO 0x8004667e
 #endif
 
-#define SOLO_PAL_SOCK_T           int
-#define SOLO_PAL_INVALID_SOCK     (-1)
-#define SOLO_PAL_CLOSESOCKET(s)   close_s(s)
-#define SOLO_PAL_SOCK_ERRNO       errno
-#define SOLO_PAL_IS_WOULDBLOCK(e) ((e) == EWOULDBLOCK || (e) == EAGAIN)
-#define SOLO_PAL_IS_INPROGRESS(e) ((e) == EINPROGRESS)
-#define SOLO_PAL_IS_INTR(e)       ((e) == EINTR)
+#define CAIS_PAL_SOCK_T           int
+#define CAIS_PAL_INVALID_SOCK     (-1)
+#define CAIS_PAL_CLOSESOCKET(s)   close_s(s)
+#define CAIS_PAL_SOCK_ERRNO       errno
+#define CAIS_PAL_IS_WOULDBLOCK(e) ((e) == EWOULDBLOCK || (e) == EAGAIN)
+#define CAIS_PAL_IS_INPROGRESS(e) ((e) == EINPROGRESS)
+#define CAIS_PAL_IS_INTR(e)       ((e) == EINTR)
 
-static int solo_pal_sock_init(char *err_buf, size_t err_cap)
+static int cais_pal_sock_init(char *err_buf, size_t err_cap)
 {
     static int inited = 0;
     if (!inited) {
         int rc = sock_init();
         if (rc != 0) {
-            solo_set_err(err_buf, err_cap, sock_init_err(rc));
+            cais_set_err(err_buf, err_cap, sock_init_err(rc));
             return 0;
         }
         inited = 1;
@@ -119,24 +119,24 @@ static int solo_pal_sock_init(char *err_buf, size_t err_cap)
     return 1;
 }
 
-static int solo_pal_set_nonblocking(SOLO_PAL_SOCK_T s, int nb)
+static int cais_pal_set_nonblocking(CAIS_PAL_SOCK_T s, int nb)
 {
     return (ioctlsocket(s, FIONBIO, (char *)&nb) == 0) ? 0 : -1;
 }
 
-static int solo_pal_set_timeout(SOLO_PAL_SOCK_T s, int timeout_ms)
+static int cais_pal_set_timeout(CAIS_PAL_SOCK_T s, int timeout_ms)
 {
     (void)s;
     (void)timeout_ms;
     return 0;
 }
 
-static void solo_pal_strerror(int err, char *err_buf, size_t err_cap)
+static void cais_pal_strerror(int err, char *err_buf, size_t err_cap)
 {
-    solo_set_err(err_buf, err_cap, strerror(err));
+    cais_set_err(err_buf, err_cap, strerror(err));
 }
 
-#define SOLO_PAL_SELECT(n, r, w, e, t) select_s((n), (r), (w), (e), (t))
+#define CAIS_PAL_SELECT(n, r, w, e, t) select_s((n), (r), (w), (e), (t))
 
 #else /* DOS without WATT-32 */
 #error "DOS network requires WATT-32"
@@ -145,7 +145,7 @@ static void solo_pal_strerror(int err, char *err_buf, size_t err_cap)
 /* =============================================================================
  * 3. OS/2 (Dynamic TCPIP32.DLL / SO32DLL)
  * ============================================================================= */
-#elif SOLO_IS_OS2
+#elif CAIS_IS_OS2
 
 #define INCL_DOS
 #define INCL_DOSERRORS
@@ -239,13 +239,13 @@ static struct {
     pfn_os2_select_t os2_select;
 } g_os2_tcpip;
 
-#define SOLO_PAL_SOCK_T           int
-#define SOLO_PAL_INVALID_SOCK     (-1)
-#define SOLO_PAL_CLOSESOCKET(s)   (g_os2_tcpip.soclose ? g_os2_tcpip.soclose(s) : -1)
-#define SOLO_PAL_SOCK_ERRNO       (g_os2_tcpip.sock_errno ? g_os2_tcpip.sock_errno() : 0)
-#define SOLO_PAL_IS_WOULDBLOCK(e) ((e) == 35 /*SOCEWOULDBLOCK*/ || (e) == 35 /*SOCEAGAIN*/)
-#define SOLO_PAL_IS_INPROGRESS(e) ((e) == 36 /*SOCEINPROGRESS*/)
-#define SOLO_PAL_IS_INTR(e)       ((e) == 4 /*SOCEINTR*/)
+#define CAIS_PAL_SOCK_T           int
+#define CAIS_PAL_INVALID_SOCK     (-1)
+#define CAIS_PAL_CLOSESOCKET(s)   (g_os2_tcpip.soclose ? g_os2_tcpip.soclose(s) : -1)
+#define CAIS_PAL_SOCK_ERRNO       (g_os2_tcpip.sock_errno ? g_os2_tcpip.sock_errno() : 0)
+#define CAIS_PAL_IS_WOULDBLOCK(e) ((e) == 35 /*SOCEWOULDBLOCK*/ || (e) == 35 /*SOCEAGAIN*/)
+#define CAIS_PAL_IS_INPROGRESS(e) ((e) == 36 /*SOCEINPROGRESS*/)
+#define CAIS_PAL_IS_INTR(e)       ((e) == 4 /*SOCEINTR*/)
 
 #define socket(d,t,p)             g_os2_tcpip.socket(d,t,p)
 #define connect(s,a,l)            g_os2_tcpip.connect(s,a,l)
@@ -259,13 +259,13 @@ static struct {
 #define setsockopt(s,lv,o,v,ol)   g_os2_tcpip.setsockopt(s,lv,o,v,ol)
 #define gethostbyname(n)          g_os2_tcpip.gethostbyname(n)
 
-static int solo_pal_sock_init(char *err_buf, size_t err_cap)
+static int cais_pal_sock_init(char *err_buf, size_t err_cap)
 {
     char errbuf[128];
     APIRET rc;
     if (g_os2_tcpip.initialized) return 1;
     if (g_os2_tcpip.failed) {
-        solo_set_err(err_buf, err_cap, "OS/2 TCP/IP stack is not installed");
+        cais_set_err(err_buf, err_cap, "OS/2 TCP/IP stack is not installed");
         return 0;
     }
     rc = DosLoadModule(errbuf, sizeof(errbuf), "SO32DLL", &g_os2_tcpip.hmod);
@@ -274,7 +274,7 @@ static int solo_pal_sock_init(char *err_buf, size_t err_cap)
     }
     if (rc != 0) {
         g_os2_tcpip.failed = 1;
-        solo_set_err(err_buf, err_cap, "OS/2 TCP/IP stack (SO32DLL/TCPIP32) is not installed");
+        cais_set_err(err_buf, err_cap, "OS/2 TCP/IP stack (SO32DLL/TCPIP32) is not installed");
         return 0;
     }
     DosQueryProcAddr(g_os2_tcpip.hmod, 0, "sock_init", (PFN *)&g_os2_tcpip.sock_init);
@@ -302,7 +302,7 @@ static int solo_pal_sock_init(char *err_buf, size_t err_cap)
     return 1;
 }
 
-static int solo_pal_set_nonblocking(SOLO_PAL_SOCK_T s, int nb)
+static int cais_pal_set_nonblocking(CAIS_PAL_SOCK_T s, int nb)
 {
     int val = nb ? 1 : 0;
     if (g_os2_tcpip.os2_ioctl != NULL) {
@@ -314,7 +314,7 @@ static int solo_pal_set_nonblocking(SOLO_PAL_SOCK_T s, int nb)
     return -1;
 }
 
-static int solo_pal_set_timeout(SOLO_PAL_SOCK_T s, int timeout_ms)
+static int cais_pal_set_timeout(CAIS_PAL_SOCK_T s, int timeout_ms)
 {
     struct timeval tv;
     tv.tv_sec = timeout_ms / 1000;
@@ -326,13 +326,13 @@ static int solo_pal_set_timeout(SOLO_PAL_SOCK_T s, int timeout_ms)
     return 0;
 }
 
-static void solo_pal_strerror(int err, char *err_buf, size_t err_cap)
+static void cais_pal_strerror(int err, char *err_buf, size_t err_cap)
 {
-    solo_set_err_fmt(err_buf, err_cap, "OS/2 socket error %d", err);
+    cais_set_err_fmt(err_buf, err_cap, "OS/2 socket error %d", err);
 }
 
-#define SOLO_PAL_HAS_CUSTOM_POLL 1
-static int solo_pal_custom_poll(solo_pollfd_t *fds, size_t nfds, int timeout_ms)
+#define CAIS_PAL_HAS_CUSTOM_POLL 1
+static int cais_pal_custom_poll(cais_pollfd_t *fds, size_t nfds, int timeout_ms)
 {
     int socks[48];
     int r_cnt = 0, w_cnt = 0, e_cnt = 0;
@@ -341,14 +341,14 @@ static int solo_pal_custom_poll(solo_pollfd_t *fds, size_t nfds, int timeout_ms)
     int rc, count = 0;
     long to;
 
-    if (fds == NULL && nfds > 0) return SOLO_SOCK_ERROR;
+    if (fds == NULL && nfds > 0) return CAIS_SOCK_ERROR;
     if (nfds == 0) return 0;
-    if (g_os2_tcpip.os2_select == NULL) return SOLO_SOCK_ERROR;
+    if (g_os2_tcpip.os2_select == NULL) return CAIS_SOCK_ERROR;
 
     for (i = 0; i < nfds && i < 16; i++) {
         fds[i].revents = 0;
-        if (fds[i].sock != NULL && SOLO_SOCK_IS_VALID(fds[i].sock)) {
-            if (fds[i].events & SOLO_SOCK_POLL_READ) {
+        if (fds[i].sock != NULL && CAIS_SOCK_IS_VALID(fds[i].sock)) {
+            if (fds[i].events & CAIS_SOCK_POLL_READ) {
                 read_map[r_cnt] = i;
                 socks[r_cnt] = fds[i].sock->fd;
                 r_cnt++;
@@ -356,8 +356,8 @@ static int solo_pal_custom_poll(solo_pollfd_t *fds, size_t nfds, int timeout_ms)
         }
     }
     for (i = 0; i < nfds && i < 16; i++) {
-        if (fds[i].sock != NULL && SOLO_SOCK_IS_VALID(fds[i].sock)) {
-            if (fds[i].events & SOLO_SOCK_POLL_WRITE) {
+        if (fds[i].sock != NULL && CAIS_SOCK_IS_VALID(fds[i].sock)) {
+            if (fds[i].events & CAIS_SOCK_POLL_WRITE) {
                 write_map[w_cnt] = i;
                 socks[r_cnt + w_cnt] = fds[i].sock->fd;
                 w_cnt++;
@@ -365,7 +365,7 @@ static int solo_pal_custom_poll(solo_pollfd_t *fds, size_t nfds, int timeout_ms)
         }
     }
     for (i = 0; i < nfds && i < 16; i++) {
-        if (fds[i].sock != NULL && SOLO_SOCK_IS_VALID(fds[i].sock)) {
+        if (fds[i].sock != NULL && CAIS_SOCK_IS_VALID(fds[i].sock)) {
             err_map[e_cnt] = i;
             socks[r_cnt + w_cnt + e_cnt] = fds[i].sock->fd;
             e_cnt++;
@@ -375,17 +375,17 @@ static int solo_pal_custom_poll(solo_pollfd_t *fds, size_t nfds, int timeout_ms)
     if (r_cnt == 0 && w_cnt == 0 && e_cnt == 0) return 0;
     to = (timeout_ms >= 0) ? timeout_ms : -1;
     rc = g_os2_tcpip.os2_select(socks, r_cnt, w_cnt, e_cnt, to);
-    if (rc < 0) return SOLO_SOCK_ERROR;
+    if (rc < 0) return CAIS_SOCK_ERROR;
     if (rc == 0) return 0;
 
     for (i = 0; i < (size_t)r_cnt; i++) {
-        if (socks[i] != -1) fds[read_map[i]].revents |= SOLO_SOCK_POLL_READ;
+        if (socks[i] != -1) fds[read_map[i]].revents |= CAIS_SOCK_POLL_READ;
     }
     for (i = 0; i < (size_t)w_cnt; i++) {
-        if (socks[r_cnt + i] != -1) fds[write_map[i]].revents |= SOLO_SOCK_POLL_WRITE;
+        if (socks[r_cnt + i] != -1) fds[write_map[i]].revents |= CAIS_SOCK_POLL_WRITE;
     }
     for (i = 0; i < (size_t)e_cnt; i++) {
-        if (socks[r_cnt + w_cnt + i] != -1) fds[err_map[i]].revents |= SOLO_SOCK_POLL_ERR;
+        if (socks[r_cnt + w_cnt + i] != -1) fds[err_map[i]].revents |= CAIS_SOCK_POLL_ERR;
     }
     for (i = 0; i < nfds; i++) {
         if (fds[i].revents != 0) count++;
@@ -396,7 +396,7 @@ static int solo_pal_custom_poll(solo_pollfd_t *fds, size_t nfds, int timeout_ms)
 /* =============================================================================
  * 4. Amiga (AmiTCP / bsdsocket.library)
  * ============================================================================= */
-#elif SOLO_IS_AMIGA
+#elif CAIS_IS_AMIGA
 
 #include <exec/types.h>
 #include <exec/libraries.h>
@@ -422,15 +422,15 @@ extern int Errno(void);
 
 extern struct Library *SocketBase;
 
-#define SOLO_PAL_SOCK_T           int
-#define SOLO_PAL_INVALID_SOCK     (-1)
-#define SOLO_PAL_CLOSESOCKET(s)   CloseSocket(s)
-#define SOLO_PAL_SOCK_ERRNO       Errno()
-#define SOLO_PAL_IS_WOULDBLOCK(e) ((e) == EWOULDBLOCK || (e) == EAGAIN)
-#define SOLO_PAL_IS_INPROGRESS(e) ((e) == EINPROGRESS)
-#define SOLO_PAL_IS_INTR(e)       ((e) == EINTR)
+#define CAIS_PAL_SOCK_T           int
+#define CAIS_PAL_INVALID_SOCK     (-1)
+#define CAIS_PAL_CLOSESOCKET(s)   CloseSocket(s)
+#define CAIS_PAL_SOCK_ERRNO       Errno()
+#define CAIS_PAL_IS_WOULDBLOCK(e) ((e) == EWOULDBLOCK || (e) == EAGAIN)
+#define CAIS_PAL_IS_INPROGRESS(e) ((e) == EINPROGRESS)
+#define CAIS_PAL_IS_INTR(e)       ((e) == EINTR)
 
-static int solo_pal_sock_init(char *err_buf, size_t err_cap)
+static int cais_pal_sock_init(char *err_buf, size_t err_cap)
 {
     if (SocketBase == NULL) {
         SocketBase = OpenLibrary("bsdsocket.library", 4);
@@ -438,20 +438,20 @@ static int solo_pal_sock_init(char *err_buf, size_t err_cap)
             SocketBase = OpenLibrary("bsdsocket.library", 3);
         }
         if (SocketBase == NULL) {
-            solo_set_err(err_buf, err_cap, "bsdsocket.library is not running");
+            cais_set_err(err_buf, err_cap, "bsdsocket.library is not running");
             return 0;
         }
     }
     return 1;
 }
 
-static int solo_pal_set_nonblocking(SOLO_PAL_SOCK_T s, int nb)
+static int cais_pal_set_nonblocking(CAIS_PAL_SOCK_T s, int nb)
 {
     unsigned long val = nb ? 1 : 0;
     return (IoctlSocket(s, FIONBIO, (char *)&val) == 0) ? 0 : -1;
 }
 
-static int solo_pal_set_timeout(SOLO_PAL_SOCK_T s, int timeout_ms)
+static int cais_pal_set_timeout(CAIS_PAL_SOCK_T s, int timeout_ms)
 {
     struct timeval tv;
     tv.tv_sec = timeout_ms / 1000;
@@ -461,12 +461,12 @@ static int solo_pal_set_timeout(SOLO_PAL_SOCK_T s, int timeout_ms)
     return 0;
 }
 
-static void solo_pal_strerror(int err, char *err_buf, size_t err_cap)
+static void cais_pal_strerror(int err, char *err_buf, size_t err_cap)
 {
-    solo_set_err_fmt(err_buf, err_cap, "Amiga socket error %d", err);
+    cais_set_err_fmt(err_buf, err_cap, "Amiga socket error %d", err);
 }
 
-#define SOLO_PAL_SELECT(n, r, w, e, t) WaitSelect((n), (r), (w), (e), (t), NULL)
+#define CAIS_PAL_SELECT(n, r, w, e, t) WaitSelect((n), (r), (w), (e), (t), NULL)
 
 /* =============================================================================
  * 5. POSIX / Atari ST MiNT (Standard BSD Sockets)
@@ -492,22 +492,22 @@ static void solo_pal_strerror(int err, char *err_buf, size_t err_cap)
 #include <arpa/inet.h>
 #include <netdb.h>
 
-#define SOLO_PAL_SOCK_T           int
-#define SOLO_PAL_INVALID_SOCK     (-1)
-#define SOLO_PAL_CLOSESOCKET(s)   close(s)
-#define SOLO_PAL_SOCK_ERRNO       errno
-#define SOLO_PAL_IS_WOULDBLOCK(e) ((e) == EWOULDBLOCK || (e) == EAGAIN)
-#define SOLO_PAL_IS_INPROGRESS(e) ((e) == EINPROGRESS)
-#define SOLO_PAL_IS_INTR(e)       ((e) == EINTR)
+#define CAIS_PAL_SOCK_T           int
+#define CAIS_PAL_INVALID_SOCK     (-1)
+#define CAIS_PAL_CLOSESOCKET(s)   close(s)
+#define CAIS_PAL_SOCK_ERRNO       errno
+#define CAIS_PAL_IS_WOULDBLOCK(e) ((e) == EWOULDBLOCK || (e) == EAGAIN)
+#define CAIS_PAL_IS_INPROGRESS(e) ((e) == EINPROGRESS)
+#define CAIS_PAL_IS_INTR(e)       ((e) == EINTR)
 
-static int solo_pal_sock_init(char *err_buf, size_t err_cap)
+static int cais_pal_sock_init(char *err_buf, size_t err_cap)
 {
     (void)err_buf;
     (void)err_cap;
     return 1;
 }
 
-static int solo_pal_set_nonblocking(SOLO_PAL_SOCK_T s, int nb)
+static int cais_pal_set_nonblocking(CAIS_PAL_SOCK_T s, int nb)
 {
     int flags = fcntl(s, F_GETFL, 0);
     if (flags < 0) return -1;
@@ -519,7 +519,7 @@ static int solo_pal_set_nonblocking(SOLO_PAL_SOCK_T s, int nb)
     return (fcntl(s, F_SETFL, flags) < 0) ? -1 : 0;
 }
 
-static int solo_pal_set_timeout(SOLO_PAL_SOCK_T s, int timeout_ms)
+static int cais_pal_set_timeout(CAIS_PAL_SOCK_T s, int timeout_ms)
 {
     struct timeval tv;
     tv.tv_sec = timeout_ms / 1000;
@@ -529,13 +529,13 @@ static int solo_pal_set_timeout(SOLO_PAL_SOCK_T s, int timeout_ms)
     return 0;
 }
 
-static void solo_pal_strerror(int err, char *err_buf, size_t err_cap)
+static void cais_pal_strerror(int err, char *err_buf, size_t err_cap)
 {
-    solo_set_err(err_buf, err_cap, strerror(err));
+    cais_set_err(err_buf, err_cap, strerror(err));
 }
 
-#define SOLO_PAL_SELECT(n, r, w, e, t) select((n), (r), (w), (e), (t))
+#define CAIS_PAL_SELECT(n, r, w, e, t) select((n), (r), (w), (e), (t))
 
 #endif
 
-#endif /* SOLO_SOCKET_PAL_H */
+#endif /* CAIS_SOCKET_PAL_H */

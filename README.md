@@ -1,4 +1,4 @@
-# solo ⚙️
+# cais ⚙️
 
 > **Physical I/O, System Foundations & Hardware Abstractions**  
 > _Part of the [Projectum Lunare](https://github.com/projectum-lunare) Ecosystem._
@@ -6,33 +6,33 @@
 [![License: MPL-2.0](https://img.shields.io/badge/License-MPL_2.0-blue.svg)](https://mozilla.org/MPL/2.0/)
 [![Language: ANSI C89 / GNU89](https://img.shields.io/badge/C-ANSI_C89_%2F_GNU89-brightgreen.svg)]()
 [![Lua: 5.4-5.5](https://img.shields.io/badge/Lua-5.4_--_5.5-blue.svg)]()
-[![Documentation](https://img.shields.io/badge/Docs-Online-blueviolet.svg)](https://projectum-lunare.github.io/solo/)
+[![Documentation](https://img.shields.io/badge/Docs-Online-blueviolet.svg)](https://projectum-lunare.github.io/cais/)
 
-`solo` is a portable, zero-bloat system foundation library featuring public C headers and core interfaces designed for strict ANSI C (C89 / ISO C90) interoperability, with implementations and vintage drivers targeting `gnu89` (leveraging standard platform runtime features like `vsnprintf` and GCC extensions such as `__asm__`, struct alignment, and register calling conventions). It bridges hardware I/O, network communication, physical ports, persistent filesystems, and kernel-level sandboxing across **10 distinct operating system families** — from vintage platforms of the 1990s (DOS, Amiga, Windows CE, Atari ST) to modern POSIX workstations in 2026.
+`cais` is a portable, zero-bloat system foundation library featuring public C headers and core interfaces designed for strict ANSI C (C89 / ISO C90) interoperability, with implementations and vintage drivers targeting `gnu89` (leveraging standard platform runtime features like `vsnprintf` and GCC extensions such as `__asm__`, struct alignment, and register calling conventions). It bridges hardware I/O, network communication, physical ports, persistent filesystems, and kernel-level sandboxing across **10 distinct operating system families** — from vintage platforms of the 1990s (DOS, Amiga, Windows CE, Atari ST) to modern POSIX workstations in 2026.
 
 ---
 
 ## 🏛️ Architecture & Core Modules
 
-The library is structured as a cohesive monorepo divided into specialized subsystems, available both as a native C API (`libsolo.a` / `libsolo.so`) and as Lua modules (`solo.*`):
+The library is structured as a cohesive monorepo divided into specialized subsystems, available both as a native C API (`libcais.a` / `libcais.so`) and as Lua modules (`cais.*`):
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│                   solo (libsolo / Lua API)                             │
+│                   cais (libcais / Lua API)                             │
 ├────────────────────────────────────────────────────────────────────────┤
-│ • solo.platform   │ Compiler, OS & CPU detection, bits & endianness    │
-│ • solo.filesystem │ Safe file and directory I/O (alias: solo.fs)       │
-│ • solo.parallel   │ Centronics parallel port (LPT / SPP)               │
-│ • solo.serial     │ RS-232 serial UART with hardware flow control      │
-│ • solo.socket     │ Raw TCP & UDP stream/datagram sockets (IPv4)       │
-│ • solo.sandbox    │ Kernel sandboxing (Landlock, Pledge, Capsicum)     │
+│ • cais.platform   │ Compiler, OS & CPU detection, bits & endianness    │
+│ • cais.filesystem │ Safe file and directory I/O (alias: cais.fs)       │
+│ • cais.parallel   │ Centronics parallel port (LPT / SPP)               │
+│ • cais.serial     │ RS-232 serial UART with hardware flow control      │
+│ • cais.socket     │ Raw TCP & UDP stream/datagram sockets (IPv4)       │
+│ • cais.sandbox    │ Kernel sandboxing (Landlock, Pledge, Capsicum)     │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-All subsystems share a unified canonical type foundation (`include/solo/types.h`) providing strict C89/C90 types with seamless C99/C++ interoperability:
-- `solo_status_t`: Canonical I/O and syscall return status (`SOLO_OK`, `SOLO_ERROR`, `SOLO_AGAIN`, `SOLO_EOF`, `SOLO_UNSUPPORTED`).
-- `solo_bool_t`: Canonical boolean type (`SOLO_TRUE` = 1, `SOLO_FALSE` = 0) eliminating ambiguous integer truth values.
-- `solo_line_state_t`: Physical signal line state (`SOLO_LINE_HIGH`, `SOLO_LINE_LOW`, `SOLO_LINE_ERROR`).
+All subsystems share a unified canonical type foundation (`include/cais/types.h`) providing strict C89/C90 types with seamless C99/C++ interoperability:
+- `cais_status_t`: Canonical I/O and syscall return status (`CAIS_OK`, `CAIS_ERROR`, `CAIS_AGAIN`, `CAIS_EOF`, `CAIS_UNSUPPORTED`).
+- `cais_bool_t`: Canonical boolean type (`CAIS_TRUE` = 1, `CAIS_FALSE` = 0) eliminating ambiguous integer truth values.
+- `cais_line_state_t`: Physical signal line state (`CAIS_LINE_HIGH`, `CAIS_LINE_LOW`, `CAIS_LINE_ERROR`).
 
 ### 1. `platform` — Platform & Environment Foundation
 
@@ -42,32 +42,32 @@ All subsystems share a unified canonical type foundation (`include/solo/types.h`
 ### 2. `filesystem` (alias `fs`) — Storage & File Operations
 
 - Portable filesystem operations across vintage and modern operating systems without crashing on raw device nodes.
-- Type-safe predicates returning canonical `solo_bool_t` (`solo_fs_exists`, `solo_fs_is_file`, `solo_fs_is_dir`, `solo_fs_is_symlink`, `solo_fs_path_is_absolute`).
+- Type-safe predicates returning canonical `cais_bool_t` (`cais_fs_exists`, `cais_fs_is_file`, `cais_fs_is_dir`, `cais_fs_is_symlink`, `cais_fs_path_is_absolute`).
 - Clean separation between storage syscalls and environment metadata.
-- Ergonomic alias: accessible interchangeably as `solo.filesystem` or `solo.fs` (both in the module table and via `require("solo.fs")`).
+- Ergonomic alias: accessible interchangeably as `cais.filesystem` or `cais.fs` (both in the module table and via `require("cais.fs")`).
 
 ### 3. `parallel` — Centronics Parallel Port (LPT / SPP)
 
-- Direct hardware strobe, busy status check, and buffer drain for impact printers, matrix devices, and parallel links with typed enums (`solo.parallel.mode`, `solo.parallel.pin`, `solo.parallel.port`, `solo.parallel.status`).
-- Hardware status monitoring: queries real-time printer status pins (`BUSY`, `ACK`, `PE`, `SLCT`, `FAULT`). `solo_parallel_drain` actively polls the BUSY line until printing completes, returning `SOLO_PARALLEL_OK` or `SOLO_PARALLEL_ERROR` on timeout.
-- Standard line printer devices (`/dev/lp*`, `LPT1`) operate in Centronics SPP mode; bidirectional IEEE 1284 modes return `SOLO_PARALLEL_UNSUPPORTED` on unidirectional printer ports.
+- Direct hardware strobe, busy status check, and buffer drain for impact printers, matrix devices, and parallel links with typed enums (`cais.parallel.mode`, `cais.parallel.pin`, `cais.parallel.port`, `cais.parallel.status`).
+- Hardware status monitoring: queries real-time printer status pins (`BUSY`, `ACK`, `PE`, `SLCT`, `FAULT`). `cais_parallel_drain` actively polls the BUSY line until printing completes, returning `CAIS_PARALLEL_OK` or `CAIS_PARALLEL_ERROR` on timeout.
+- Standard line printer devices (`/dev/lp*`, `LPT1`) operate in Centronics SPP mode; bidirectional IEEE 1284 modes return `CAIS_PARALLEL_UNSUPPORTED` on unidirectional printer ports.
 - Backends: POSIX `/dev/lp0`, Windows NT `LPT1`, Windows CE, DOS `INT 17h` and direct I/O port strobe, Amiga `parallel.device`, Atari ST, KolibriOS, OS/2, Plan 9.
 
 ### 4. `serial` — RS-232 Serial UART
 
-- Industrial-grade serial communication with typed enums (`solo.serial.flow`, `solo.serial.parity`, `solo.serial.stop_bits`, `solo.serial.data_bits`, `solo.serial.baud`, `solo.serial.line`, `solo.serial.status`): configurable baud rates, data bits, parity, stop bits, and flow control.
+- Industrial-grade serial communication with typed enums (`cais.serial.flow`, `cais.serial.parity`, `cais.serial.stop_bits`, `cais.serial.data_bits`, `cais.serial.baud`, `cais.serial.line`, `cais.serial.status`): configurable baud rates, data bits, parity, stop bits, and flow control.
 - Safe default: flow control defaults to `NONE` (0). Hardware RTS/CTS is opt-in, preventing write hangs on 3-wire cables or USB adapters without CTS connected.
-- Full bidirectional UART: `write()`, `read()`, hardware buffer flush (`solo_serial_drain` returning `solo_serial_status_t`), timeout control (`set_timeout()`), and modem control/status lines (`set_rts`, `set_dtr`, `get_cts`, `get_dsr`, `get_cd`, `get_ri`) returning typed `solo_line_state_t` (`SOLO_LINE_HIGH`, `SOLO_LINE_LOW`, `SOLO_LINE_ERROR`).
+- Full bidirectional UART: `write()`, `read()`, hardware buffer flush (`cais_serial_drain` returning `cais_serial_status_t`), timeout control (`set_timeout()`), and modem control/status lines (`set_rts`, `set_dtr`, `get_cts`, `get_dsr`, `get_cd`, `get_ri`) returning typed `cais_line_state_t` (`CAIS_LINE_HIGH`, `CAIS_LINE_LOW`, `CAIS_LINE_ERROR`).
 - Flexible initialization supporting both ergonomic options tables and classic positional parameters.
 - Backends: POSIX termios, Windows NT Comm API, Windows CE, DOS BIOS `INT 14h` / 8250 UART, Amiga `serial.device`, Atari ST, KolibriOS, OS/2, Plan 9.
 
 ### 5. `socket` — Raw Network Sockets (IPv4)
 
-- Unified IPv4 TCP & UDP socket abstraction with typed Enums (`solo.socket.type`, `solo.socket.mode`, `solo.socket.event`, `solo.socket.status`).
+- Unified IPv4 TCP & UDP socket abstraction with typed Enums (`cais.socket.type`, `cais.socket.mode`, `cais.socket.event`, `cais.socket.status`).
 - Synchronous and asynchronous operation modes (`sock:set_mode`, `sock:set_blocking`, `sock:set_timeout`).
-- TCP client connections (`solo.socket.connect`), server binding (`solo.socket.bind`), and client acceptance (`sock:accept`).
-- UDP datagram sockets (`solo.socket.udp`, `solo.socket.udp_bind`), datagram transmission (`sock:sendto`), and reception with sender addressing (`sock:recvfrom`).
-- Multiplexing beyond `select()` (`solo_socket_poll` in C, `solo.socket.select` in Lua):
+- TCP client connections (`cais.socket.connect`), server binding (`cais.socket.bind`), and client acceptance (`sock:accept`).
+- UDP datagram sockets (`cais.socket.udp`, `cais.socket.udp_bind`), datagram transmission (`sock:sendto`), and reception with sender addressing (`sock:recvfrom`).
+- Multiplexing beyond `select()` (`cais_socket_poll` in C, `cais.socket.select` in Lua):
   - **Modern POSIX (`poll(2)`):** Native linear array multiplexing for Linux, FreeBSD, OpenBSD, NetBSD, macOS, and Solaris. Eliminates `FD_SETSIZE` (1024) limits and stack corruption risks when handling high descriptor values ($fd \ge 1024$).
   - **Windows (NT 3.51 to 11):** Adaptive runtime multiplexer. Dynamically resolves `WSAPoll` via `GetProcAddress` on Windows Vista..11 / Server 2008..2025 without static DLL import table dependencies. On Windows NT 3.51, 4.0, 2000, and XP, automatically falls back to Winsock `select()` with `FD_SETSIZE` safely expanded to 1024 socket handles (an explicit array in Winsock, avoiding bitmask overflows).
   - **Vintage Non-POSIX BSD Stacks:** Direct native BSD `select()` engine preserving full functionality on MS-DOS (WATT-32 `select_s`), AmigaOS (`bsdsocket.library`), Atari ST (MiNTNet), OS/2, and Plan 9.
@@ -77,10 +77,10 @@ All subsystems share a unified canonical type foundation (`include/solo/types.h`
 ### 6. `sandbox` — Kernel-Level Sandboxing
 
 - Enforces the principle of least privilege directly inside operating system kernels:
-  - **Linux:** Modern Landlock LSM filesystem restriction and `prctl(PR_SET_NO_NEW_PRIVS)`. The Landlock ruleset is process-wide; `solo.sandbox.lock()` locks the ruleset for the process and its descendants. Calling lock without prior unveil restricts the entire filesystem.
+  - **Linux:** Modern Landlock LSM filesystem restriction and `prctl(PR_SET_NO_NEW_PRIVS)`. The Landlock ruleset is process-wide; `cais.sandbox.lock()` locks the ruleset for the process and its descendants. Calling lock without prior unveil restricts the entire filesystem.
   - **OpenBSD:** Unveil filesystem paths (`unveil`) and syscall restrictions (`pledge`).
   - **FreeBSD:** Capsicum capability mode.
-  - **Other platforms:** Safe fallback stub returning `SOLO_SANDBOX_UNSUPPORTED` with zero runtime overhead.
+  - **Other platforms:** Safe fallback stub returning `CAIS_SANDBOX_UNSUPPORTED` with zero runtime overhead.
 
 ---
 
@@ -105,40 +105,40 @@ All subsystems share a unified canonical type foundation (`include/solo/types.h`
 ## 🚀 Quickstart: Lua API
 
 ```lua
-local solo = require("solo")
+local cais = require("cais")
 
 -- 1. Platform Detection
-print("Running on: " .. solo.platform.os)
-print("Architecture: " .. solo.platform.arch)
-print("Is 64-bit: " .. tostring(solo.platform.is_64bit))
+print("Running on: " .. cais.platform.os)
+print("Architecture: " .. cais.platform.arch)
+print("Is 64-bit: " .. tostring(cais.platform.is_64bit))
 
--- 2. Filesystem (usable as solo.filesystem or solo.fs)
-if solo.fs.exists("/etc/hosts") then
-    print("Found hosts file via solo.fs!")
+-- 2. Filesystem (usable as cais.filesystem or cais.fs)
+if cais.fs.exists("/etc/hosts") then
+    print("Found hosts file via cais.fs!")
 end
 
 -- 3. Kernel Sandboxing
-local backend, version = solo.sandbox.backend()
+local backend, version = cais.sandbox.backend()
 print("Sandbox backend: " .. backend)
 
 -- Restrict filesystem access to safe paths
-solo.sandbox.unveil(".", "r")
-solo.sandbox.lock()
+cais.sandbox.unveil(".", "r")
+cais.sandbox.lock()
 
 -- 4. Network Sockets (socket)
-local client, err = solo.socket.connect("127.0.0.1", 9100)
+local client, err = cais.socket.connect("127.0.0.1", 9100)
 if client then
-    client:write("Print payload via solo!\n")
+    client:write("Print payload via cais!\n")
     client:close()
 end
 
 -- 5. Serial Port (serial)
-local port, err = solo.serial.open("/dev/ttyUSB0", {
-    baud = solo.serial.baud.B115200,
+local port, err = cais.serial.open("/dev/ttyUSB0", {
+    baud = cais.serial.baud.B115200,
     data_bits = 8,
     parity = "none",
     stop_bits = 1,
-    flow = solo.serial.flow.HARDWARE
+    flow = cais.serial.flow.HARDWARE
 })
 if port then
     port:write("AT\r\n")
@@ -147,7 +147,7 @@ if port then
 end
 
 -- 6. Parallel Port (parallel / Centronics SPP)
-local lpt, err = solo.parallel.open(solo.parallel.port.LPT1)
+local lpt, err = cais.parallel.open(cais.parallel.port.LPT1)
 if lpt then
     lpt:write("Print payload via Centronics!\n\f")
     lpt:drain()
@@ -161,32 +161,32 @@ end
 
 ```c
 #include <stdio.h>
-#include <solo/solo.h>
+#include <cais/cais.h>
 
 int main(void) {
     char err_buf[128];
-    solo_socket_t *sock;
+    cais_socket_t *sock;
     size_t sent = 0;
 
-    printf("solo version: %s\n", solo_version());
-    printf("OS: %s, Arch: %s\n", solo_platform_os(), solo_platform_arch());
+    printf("cais version: %s\n", cais_version());
+    printf("OS: %s, Arch: %s\n", cais_platform_os(), cais_platform_arch());
 
     /* Canonical boolean check */
-    if (solo_fs_exists("/etc/hosts") == SOLO_TRUE) {
+    if (cais_fs_exists("/etc/hosts") == CAIS_TRUE) {
         printf("Host configuration exists on disk.\n");
     }
 
     /* Connect to raw TCP socket */
-    sock = solo_socket_connect("127.0.0.1", 1993, SOLO_SOCK_BLOCKING, err_buf, sizeof(err_buf));
+    sock = cais_socket_connect("127.0.0.1", 1993, CAIS_SOCK_BLOCKING, err_buf, sizeof(err_buf));
     if (!sock) {
         fprintf(stderr, "Connection failed: %s\n", err_buf);
         return 1;
     }
 
-    if (solo_socket_send(sock, "GET / HTTP/1.0\r\n\r\n", 18, &sent) == SOLO_SOCK_OK) {
+    if (cais_socket_send(sock, "GET / HTTP/1.0\r\n\r\n", 18, &sent) == CAIS_SOCK_OK) {
         printf("Sent %lu bytes\n", (unsigned long)sent);
     }
-    solo_socket_close(sock);
+    cais_socket_close(sock);
     return 0;
 }
 ```
@@ -195,7 +195,7 @@ int main(void) {
 
 ## 📦 Building and Testing
 
-`solo` public C headers (`include/solo/*.h`) and consumer-facing C code are strictly ANSI C89 (C90) compliant, ensuring clean interoperability across vintage and modern C compilers. Internal library implementations and platform-specific drivers (such as AmigaOS m68k, Atari ST TOS/MiNT, and KolibriOS) compile under `gnu89` where compiler extensions (`__asm__`, struct alignment, `#pragma`) and standard C-runtime features (such as `vsnprintf`) are utilized.
+`cais` public C headers (`include/cais/*.h`) and consumer-facing C code are strictly ANSI C89 (C90) compliant, ensuring clean interoperability across vintage and modern C compilers. Internal library implementations and platform-specific drivers (such as AmigaOS m68k, Atari ST TOS/MiNT, and KolibriOS) compile under `gnu89` where compiler extensions (`__asm__`, struct alignment, `#pragma`) and standard C-runtime features (such as `vsnprintf`) are utilized.
 
 The project uses [xmake](https://xmake.io) and [Forge](https://github.com/projectum-lunare/forge) as its unified build system.
 
@@ -210,7 +210,7 @@ xmake test
 xmake run test_lua
 
 # Run minimal standalone smoke executable:
-xmake run solo_smoke
+xmake run cais_smoke
 
 # Clean artifacts:
 xmake clean
@@ -219,7 +219,7 @@ xmake clean
 ### 📚 Documentation
 
 The official documentation is available online at:  
-👉 **[https://projectum-lunare.github.io/solo/](https://projectum-lunare.github.io/solo/)**
+👉 **[https://projectum-lunare.github.io/cais/](https://projectum-lunare.github.io/cais/)**
 
 To build and serve the documentation locally using [Material for MkDocs](https://squidfunk.github.io/mkdocs-material/):
 
@@ -236,47 +236,47 @@ mkdocs build
 
 ### Modular Targets & Submodules
 
-`solo` builds both an umbrella library (`libsolo.a` / `solo.so`) and independent, zero-dependency submodules that can be required in Lua without overhead:
+`cais` builds both an umbrella library (`libcais.a` / `cais.so`) and independent, zero-dependency submodules that can be required in Lua without overhead:
 
 ```bash
 # Build only a specific submodule or target:
-xmake build solo_static
-xmake build solo.serial
-xmake build solo_smoke
+xmake build cais_static
+xmake build cais.serial
+xmake build cais_smoke
 ```
 
 #### C Preprocessor Flags
-If embedding `solo` directly in a custom build system or firmware, unneeded subsystems can be excluded via compile-time defines:
-- `-DSOLO_NO_SOCKET`: Exclude networking and TCP/UDP sockets.
-- `-DSOLO_NO_SERIAL`: Exclude serial port abstractions.
-- `-DSOLO_NO_PARALLEL`: Exclude parallel port abstractions.
-- `-DSOLO_NO_FILESYSTEM`: Exclude filesystem abstractions.
-- `-DSOLO_NO_SANDBOX`: Exclude OS kernel sandboxing.
-- `-DSOLO_NO_PLATFORM`: Exclude platform metadata.
+If embedding `cais` directly in a custom build system or firmware, unneeded subsystems can be excluded via compile-time defines:
+- `-DCAIS_NO_SOCKET`: Exclude networking and TCP/UDP sockets.
+- `-DCAIS_NO_SERIAL`: Exclude serial port abstractions.
+- `-DCAIS_NO_PARALLEL`: Exclude parallel port abstractions.
+- `-DCAIS_NO_FILESYSTEM`: Exclude filesystem abstractions.
+- `-DCAIS_NO_SANDBOX`: Exclude OS kernel sandboxing.
+- `-DCAIS_NO_PLATFORM`: Exclude platform metadata.
 
 #### Standalone Lua Submodules
 Submodules can be required independently without loading the umbrella library or its dependencies:
 ```lua
-local platform = require("solo.platform") -- only platform detection (~17 KB)
-local serial   = require("solo.serial")   -- only serial communication (~27 KB)
+local platform = require("cais.platform") -- only platform detection (~17 KB)
+local serial   = require("cais.serial")   -- only serial communication (~27 KB)
 ```
 
 ### Cross-Platform Multi-Target Builds (Forge)
 
-`solo` uses [Forge](https://github.com/projectum-lunare/forge) for automated cross-compilation and platform management:
+`cais` uses [Forge](https://github.com/projectum-lunare/forge) for automated cross-compilation and platform management:
 
 ```bash
 # Inspect SDK availability and platform toolchain status:
 xmake forge list
 
 # Build a specific target static library:
-xmake forge posix     # build/posix/libsolo.a
-xmake forge dos       # build/dos/libsolo.a (Open Watcom + WATT-32)
-xmake forge os2       # build/os2/libsolo.a (Open Watcom OS/2)
-xmake forge wince     # build/windows_ce/arm/libsolo.a (MS eVC 3.0 ARM via wibo)
-xmake forge amiga     # build/amiga/libsolo.a (m68k-amigaos-gcc)
-xmake forge atari     # build/atarist/libsolo.a (m68k-atari-mint-gcc)
-xmake forge kolibri   # build/kolibri/libsolo.a (kos32-gcc)
+xmake forge posix     # build/posix/libcais.a
+xmake forge dos       # build/dos/libcais.a (Open Watcom + WATT-32)
+xmake forge os2       # build/os2/libcais.a (Open Watcom OS/2)
+xmake forge wince     # build/windows_ce/arm/libcais.a (MS eVC 3.0 ARM via wibo)
+xmake forge amiga     # build/amiga/libcais.a (m68k-amigaos-gcc)
+xmake forge atari     # build/atarist/libcais.a (m68k-atari-mint-gcc)
+xmake forge kolibri   # build/kolibri/libcais.a (kos32-gcc)
 
 # Build all available platforms in a multi-target matrix:
 xmake forge all
@@ -285,7 +285,7 @@ xmake forge all
 ### LuaRocks Installation
 
 ```bash
-luarocks make solo-scm-1.rockspec
+luarocks make cais-scm-1.rockspec
 ```
 
 ---

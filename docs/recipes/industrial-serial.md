@@ -11,23 +11,23 @@ This recipe demonstrates how to configure UART parameters, query hardware Clear-
 ```c
 #include <stdio.h>
 #include <string.h>
-#include <solo/solo.h>
+#include <cais/cais.h>
 
 /* Reads an entire newline-terminated line from the serial port */
-static int read_line(solo_serial_t *port, char *out, size_t max_len, int timeout_ms) {
+static int read_line(cais_serial_t *port, char *out, size_t max_len, int timeout_ms) {
     size_t pos = 0;
     while (pos + 1 < max_len) {
         char ch;
         size_t n = 0;
-        solo_status_t st = solo_serial_read(port, &ch, 1, &n, timeout_ms);
-        if (st == SOLO_OK && n == 1) {
+        cais_status_t st = cais_serial_read(port, &ch, 1, &n, timeout_ms);
+        if (st == CAIS_OK && n == 1) {
             if (ch == '\r') continue;
             if (ch == '\n') {
                 out[pos] = '\0';
                 return 1;
             }
             out[pos++] = ch;
-        } else if (st == SOLO_AGAIN) {
+        } else if (st == CAIS_AGAIN) {
             /* Timeout expired */
             return 0;
         } else {
@@ -41,18 +41,18 @@ static int read_line(solo_serial_t *port, char *out, size_t max_len, int timeout
 
 int main(void) {
     char err[128];
-    solo_serial_opts_t opts;
-    solo_serial_t *port;
+    cais_serial_opts_t opts;
+    cais_serial_t *port;
 
     memset(&opts, 0, sizeof(opts));
-    opts.baud = SOLO_SERIAL_BAUD_9600;
-    opts.data_bits = SOLO_SERIAL_DATA_8;
-    opts.parity = SOLO_SERIAL_PARITY_NONE;
-    opts.stop_bits = SOLO_SERIAL_STOP_1;
-    opts.flow_control = SOLO_SERIAL_FLOW_NONE;
+    opts.baud = CAIS_SERIAL_BAUD_9600;
+    opts.data_bits = CAIS_SERIAL_DATA_8;
+    opts.parity = CAIS_SERIAL_PARITY_NONE;
+    opts.stop_bits = CAIS_SERIAL_STOP_1;
+    opts.flow_control = CAIS_SERIAL_FLOW_NONE;
     opts.timeout_ms = 2000; /* 2-second timeout */
 
-    port = solo_serial_open("/dev/ttyUSB0", &opts, err, sizeof(err));
+    port = cais_serial_open("/dev/ttyUSB0", &opts, err, sizeof(err));
     if (!port) {
         fprintf(stderr, "Cannot open serial port: %s\n", err);
         return 1;
@@ -61,13 +61,13 @@ int main(void) {
     printf("Serial port opened successfully.\n");
 
     /* Check physical CTS pin before writing */
-    if (solo_serial_get_cts(port) == SOLO_LINE_HIGH) {
+    if (cais_serial_get_cts(port) == CAIS_LINE_HIGH) {
         printf("[CTS ASSERTED] Remote device ready to receive.\n");
     }
 
     /* Send probe command and flush transmitter FIFO */
-    solo_serial_write(port, "$PMTK000*32\r\n", 13, NULL);
-    solo_serial_drain(port);
+    cais_serial_write(port, "$PMTK000*32\r\n", 13, NULL);
+    cais_serial_drain(port);
 
     /* Read incoming sentences */
     for (int i = 0; i < 5; i++) {
@@ -83,7 +83,7 @@ int main(void) {
         }
     }
 
-    solo_serial_close(port);
+    cais_serial_close(port);
     return 0;
 }
 ```
@@ -93,7 +93,7 @@ int main(void) {
 ## Lua Implementation
 
 ```lua
-local serial = require("solo.serial")
+local serial = require("cais.serial")
 
 local port, err = serial.open("/dev/ttyUSB0", {
     baud      = serial.baud.B9600,

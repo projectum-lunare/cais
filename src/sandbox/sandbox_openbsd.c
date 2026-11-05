@@ -1,6 +1,6 @@
 /*
- * solo - Physical I/O, System Foundations & Hardware Abstractions
- * Projectum Lunare <https://github.com/projectum-lunare/solo>
+ * cais - Physical I/O, System Foundations & Hardware Abstractions
+ * Projectum Lunare <https://github.com/projectum-lunare/cais>
  * Copyright (C) 2026 Gustavo Veiga <gustavo.veiga@outlook.com.br>
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
@@ -8,8 +8,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-#include <solo/platform.h>
-#include <solo/sandbox.h>
+#include <cais/platform.h>
+#include <cais/sandbox.h>
 
 #if defined(__OpenBSD__)
 
@@ -63,13 +63,13 @@ static int probe_openbsd_sandbox(void)
     return s_cached_openbsd;
 }
 
-solo_sandbox_backend_t solo_sandbox_backend(int *version_out)
+cais_sandbox_backend_t cais_sandbox_backend(int *version_out)
 {
     if (!probe_openbsd_sandbox()) {
         if (version_out != NULL) {
             *version_out = 0;
         }
-        return SOLO_SANDBOX_BACKEND_NONE;
+        return CAIS_SANDBOX_BACKEND_NONE;
     }
 
     if (version_out != NULL) {
@@ -79,21 +79,21 @@ solo_sandbox_backend_t solo_sandbox_backend(int *version_out)
         *version_out = 1;
 #endif
     }
-    return SOLO_SANDBOX_BACKEND_OPENBSD;
+    return CAIS_SANDBOX_BACKEND_OPENBSD;
 }
 
-const char *solo_sandbox_backend_name(int *version_out)
+const char *cais_sandbox_backend_name(int *version_out)
 {
-    solo_sandbox_backend_t b = solo_sandbox_backend(version_out);
-    return (b == SOLO_SANDBOX_BACKEND_OPENBSD) ? "openbsd" : "none";
+    cais_sandbox_backend_t b = cais_sandbox_backend(version_out);
+    return (b == CAIS_SANDBOX_BACKEND_OPENBSD) ? "openbsd" : "none";
 }
 
-solo_bool_t solo_sandbox_is_supported(void)
+cais_bool_t cais_sandbox_is_supported(void)
 {
-    return probe_openbsd_sandbox() ? SOLO_TRUE : SOLO_FALSE;
+    return probe_openbsd_sandbox() ? CAIS_TRUE : CAIS_FALSE;
 }
 
-solo_sandbox_status_t solo_sandbox_unveil(const char *path, int permissions, char *err_buf, size_t err_cap)
+cais_sandbox_status_t cais_sandbox_unveil(const char *path, int permissions, char *err_buf, size_t err_cap)
 {
     char mode[8];
     int idx = 0;
@@ -103,79 +103,79 @@ solo_sandbox_status_t solo_sandbox_unveil(const char *path, int permissions, cha
     }
 
     if (!probe_openbsd_sandbox()) {
-        solo_set_err(err_buf, err_cap, "OpenBSD sandbox is not supported by the running kernel");
-        return SOLO_SANDBOX_UNSUPPORTED;
+        cais_set_err(err_buf, err_cap, "OpenBSD sandbox is not supported by the running kernel");
+        return CAIS_SANDBOX_UNSUPPORTED;
     }
 
     if (path == NULL || path[0] == '\0') {
-        return SOLO_SANDBOX_OK;
+        return CAIS_SANDBOX_OK;
     }
 
-    if (permissions & SOLO_SANDBOX_PERM_READ) {
+    if (permissions & CAIS_SANDBOX_PERM_READ) {
         mode[idx++] = 'r';
     }
-    if (permissions & SOLO_SANDBOX_PERM_WRITE) {
+    if (permissions & CAIS_SANDBOX_PERM_WRITE) {
         mode[idx++] = 'w';
         mode[idx++] = 'c';
     }
-    if (permissions & SOLO_SANDBOX_PERM_EXEC) {
+    if (permissions & CAIS_SANDBOX_PERM_EXEC) {
         mode[idx++] = 'x';
     }
     mode[idx] = '\0';
 
     if (unveil(path, mode) != 0) {
         if (errno == ENOSYS) {
-            solo_set_err(err_buf, err_cap, "unveil is not supported by the running OpenBSD kernel");
-            return SOLO_SANDBOX_UNSUPPORTED;
+            cais_set_err(err_buf, err_cap, "unveil is not supported by the running OpenBSD kernel");
+            return CAIS_SANDBOX_UNSUPPORTED;
         }
-        solo_set_err_fmt(err_buf, err_cap, "unveil(%.128s, %s) failed: %s", path, mode, strerror(errno));
-        return SOLO_SANDBOX_ERROR;
+        cais_set_err_fmt(err_buf, err_cap, "unveil(%.128s, %s) failed: %s", path, mode, strerror(errno));
+        return CAIS_SANDBOX_ERROR;
     }
-    return SOLO_SANDBOX_OK;
+    return CAIS_SANDBOX_OK;
 }
 
-solo_sandbox_status_t solo_sandbox_lock(char *err_buf, size_t err_cap)
+cais_sandbox_status_t cais_sandbox_lock(char *err_buf, size_t err_cap)
 {
     if (err_buf != NULL && err_cap > 0) {
         err_buf[0] = '\0';
     }
 
     if (!probe_openbsd_sandbox()) {
-        solo_set_err(err_buf, err_cap, "OpenBSD sandbox is not supported by the running kernel");
-        return SOLO_SANDBOX_UNSUPPORTED;
+        cais_set_err(err_buf, err_cap, "OpenBSD sandbox is not supported by the running kernel");
+        return CAIS_SANDBOX_UNSUPPORTED;
     }
 
     if (unveil(NULL, NULL) != 0) {
         if (errno == ENOSYS) {
-            solo_set_err(err_buf, err_cap, "unveil is not supported by the running OpenBSD kernel");
-            return SOLO_SANDBOX_UNSUPPORTED;
+            cais_set_err(err_buf, err_cap, "unveil is not supported by the running OpenBSD kernel");
+            return CAIS_SANDBOX_UNSUPPORTED;
         }
-        solo_set_err_fmt(err_buf, err_cap, "unveil(NULL, NULL) failed: %s", strerror(errno));
-        return SOLO_SANDBOX_ERROR;
+        cais_set_err_fmt(err_buf, err_cap, "unveil(NULL, NULL) failed: %s", strerror(errno));
+        return CAIS_SANDBOX_ERROR;
     }
-    return SOLO_SANDBOX_OK;
+    return CAIS_SANDBOX_OK;
 }
 
-solo_sandbox_status_t solo_sandbox_pledge(const char *promises, char *err_buf, size_t err_cap)
+cais_sandbox_status_t cais_sandbox_pledge(const char *promises, char *err_buf, size_t err_cap)
 {
     if (err_buf != NULL && err_cap > 0) {
         err_buf[0] = '\0';
     }
 
     if (!probe_openbsd_sandbox()) {
-        solo_set_err(err_buf, err_cap, "OpenBSD sandbox is not supported by the running kernel");
-        return SOLO_SANDBOX_UNSUPPORTED;
+        cais_set_err(err_buf, err_cap, "OpenBSD sandbox is not supported by the running kernel");
+        return CAIS_SANDBOX_UNSUPPORTED;
     }
 
     if (pledge(promises, NULL) != 0) {
         if (errno == ENOSYS) {
-            solo_set_err(err_buf, err_cap, "pledge is not supported by the running OpenBSD kernel");
-            return SOLO_SANDBOX_UNSUPPORTED;
+            cais_set_err(err_buf, err_cap, "pledge is not supported by the running OpenBSD kernel");
+            return CAIS_SANDBOX_UNSUPPORTED;
         }
-        solo_set_err_fmt(err_buf, err_cap, "pledge(%.128s) failed: %s", promises ? promises : "", strerror(errno));
-        return SOLO_SANDBOX_ERROR;
+        cais_set_err_fmt(err_buf, err_cap, "pledge(%.128s) failed: %s", promises ? promises : "", strerror(errno));
+        return CAIS_SANDBOX_ERROR;
     }
-    return SOLO_SANDBOX_OK;
+    return CAIS_SANDBOX_OK;
 }
 
 #endif /* defined(__OpenBSD__) */

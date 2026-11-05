@@ -1,6 +1,6 @@
 --
--- solo - Physical I/O, System Foundations & Hardware Abstractions
--- Projectum Lunare <https://github.com/projectum-lunare/solo>
+-- cais - Physical I/O, System Foundations & Hardware Abstractions
+-- Projectum Lunare <https://github.com/projectum-lunare/cais>
 -- Copyright (C) 2026 Gustavo Veiga <gustavo.veiga@outlook.com.br>
 -- Mozilla Public License Version 2.0
 --
@@ -12,24 +12,24 @@ local T = require("tests.harness")
 local describe, test = T.describe, T.test
 local assert_eq, assert_nil = T.assert_eq, T.assert_nil
 
-local solo = require("solo")
+local cais = require("cais")
 
 -- ============================================================================
--- solo.parallel (IEEE 1284 / SPP Parallel Port Driver Tests)
+-- cais.parallel (IEEE 1284 / SPP Parallel Port Driver Tests)
 -- ============================================================================
 -- Tests the parallel port driver in Lua, verifying open constructors, status
 -- codes, port modes, status pin bitmasks, and options parsing.
-describe("solo.parallel (Physical Parallel IEEE 1284 Driver Signatures)", function()
+describe("cais.parallel (Physical Parallel IEEE 1284 Driver Signatures)", function()
 
     -- 1. Constructor verification
     test("exposes open constructors for parallel and serial drivers", function()
-        assert_eq(type(solo.parallel.open), "function")
-        assert_eq(type(solo.serial.open), "function")
+        assert_eq(type(cais.parallel.open), "function")
+        assert_eq(type(cais.serial.open), "function")
     end)
 
     -- 2. Parallel enum tables
     test("defines parallel status, mode, pin and port enum tables", function()
-        local p = solo.parallel
+        local p = cais.parallel
 
         -- Return status codes
         assert_eq(type(p.status), "table")
@@ -66,16 +66,16 @@ describe("solo.parallel (Physical Parallel IEEE 1284 Driver Signatures)", functi
     -- 3. Options table or string path constructor
     test("parallel open accepts options table or string path", function()
         -- Attempting to open a nonexistent device returns nil, error_string
-        local port, err = solo.parallel.open({ path = "/nonexistent_lpt_device_12345" })
+        local port, err = cais.parallel.open({ path = "/nonexistent_lpt_device_12345" })
         assert_nil(port)
         assert_eq(type(err), "string")
     end)
 
     -- 4. Operating mode option
     test("parallel open accepts mode option", function()
-        local port, err = solo.parallel.open({
+        local port, err = cais.parallel.open({
             path = "/nonexistent_lpt_mode",
-            mode = solo.parallel.mode.BYTE
+            mode = cais.parallel.mode.BYTE
         })
         assert_nil(port)
         assert_eq(type(err), "string")

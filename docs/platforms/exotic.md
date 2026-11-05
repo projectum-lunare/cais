@@ -1,6 +1,6 @@
 # Exotic Kernels (KolibriOS, OS/2, Plan 9)
 
-`solo` extends portability beyond mainstream operating systems to include hobbyist, research, and enterprise legacy platforms.
+`cais` extends portability beyond mainstream operating systems to include hobbyist, research, and enterprise legacy platforms.
 
 ---
 

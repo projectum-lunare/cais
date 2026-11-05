@@ -1,6 +1,6 @@
 # Platform Support Matrix
 
-`solo` targets over ten distinct operating system families, providing verified drivers and compile targets across 16-bit, 32-bit, and 64-bit systems.
+`cais` targets over ten distinct operating system families, providing verified drivers and compile targets across 16-bit, 32-bit, and 64-bit systems.
 
 ---
 

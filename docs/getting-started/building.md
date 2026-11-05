@@ -1,6 +1,6 @@
 # Building & Compiling
 
-`solo` uses [xmake](https://xmake.io) and [Forge](https://github.com/projectum-lunare/forge) as its cross-platform build engine.
+`cais` uses [xmake](https://xmake.io) and [Forge](https://github.com/projectum-lunare/forge) as its cross-platform build engine.
 
 ---
 
@@ -27,7 +27,7 @@ xmake test
 xmake run test_lua
 
 # Run the standalone smoke executable
-xmake run solo_smoke
+xmake run cais_smoke
 ```
 
 ---
@@ -38,38 +38,38 @@ If your target system has severe storage or memory limitations (e.g. vintage mac
 
 ```bash
 # Build only the C static library:
-xmake build solo_static
+xmake build cais_static
 
 # Build only standalone Lua submodules:
-xmake build solo.platform
-xmake build solo.serial
-xmake build solo.socket
-xmake build solo.fs
-xmake build solo.parallel
-xmake build solo.sandbox
+xmake build cais.platform
+xmake build cais.serial
+xmake build cais.socket
+xmake build cais.fs
+xmake build cais.parallel
+xmake build cais.sandbox
 ```
 
 ---
 
 ## Compile-Time Exclusion Flags
 
-When embedding `solo` directly into proprietary build systems or embedded firmware, unwanted subsystems can be stripped completely via preprocessor defines:
+When embedding `cais` directly into proprietary build systems or embedded firmware, unwanted subsystems can be stripped completely via preprocessor defines:
 
 | Preprocessor Flag | Excluded Subsystem |
 | :--- | :--- |
-| `-DSOLO_NO_SOCKET` | Excludes BSD Sockets, Winsock, and networking code. |
-| `-DSOLO_NO_SERIAL` | Excludes RS-232 UART driver and modem controls. |
-| `-DSOLO_NO_PARALLEL` | Excludes Centronics parallel port and strobe timing. |
-| `-DSOLO_NO_FILESYSTEM` | Excludes file manipulation, directory iterators, and stats. |
-| `-DSOLO_NO_SANDBOX` | Excludes Landlock, Pledge, and Capsicum kernel sandboxing. |
-| `-DSOLO_NO_PLATFORM` | Excludes OS and CPU architecture detection metadata. |
+| `-DCAIS_NO_SOCKET` | Excludes BSD Sockets, Winsock, and networking code. |
+| `-DCAIS_NO_SERIAL` | Excludes RS-232 UART driver and modem controls. |
+| `-DCAIS_NO_PARALLEL` | Excludes Centronics parallel port and strobe timing. |
+| `-DCAIS_NO_FILESYSTEM` | Excludes file manipulation, directory iterators, and stats. |
+| `-DCAIS_NO_SANDBOX` | Excludes Landlock, Pledge, and Capsicum kernel sandboxing. |
+| `-DCAIS_NO_PLATFORM` | Excludes OS and CPU architecture detection metadata. |
 
 ---
 
 ## Installing via LuaRocks
 
-`solo` includes a native Rockspec:
+`cais` includes a native Rockspec:
 
 ```bash
-luarocks make solo-scm-1.rockspec
+luarocks make cais-scm-1.rockspec
 ```

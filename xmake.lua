@@ -1,9 +1,9 @@
--- solo - Physical I/O, System Foundations & Hardware Abstractions
--- Projectum Lunare <https://github.com/projectum-lunare/solo>
+-- cais - Physical I/O, System Foundations & Hardware Abstractions
+-- Projectum Lunare <https://github.com/projectum-lunare/cais>
 -- Copyright (C) 2026 Gustavo Veiga <gustavo.veiga@outlook.com.br>
 -- Mozilla Public License Version 2.0
 
-set_project("solo")
+set_project("cais")
 set_version("0.2.0")
 
 set_languages("c89")
@@ -16,8 +16,8 @@ add_includedirs("include")
 
 -- Official Projectum Lunare Package Repository & Build Infrastructure Addon
 add_repositories("projectum-lunare https://github.com/projectum-lunare/xmake-repo.git")
-add_addons("forge master")
-includes("@addon/forge/forge.lua")
+add_addons("recudo v0.2.3")
+includes("@addon/recudo/recudo.lua")
 
 -- Host dependencies for Lua C bindings and C test suites
 if is_plat("linux", "macosx", "bsd", "windows", "mingw") then
@@ -64,7 +64,7 @@ local PLATFORMS = {
         serial     = "dos",
         socket     = "bsd",
         sandbox    = "stub",
-        rules      = "forge.watcom",
+        rules      = "recudo.watcom",
         watt32     = true,
     },
     os2 = {
@@ -74,7 +74,7 @@ local PLATFORMS = {
         serial     = "os2",
         socket     = "bsd",
         sandbox    = "stub",
-        rules      = "forge.watcom",
+        rules      = "recudo.watcom",
     },
     wince = {
         targetdir  = "build/windows_ce",
@@ -83,7 +83,7 @@ local PLATFORMS = {
         serial     = "windows_ce",
         socket     = "bsd",
         sandbox    = "stub",
-        rules      = "forge.evc3",
+        rules      = "recudo.evc3",
         arch_dir   = true,
     },
 
@@ -216,15 +216,15 @@ local function apply_platform_rules(c)
 end
 
 -- ==============================================================================
--- 1. Static C89 Library (libsolo.a / solo.lib) - Multi-Platform Engine
+-- 1. Static C89 Library (libcais.a / cais.lib) - Multi-Platform Engine
 -- ==============================================================================
-target("solo_static")
+target("cais_static")
     set_kind("static")
-    set_basename("solo")
+    set_basename("cais")
     set_targetdir(target_dir)
-    add_headerfiles("include/(solo/*.h)")
+    add_headerfiles("include/(cais/*.h)")
     add_files(
-        "src/solo.c",
+        "src/cais.c",
         "src/platform/platform.c",
         "src/filesystem/filesystem.c",
         "src/socket/socket_common.c",
@@ -237,32 +237,32 @@ target("solo_static")
     apply_platform_rules(conf)
 
 -- ==============================================================================
--- 2. Lua Subsystem & C Modules (Powered by forge.lua.module)
+-- 2. Lua Subsystem & C Modules (Powered by recudo.lua.module)
 -- ==============================================================================
 if is_plat("linux", "macosx", "bsd", "windows", "mingw") then
 
--- 2.1 Static Lua C Module (libsolo_lua.a / solo_lua.lib) for embedding
-target("solo_lua_static")
-    add_rules("forge.lua.module")
-    set_values("forge.lua.kind", "static")
-    set_basename("solo_lua")
-    add_deps("solo_static")
+-- 2.1 Static Lua C Module (libcais_lua.a / cais_lua.lib) for embedding
+target("cais_lua_static")
+    add_rules("recudo.lua.module")
+    set_values("recudo.lua.kind", "static")
+    set_basename("cais_lua")
+    add_deps("cais_static")
     add_defines("LUA_USE_C89")
     add_files("src/**_lua.c")
 
--- 2.2 Umbrella Shared Lua C Module (build/lua/solo.so & ./solo.so)
-target("solo")
-    add_rules("forge.lua.module")
-    set_values("forge.lua.kind", "shared")
-    add_deps("solo_static")
+-- 2.2 Umbrella Shared Lua C Module (build/lua/cais.so & ./cais.so)
+target("cais")
+    add_rules("recudo.lua.module")
+    set_values("recudo.lua.kind", "shared")
+    add_deps("cais_static")
     add_defines("LUA_USE_C89")
     add_files("src/**_lua.c")
     after_build(function (target)
-        -- Mirror shared module to project root for zero-config require("solo")
+        -- Mirror shared module to project root for zero-config require("cais")
         os.trycp(target:targetfile(), path.join(os.projectdir(), path.filename(target:targetfile())))
     end)
 
--- 2.3 Standalone C Modules (build/lua/solo/<submodule>.so)
+-- 2.3 Standalone C Modules (build/lua/cais/<submodule>.so)
 local submodules = {
     platform   = {"src/platform/platform_lua.c", "src/platform/platform.c"},
     filesystem = {"src/filesystem/filesystem_lua.c", "src/filesystem/filesystem.c", "src/filesystem/filesystem_" .. conf.filesystem .. ".c", "src/platform/platform.c"},
@@ -274,15 +274,15 @@ local submodules = {
 }
 
 for mod_name, files in pairs(submodules) do
-    target("solo." .. mod_name)
-        add_rules("forge.lua.module")
-        set_values("forge.lua.kind", "shared")
+    target("cais." .. mod_name)
+        add_rules("recudo.lua.module")
+        set_values("recudo.lua.kind", "shared")
         add_defines("LUA_USE_C89")
         add_files(files)
 end
 
 -- ==============================================================================
--- 3. Test Suites & Application Launchers (Powered by forge.lua.app)
+-- 3. Test Suites & Application Launchers (Powered by recudo.lua.app)
 -- ==============================================================================
 
 -- 3.1 C API Test Suite
@@ -291,23 +291,23 @@ target("test_c_api")
     set_targetdir("tests")
     set_rundir(os.projectdir())
     add_files("tests/c/*.c")
-    add_deps("solo_static")
+    add_deps("cais_static")
     add_packages("greatest")
     add_tests("c_api")
 
 -- 3.2 Lua Test Suite & Portable Launcher (xmake run test_lua)
 target("test_lua")
-    add_rules("forge.lua.app")
-    set_values("forge.lua.entry", "tests/runner.lua")
+    add_rules("recudo.lua.app")
+    set_values("recudo.lua.entry", "tests/runner.lua")
     add_deps(
-        "solo",
-        "solo.platform",
-        "solo.filesystem",
-        "solo.fs",
-        "solo.serial",
-        "solo.parallel",
-        "solo.socket",
-        "solo.sandbox"
+        "cais",
+        "cais.platform",
+        "cais.filesystem",
+        "cais.fs",
+        "cais.serial",
+        "cais.parallel",
+        "cais.socket",
+        "cais.sandbox"
     )
     on_test(function (target)
         os.execv(path.join(os.projectdir(), "build/bin/test_lua"))
@@ -320,12 +320,12 @@ end -- is_plat(host)
 -- ==============================================================================
 -- 4. Cross-Platform Smoke Binary
 -- ==============================================================================
-target("solo_smoke")
+target("cais_smoke")
     set_kind("binary")
     set_rundir(os.projectdir())
     set_targetdir(target_dir)
     add_files("tests/smoke.c")
-    add_deps("solo_static")
+    add_deps("cais_static")
     apply_platform_rules(conf)
     if conf.can_test then
         set_targetdir("build/bin")

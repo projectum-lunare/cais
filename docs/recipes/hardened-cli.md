@@ -14,7 +14,7 @@ This recipe demonstrates how to:
 ```c
 #include <stdio.h>
 #include <stdlib.h>
-#include <solo/solo.h>
+#include <cais/cais.h>
 
 int main(int argc, char **argv) {
     char err[128];
@@ -26,7 +26,7 @@ int main(int argc, char **argv) {
     printf("Starting secure CLI utility...\n");
 
     /* Step 1: Read trusted configuration before locking down */
-    config_data = solo_fs_read_file("config.ini", &config_len);
+    config_data = cais_fs_read_file("config.ini", &config_len);
     if (config_data) {
         printf("Loaded config (%lu bytes)\n", (unsigned long)config_len);
         free(config_data);
@@ -34,24 +34,24 @@ int main(int argc, char **argv) {
 
     /* Step 2: Configure Sandbox Policy */
     /* Read-only on the working directory */
-    solo_sandbox_unveil(work_dir, SOLO_SANDBOX_READ, err, sizeof(err));
+    cais_sandbox_unveil(work_dir, CAIS_SANDBOX_READ, err, sizeof(err));
     
     /* Read-write on /tmp for temporary scratch output */
-    solo_sandbox_unveil(temp_dir, SOLO_SANDBOX_READ | SOLO_SANDBOX_WRITE, err, sizeof(err));
+    cais_sandbox_unveil(temp_dir, CAIS_SANDBOX_READ | CAIS_SANDBOX_WRITE, err, sizeof(err));
 
     /* Step 3: Seal the sandbox permanently */
-    if (solo_sandbox_lock(err, sizeof(err)) == SOLO_SANDBOX_OK) {
+    if (cais_sandbox_lock(err, sizeof(err)) == CAIS_SANDBOX_OK) {
         printf("Sandbox locked. Kernel restrictions active.\n");
     } else {
         printf("Sandboxing not supported on this OS (continuing unconfined).\n");
     }
 
     /* Step 4: Normal operation within bounds */
-    solo_fs_write_file("/tmp/output.txt", "Processed data\n", 15);
+    cais_fs_write_file("/tmp/output.txt", "Processed data\n", 15);
     printf("Wrote output to /tmp/output.txt successfully.\n");
 
     /* Step 5: Proof of Security - Unauthorized access fails */
-    if (solo_fs_exists("/etc/passwd") == SOLO_FALSE) {
+    if (cais_fs_exists("/etc/passwd") == CAIS_FALSE) {
         printf("[CONFIRMED] Host kernel blocked access to /etc/passwd.\n");
     }
 
@@ -64,9 +64,9 @@ int main(int argc, char **argv) {
 ## Lua Implementation
 
 ```lua
-local solo = require("solo")
-local fs = solo.fs
-local sandbox = solo.sandbox
+local cais = require("cais")
+local fs = cais.fs
+local sandbox = cais.sandbox
 
 print("Backend: " .. tostring(sandbox.backend()))
 

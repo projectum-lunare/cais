@@ -1,12 +1,12 @@
 {
-    forge = {
-        repo = {
-            commit = "e3aa094dc2292e1adadac9848cc5f098457985cc",
-            url = "https://github.com/projectum-lunare/xmake-repo.git"
-        },
-        version = "master"
-    },
     __meta__ = {
         version = "1.0"
+    },
+    recudo = {
+        repo = {
+            commit = "590f7d528c883372c029f09c53e04c311b17e266",
+            url = "/home/gustavo/Projetos/xmake-repo"
+        },
+        version = "v0.2.3"
     }
 }

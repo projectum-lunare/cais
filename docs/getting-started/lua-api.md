@@ -1,6 +1,6 @@
 # Lua API Usage
 
-`solo` provides idiomatic Lua bindings with object-oriented wrappers, options tables, and automatic resource reclamation.
+`cais` provides idiomatic Lua bindings with object-oriented wrappers, options tables, and automatic resource reclamation.
 
 ---
 
@@ -10,24 +10,24 @@ You can load the umbrella module or individual submodules:
 
 ```lua
 -- Load complete library
-local solo = require("solo")
+local cais = require("cais")
 
 -- Or load lightweight, standalone submodules
-local fs     = require("solo.fs")         -- or solo.filesystem
-local socket = require("solo.socket")
-local serial = require("solo.serial")
+local fs     = require("cais.fs")         -- or cais.filesystem
+local socket = require("cais.socket")
+local serial = require("cais.serial")
 ```
 
 ---
 
 ## Idiomatic Return Conventions
 
-Functions in `solo` follow the standard Lua convention for fallible calls:
+Functions in `cais` follow the standard Lua convention for fallible calls:
 - **On Success:** Returns result object(s) or `true`.
 - **On Failure:** Returns `nil`, followed by an error string (e.g. `nil, "connection refused"` or `nil, "timeout"`).
 
 ```lua
-local sock, err = solo.socket.connect("127.0.0.1", 9000)
+local sock, err = cais.socket.connect("127.0.0.1", 9000)
 if not sock then
     print("Failed to connect: " .. tostring(err))
     return
@@ -41,7 +41,7 @@ end
 All native handles (`sock`, `port`, `file`) expose object methods and automatic garbage collection (`__gc`):
 
 ```lua
-local sock = solo.socket.connect("127.0.0.1", 8080)
+local sock = cais.socket.connect("127.0.0.1", 8080)
 
 -- Explicit close:
 sock:close()
@@ -59,8 +59,8 @@ Constructors accept either concise options tables or classic positional argument
 === "Options Table (Recommended)"
 
     ```lua
-    local port = solo.serial.open("/dev/ttyUSB0", {
-        baud      = solo.serial.baud.B115200,
+    local port = cais.serial.open("/dev/ttyUSB0", {
+        baud      = cais.serial.baud.B115200,
         data_bits = 8,
         parity    = "none",
         stop_bits = 1,
@@ -72,5 +72,5 @@ Constructors accept either concise options tables or classic positional argument
 === "Positional Arguments"
 
     ```lua
-    local port = solo.serial.open("/dev/ttyUSB0", 115200, 8, "N", 1, 1000)
+    local port = cais.serial.open("/dev/ttyUSB0", 115200, 8, "N", 1, 1000)
     ```

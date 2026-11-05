@@ -1,6 +1,6 @@
 /*
- * solo - Physical I/O, System Foundations & Hardware Abstractions
- * Projectum Lunare <https://github.com/projectum-lunare/solo>
+ * cais - Physical I/O, System Foundations & Hardware Abstractions
+ * Projectum Lunare <https://github.com/projectum-lunare/cais>
  * Copyright (C) 2026 Gustavo Veiga <gustavo.veiga@outlook.com.br>
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
@@ -8,16 +8,16 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-#include <solo/platform.h>
+#include <cais/platform.h>
 
-#if SOLO_IS_KOLIBRI
+#if CAIS_IS_KOLIBRI
 
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <solo/serial.h>
+#include <cais/serial.h>
 
 struct serial_port {
     uint16_t base;    /* UART base I/O port address (e.g. 0x3F8) */
@@ -129,11 +129,11 @@ static int test_uart_present(uint16_t base)
     return 0;
 }
 
-solo_serial_t *solo_serial_open(const char *path, const solo_serial_opts_t *opts, char *err_buf, size_t err_cap)
+cais_serial_t *cais_serial_open(const char *path, const cais_serial_opts_t *opts, char *err_buf, size_t err_cap)
 {
     uint16_t base;
-    solo_serial_t *port;
-    solo_serial_opts_t default_opts;
+    cais_serial_t *port;
+    cais_serial_opts_t default_opts;
     uint16_t divisor;
     uint8_t lcr = 0;
     uint8_t mcr = 0;
@@ -156,13 +156,13 @@ solo_serial_t *solo_serial_open(const char *path, const solo_serial_opts_t *opts
     }
 
     if (path == NULL) {
-        solo_set_err(err_buf, err_cap, "Device path cannot be NULL");
+        cais_set_err(err_buf, err_cap, "Device path cannot be NULL");
         return NULL;
     }
 
     base = parse_kolibri_port(path);
     if (base == 0) {
-        solo_set_err_fmt(err_buf, err_cap,
+        cais_set_err_fmt(err_buf, err_cap,
                          "Unknown KolibriOS serial port '%s' (use COM1..COM4 or 0x3F8)", path);
         return NULL;
     }
@@ -173,15 +173,15 @@ solo_serial_t *solo_serial_open(const char *path, const solo_serial_opts_t *opts
     /* Verify that UART hardware exists at this address */
     if (!test_uart_present(base)) {
         kolibri_free_io_port(base, 8);
-        solo_set_err_fmt(err_buf, err_cap, "No UART hardware detected at I/O port 0x%03X (%s)", base,
+        cais_set_err_fmt(err_buf, err_cap, "No UART hardware detected at I/O port 0x%03X (%s)", base,
                          path);
         return NULL;
     }
 
-    port = (solo_serial_t *)malloc(sizeof(solo_serial_t));
+    port = (cais_serial_t *)malloc(sizeof(cais_serial_t));
     if (port == NULL) {
         kolibri_free_io_port(base, 8);
-        solo_set_err(err_buf, err_cap, "Memory allocation failure");
+        cais_set_err(err_buf, err_cap, "Memory allocation failure");
         return NULL;
     }
 
@@ -251,35 +251,35 @@ solo_serial_t *solo_serial_open(const char *path, const solo_serial_opts_t *opts
     return port;
 }
 
-solo_serial_status_t solo_serial_set_rts(solo_serial_t *port, solo_serial_line_t state)
+cais_serial_status_t cais_serial_set_rts(cais_serial_t *port, cais_serial_line_t state)
 {
     uint8_t mcr;
     if (port == NULL || port->base == 0)
-        return SOLO_SERIAL_ERROR;
+        return CAIS_SERIAL_ERROR;
     mcr = inb(port->base + 4);
-    if (state == SOLO_SERIAL_LINE_ON || (int)state == 1)
+    if (state == CAIS_SERIAL_LINE_ON || (int)state == 1)
         mcr |= 0x02;
     else
         mcr &= ~0x02;
     outb(port->base + 4, mcr);
-    return SOLO_SERIAL_OK;
+    return CAIS_SERIAL_OK;
 }
 
-solo_serial_status_t solo_serial_set_dtr(solo_serial_t *port, solo_serial_line_t state)
+cais_serial_status_t cais_serial_set_dtr(cais_serial_t *port, cais_serial_line_t state)
 {
     uint8_t mcr;
     if (port == NULL || port->base == 0)
-        return SOLO_SERIAL_ERROR;
+        return CAIS_SERIAL_ERROR;
     mcr = inb(port->base + 4);
-    if (state == SOLO_SERIAL_LINE_ON || (int)state == 1)
+    if (state == CAIS_SERIAL_LINE_ON || (int)state == 1)
         mcr |= 0x01;
     else
         mcr &= ~0x01;
     outb(port->base + 4, mcr);
-    return SOLO_SERIAL_OK;
+    return CAIS_SERIAL_OK;
 }
 
-solo_status_t solo_serial_write(solo_serial_t *port, const char *buf, size_t len, size_t *written_bytes)
+cais_status_t cais_serial_write(cais_serial_t *port, const char *buf, size_t len, size_t *written_bytes)
 {
     size_t i;
     uint16_t base;
@@ -290,9 +290,9 @@ solo_status_t solo_serial_write(solo_serial_t *port, const char *buf, size_t len
     }
 
     if (port == NULL || port->base == 0 || buf == NULL)
-        return SOLO_ERROR;
+        return CAIS_ERROR;
     if (len == 0)
-        return SOLO_OK;
+        return CAIS_OK;
 
     base = port->base;
 
@@ -308,11 +308,11 @@ solo_status_t solo_serial_write(solo_serial_t *port, const char *buf, size_t len
                     elapsed += 10;
                     if (elapsed >= port->timeout_ms) {
                         if (written_bytes != NULL) *written_bytes = i;
-                        return (i > 0) ? SOLO_OK : SOLO_AGAIN;
+                        return (i > 0) ? CAIS_OK : CAIS_AGAIN;
                     }
                 } else if (port->timeout_ms == 0) {
                     if (written_bytes != NULL) *written_bytes = i;
-                    return (i > 0) ? SOLO_OK : SOLO_AGAIN;
+                    return (i > 0) ? CAIS_OK : CAIS_AGAIN;
                 } else {
                     kolibri_sleep(0);
                 }
@@ -326,11 +326,11 @@ solo_status_t solo_serial_write(solo_serial_t *port, const char *buf, size_t len
                 elapsed += 10;
                 if (elapsed >= port->timeout_ms) {
                     if (written_bytes != NULL) *written_bytes = i;
-                    return (i > 0) ? SOLO_OK : SOLO_AGAIN;
+                    return (i > 0) ? CAIS_OK : CAIS_AGAIN;
                 }
             } else if (port->timeout_ms == 0) {
                 if (written_bytes != NULL) *written_bytes = i;
-                return (i > 0) ? SOLO_OK : SOLO_AGAIN;
+                return (i > 0) ? CAIS_OK : CAIS_AGAIN;
             } else {
                 kolibri_sleep(0); /* Yield */
             }
@@ -343,10 +343,10 @@ solo_status_t solo_serial_write(solo_serial_t *port, const char *buf, size_t len
     if (written_bytes != NULL) {
         *written_bytes = len;
     }
-    return SOLO_OK;
+    return CAIS_OK;
 }
 
-solo_status_t solo_serial_read(solo_serial_t *port, char *buf, size_t max_len, size_t *read_bytes, int timeout_ms)
+cais_status_t cais_serial_read(cais_serial_t *port, char *buf, size_t max_len, size_t *read_bytes, int timeout_ms)
 {
     int eff_timeout;
 
@@ -355,7 +355,7 @@ solo_status_t solo_serial_read(solo_serial_t *port, char *buf, size_t max_len, s
     }
 
     if (port == NULL || port->base == 0 || buf == NULL || max_len == 0)
-        return SOLO_ERROR;
+        return CAIS_ERROR;
 
     eff_timeout = (timeout_ms >= 0) ? timeout_ms : port->timeout_ms;
 
@@ -365,12 +365,12 @@ solo_status_t solo_serial_read(solo_serial_t *port, char *buf, size_t max_len, s
             kolibri_sleep(1); /* 10ms */
             elapsed += 10;
             if (elapsed >= eff_timeout) {
-                return SOLO_AGAIN; /* Timeout */
+                return CAIS_AGAIN; /* Timeout */
             }
         }
     } else if (eff_timeout == 0) {
         if ((inb(port->base + 5) & 0x01) == 0) {
-            return SOLO_AGAIN; /* Would block */
+            return CAIS_AGAIN; /* Would block */
         }
     } else {
         while ((inb(port->base + 5) & 0x01) == 0) {
@@ -382,48 +382,48 @@ solo_status_t solo_serial_read(solo_serial_t *port, char *buf, size_t max_len, s
     if (read_bytes != NULL) {
         *read_bytes = 1;
     }
-    return SOLO_OK;
+    return CAIS_OK;
 }
 
-solo_serial_status_t solo_serial_set_timeout(solo_serial_t *port, int timeout_ms)
+cais_serial_status_t cais_serial_set_timeout(cais_serial_t *port, int timeout_ms)
 {
     if (port == NULL || port->base == 0)
-        return SOLO_SERIAL_ERROR;
+        return CAIS_SERIAL_ERROR;
     port->timeout_ms = timeout_ms;
-    return SOLO_SERIAL_OK;
+    return CAIS_SERIAL_OK;
 }
 
-solo_line_state_t solo_serial_get_cts(solo_serial_t *port)
+cais_line_state_t cais_serial_get_cts(cais_serial_t *port)
 {
-    if (port == NULL || port->base == 0) return SOLO_LINE_ERROR;
-    return (inb(port->base + 6) & 0x10) ? SOLO_LINE_HIGH : SOLO_LINE_LOW;
+    if (port == NULL || port->base == 0) return CAIS_LINE_ERROR;
+    return (inb(port->base + 6) & 0x10) ? CAIS_LINE_HIGH : CAIS_LINE_LOW;
 }
 
-solo_line_state_t solo_serial_get_dsr(solo_serial_t *port)
+cais_line_state_t cais_serial_get_dsr(cais_serial_t *port)
 {
-    if (port == NULL || port->base == 0) return SOLO_LINE_ERROR;
-    return (inb(port->base + 6) & 0x20) ? SOLO_LINE_HIGH : SOLO_LINE_LOW;
+    if (port == NULL || port->base == 0) return CAIS_LINE_ERROR;
+    return (inb(port->base + 6) & 0x20) ? CAIS_LINE_HIGH : CAIS_LINE_LOW;
 }
 
-solo_line_state_t solo_serial_get_ri(solo_serial_t *port)
+cais_line_state_t cais_serial_get_ri(cais_serial_t *port)
 {
-    if (port == NULL || port->base == 0) return SOLO_LINE_ERROR;
-    return (inb(port->base + 6) & 0x40) ? SOLO_LINE_HIGH : SOLO_LINE_LOW;
+    if (port == NULL || port->base == 0) return CAIS_LINE_ERROR;
+    return (inb(port->base + 6) & 0x40) ? CAIS_LINE_HIGH : CAIS_LINE_LOW;
 }
 
-solo_line_state_t solo_serial_get_cd(solo_serial_t *port)
+cais_line_state_t cais_serial_get_cd(cais_serial_t *port)
 {
-    if (port == NULL || port->base == 0) return SOLO_LINE_ERROR;
-    return (inb(port->base + 6) & 0x80) ? SOLO_LINE_HIGH : SOLO_LINE_LOW;
+    if (port == NULL || port->base == 0) return CAIS_LINE_ERROR;
+    return (inb(port->base + 6) & 0x80) ? CAIS_LINE_HIGH : CAIS_LINE_LOW;
 }
 
-solo_serial_status_t solo_serial_drain(solo_serial_t *port)
+cais_serial_status_t cais_serial_drain(cais_serial_t *port)
 {
     uint16_t base;
     uint32_t timeout_loops = 0;
 
     if (port == NULL || port->base == 0)
-        return SOLO_SERIAL_ERROR;
+        return CAIS_SERIAL_ERROR;
     base = port->base;
 
     /*
@@ -434,18 +434,18 @@ solo_serial_status_t solo_serial_drain(solo_serial_t *port)
     while ((inb(base + 5) & 0x40) == 0) {
         kolibri_sleep(1);             /* Wait 10ms */
         if (++timeout_loops > 1000) { /* 10-second drain timeout */
-            return SOLO_SERIAL_ERROR;
+            return CAIS_SERIAL_ERROR;
         }
     }
-    return SOLO_SERIAL_OK;
+    return CAIS_SERIAL_OK;
 }
 
-void solo_serial_close(solo_serial_t *port)
+void cais_serial_close(cais_serial_t *port)
 {
     if (port != NULL) {
         if (port->base != 0) {
             /* Drain any remaining bytes */
-            solo_serial_drain(port);
+            cais_serial_drain(port);
 
             /* Restore original register states */
             outb(port->base + 1, port->orig_ier);
@@ -463,4 +463,4 @@ void solo_serial_close(solo_serial_t *port)
 #else
 /* ISO C forbids an empty translation unit */
 typedef int make_iso_compilers_happy_serial_kolibri;
-#endif /* SOLO_IS_KOLIBRI */
+#endif /* CAIS_IS_KOLIBRI */

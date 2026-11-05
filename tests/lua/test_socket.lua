@@ -1,6 +1,6 @@
 --
--- solo - Physical I/O, System Foundations & Hardware Abstractions
--- Projectum Lunare <https://github.com/projectum-lunare/solo>
+-- cais - Physical I/O, System Foundations & Hardware Abstractions
+-- Projectum Lunare <https://github.com/projectum-lunare/cais>
 -- Copyright (C) 2026 Gustavo Veiga <gustavo.veiga@outlook.com.br>
 -- Mozilla Public License Version 2.0
 --
@@ -12,10 +12,10 @@ local T = require("tests.harness")
 local describe, test = T.describe, T.test
 local assert_eq, assert_true, assert_false, assert_nil = T.assert_eq, T.assert_true, T.assert_false, T.assert_nil
 
-local solo = require("solo")
+local cais = require("cais")
 
 -- ============================================================================
--- solo.socket (Network Sockets & Event Multiplexing Tests)
+-- cais.socket (Network Sockets & Event Multiplexing Tests)
 -- ============================================================================
 -- Tests the Lua object-oriented socket abstraction:
 -- - Synchronous and asynchronous TCP client/server loopbacks
@@ -24,8 +24,8 @@ local solo = require("solo")
 -- - Configurable timeouts (returning nil, "again" or "timeout")
 -- - Multi-client concurrent connections and 64 KB streaming transfers
 -- - Safety guards against operations on closed sockets and GC finalizer integrity
-describe("solo.socket (Network Sockets & Multiplexing)", function()
-    local sock = solo.socket
+describe("cais.socket (Network Sockets & Multiplexing)", function()
+    local sock = cais.socket
 
     -- 1. Socket protocol types
     test("defines socket type constants", function()

@@ -1,6 +1,6 @@
 --
--- solo - Physical I/O, System Foundations & Hardware Abstractions
--- Projectum Lunare <https://github.com/projectum-lunare/solo>
+-- cais - Physical I/O, System Foundations & Hardware Abstractions
+-- Projectum Lunare <https://github.com/projectum-lunare/cais>
 -- Copyright (C) 2026 Gustavo Veiga <gustavo.veiga@outlook.com.br>
 -- Mozilla Public License Version 2.0
 --
@@ -12,16 +12,16 @@ local T = require("tests.harness")
 local describe, test = T.describe, T.test
 local assert_eq, assert_true, assert_false, assert_nil = T.assert_eq, T.assert_true, T.assert_false, T.assert_nil
 
-local solo = require("solo")
+local cais = require("cais")
 
 -- ============================================================================
--- solo.platform (System Architecture & Metadata Tests)
+-- cais.platform (System Architecture & Metadata Tests)
 -- ============================================================================
 -- Validates the runtime platform introspection table in Lua.
--- solo.platform exposes static metadata detecting the operating system,
+-- cais.platform exposes static metadata detecting the operating system,
 -- CPU architecture, machine word bitness, and endianness.
-describe("solo.platform (System Architecture & Metadata)", function()
-    local p = solo.platform
+describe("cais.platform (System Architecture & Metadata)", function()
+    local p = cais.platform
 
     -- 1. Operating system and CPU architecture identification
     test("exposes valid OS and CPU architecture identifiers", function()
@@ -70,7 +70,7 @@ describe("solo.platform (System Architecture & Metadata)", function()
 
     -- 5. Strict modular separation
     test("platform does not have filesystem methods", function()
-        -- Filesystem routines belong exclusively to solo.fs / solo.filesystem
+        -- Filesystem routines belong exclusively to cais.fs / cais.filesystem
         assert_nil(p.exists)
     end)
 end)

@@ -1,6 +1,6 @@
 /*
- * solo - Physical I/O, System Foundations & Hardware Abstractions
- * Projectum Lunare <https://github.com/projectum-lunare/solo>
+ * cais - Physical I/O, System Foundations & Hardware Abstractions
+ * Projectum Lunare <https://github.com/projectum-lunare/cais>
  * Copyright (C) 2026 Gustavo Veiga <gustavo.veiga@outlook.com.br>
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
@@ -12,41 +12,41 @@
 #include <lualib.h>
 #include <lauxlib.h>
 
-#include <solo/solo.h>
+#include <cais/cais.h>
 
-#ifndef SOLO_NO_PLATFORM
-int luaopen_solo_platform(lua_State *L);
+#ifndef CAIS_NO_PLATFORM
+int luaopen_cais_platform(lua_State *L);
 #endif
 
-#ifndef SOLO_NO_FILESYSTEM
-int luaopen_solo_filesystem(lua_State *L);
-int luaopen_solo_fs(lua_State *L);
+#ifndef CAIS_NO_FILESYSTEM
+int luaopen_cais_filesystem(lua_State *L);
+int luaopen_cais_fs(lua_State *L);
 #endif
 
-#ifndef SOLO_NO_PARALLEL
-int luaopen_solo_parallel(lua_State *L);
+#ifndef CAIS_NO_PARALLEL
+int luaopen_cais_parallel(lua_State *L);
 #endif
 
-#ifndef SOLO_NO_SERIAL
-int luaopen_solo_serial(lua_State *L);
+#ifndef CAIS_NO_SERIAL
+int luaopen_cais_serial(lua_State *L);
 #endif
 
-#ifndef SOLO_NO_SOCKET
-int luaopen_solo_socket(lua_State *L);
+#ifndef CAIS_NO_SOCKET
+int luaopen_cais_socket(lua_State *L);
 #endif
 
-#ifndef SOLO_NO_SANDBOX
-int luaopen_solo_sandbox(lua_State *L);
+#ifndef CAIS_NO_SANDBOX
+int luaopen_cais_sandbox(lua_State *L);
 #endif
 
-static int lsolo_version(lua_State *L)
+static int lcais_version(lua_State *L)
 {
-    lua_pushstring(L, solo_version());
+    lua_pushstring(L, cais_version());
     return 1;
 }
 
-static const struct luaL_Reg solo_funcs[] = {
-    {"version", lsolo_version},
+static const struct luaL_Reg cais_funcs[] = {
+    {"version", lcais_version},
     {NULL, NULL}
 };
 
@@ -68,22 +68,22 @@ static void load_submodule(lua_State *L, const char *name, int (*openf)(lua_Stat
     lua_pop(L, 1);
 }
 
-int luaopen_solo(lua_State *L)
+int luaopen_cais(lua_State *L)
 {
 #if LUA_VERSION_NUM >= 502
-    luaL_newlib(L, solo_funcs);
+    luaL_newlib(L, cais_funcs);
 #else
     lua_newtable(L);
-    luaL_register(L, NULL, solo_funcs);
+    luaL_register(L, NULL, cais_funcs);
 #endif
 
-#ifndef SOLO_NO_PLATFORM
-    load_submodule(L, "solo.platform", luaopen_solo_platform);
+#ifndef CAIS_NO_PLATFORM
+    load_submodule(L, "cais.platform", luaopen_cais_platform);
     lua_setfield(L, -2, "platform");
 #endif
 
-#ifndef SOLO_NO_FILESYSTEM
-    load_submodule(L, "solo.filesystem", luaopen_solo_filesystem);
+#ifndef CAIS_NO_FILESYSTEM
+    load_submodule(L, "cais.filesystem", luaopen_cais_filesystem);
     lua_pushvalue(L, -1);
     lua_setfield(L, -3, "filesystem");
     lua_setfield(L, -2, "fs");
@@ -92,31 +92,31 @@ int luaopen_solo(lua_State *L)
     if (lua_istable(L, -1)) {
         lua_getfield(L, -1, "loaded");
         if (lua_istable(L, -1)) {
-            lua_getfield(L, -1, "solo.filesystem");
-            lua_setfield(L, -2, "solo.fs");
+            lua_getfield(L, -1, "cais.filesystem");
+            lua_setfield(L, -2, "cais.fs");
         }
         lua_pop(L, 1);
     }
     lua_pop(L, 1);
 #endif
 
-#ifndef SOLO_NO_PARALLEL
-    load_submodule(L, "solo.parallel", luaopen_solo_parallel);
+#ifndef CAIS_NO_PARALLEL
+    load_submodule(L, "cais.parallel", luaopen_cais_parallel);
     lua_setfield(L, -2, "parallel");
 #endif
 
-#ifndef SOLO_NO_SERIAL
-    load_submodule(L, "solo.serial", luaopen_solo_serial);
+#ifndef CAIS_NO_SERIAL
+    load_submodule(L, "cais.serial", luaopen_cais_serial);
     lua_setfield(L, -2, "serial");
 #endif
 
-#ifndef SOLO_NO_SOCKET
-    load_submodule(L, "solo.socket", luaopen_solo_socket);
+#ifndef CAIS_NO_SOCKET
+    load_submodule(L, "cais.socket", luaopen_cais_socket);
     lua_setfield(L, -2, "socket");
 #endif
 
-#ifndef SOLO_NO_SANDBOX
-    load_submodule(L, "solo.sandbox", luaopen_solo_sandbox);
+#ifndef CAIS_NO_SANDBOX
+    load_submodule(L, "cais.sandbox", luaopen_cais_sandbox);
     lua_setfield(L, -2, "sandbox");
 #endif
 

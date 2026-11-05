@@ -1,6 +1,6 @@
 /*
- * solo - Physical I/O, System Foundations & Hardware Abstractions
- * Projectum Lunare <https://github.com/projectum-lunare/solo>
+ * cais - Physical I/O, System Foundations & Hardware Abstractions
+ * Projectum Lunare <https://github.com/projectum-lunare/cais>
  * Copyright (C) 2026 Gustavo Veiga <gustavo.veiga@outlook.com.br>
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
@@ -8,15 +8,15 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-#include <solo/platform.h>
+#include <cais/platform.h>
 
-#if SOLO_IS_AMIGA
+#if CAIS_IS_AMIGA
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <solo/serial.h>
+#include <cais/serial.h>
 
 #include <exec/types.h>
 #include <exec/ports.h>
@@ -31,15 +31,15 @@ struct serial_port {
     int timeout_ms;
 };
 
-solo_serial_t *solo_serial_open(const char *path, const solo_serial_opts_t *opts, char *err_buf, size_t err_cap)
+cais_serial_t *cais_serial_open(const char *path, const cais_serial_opts_t *opts, char *err_buf, size_t err_cap)
 {
     char dev_name[64];
     ULONG unit = 0;
     const char *colon;
     struct MsgPort *mp = NULL;
     struct IOExtSer *io = NULL;
-    solo_serial_t *port = NULL;
-    solo_serial_opts_t default_opts;
+    cais_serial_t *port = NULL;
+    cais_serial_opts_t default_opts;
     BYTE open_err;
 
     if (err_buf != NULL && err_cap > 0) {
@@ -57,7 +57,7 @@ solo_serial_t *solo_serial_open(const char *path, const solo_serial_opts_t *opts
         default_opts.timeout_ms = -1; /* default: blocking indefinitely */
         opts = &default_opts;
     } else if (opts->timeout_ms > 0) {
-        solo_set_err(err_buf, err_cap, "Arbitrary millisecond timeouts are unsupported on Amiga serial.device");
+        cais_set_err(err_buf, err_cap, "Arbitrary millisecond timeouts are unsupported on Amiga serial.device");
         return NULL;
     }
 
@@ -83,21 +83,21 @@ solo_serial_t *solo_serial_open(const char *path, const solo_serial_opts_t *opts
 
     mp = CreateMsgPort();
     if (mp == NULL) {
-        solo_set_err(err_buf, err_cap, "CreateMsgPort() failed");
+        cais_set_err(err_buf, err_cap, "CreateMsgPort() failed");
         return NULL;
     }
 
     io = (struct IOExtSer *)CreateIORequest(mp, sizeof(struct IOExtSer));
     if (io == NULL) {
         DeleteMsgPort(mp);
-        solo_set_err(err_buf, err_cap, "CreateIORequest() failed");
+        cais_set_err(err_buf, err_cap, "CreateIORequest() failed");
         return NULL;
     }
 
     io->io_SerFlags = SERF_SHARED;
     open_err = OpenDevice((CONST_STRPTR)dev_name, unit, (struct IORequest *)io, 0);
     if (open_err != 0) {
-        solo_set_err_fmt(err_buf, err_cap, "OpenDevice(%s, %lu) failed (error %d)", dev_name, unit,
+        cais_set_err_fmt(err_buf, err_cap, "OpenDevice(%s, %lu) failed (error %d)", dev_name, unit,
                          (int)open_err);
         DeleteIORequest((struct IORequest *)io);
         DeleteMsgPort(mp);
@@ -137,19 +137,19 @@ solo_serial_t *solo_serial_open(const char *path, const solo_serial_opts_t *opts
 
     io->IOSer.io_Command = SDCMD_SETPARAMS;
     if (DoIO((struct IORequest *)io) != 0) {
-        solo_set_err(err_buf, err_cap, "SDCMD_SETPARAMS failed on serial.device");
+        cais_set_err(err_buf, err_cap, "SDCMD_SETPARAMS failed on serial.device");
         CloseDevice((struct IORequest *)io);
         DeleteIORequest((struct IORequest *)io);
         DeleteMsgPort(mp);
         return NULL;
     }
 
-    port = (solo_serial_t *)malloc(sizeof(solo_serial_t));
+    port = (cais_serial_t *)malloc(sizeof(cais_serial_t));
     if (port == NULL) {
         CloseDevice((struct IORequest *)io);
         DeleteIORequest((struct IORequest *)io);
         DeleteMsgPort(mp);
-        solo_set_err(err_buf, err_cap, "Memory allocation failure");
+        cais_set_err(err_buf, err_cap, "Memory allocation failure");
         return NULL;
     }
 
@@ -161,20 +161,20 @@ solo_serial_t *solo_serial_open(const char *path, const solo_serial_opts_t *opts
     return port;
 }
 
-solo_status_t solo_serial_write(solo_serial_t *port, const char *buf, size_t len, size_t *written_bytes)
+cais_status_t cais_serial_write(cais_serial_t *port, const char *buf, size_t len, size_t *written_bytes)
 {
     if (written_bytes != NULL) {
         *written_bytes = 0;
     }
 
     if (port == NULL || port->io == NULL || buf == NULL || !port->is_open) {
-        return SOLO_ERROR;
+        return CAIS_ERROR;
     }
     if (len == 0) {
-        return SOLO_OK;
+        return CAIS_OK;
     }
     if (port->timeout_ms > 0) {
-        return SOLO_UNSUPPORTED;
+        return CAIS_UNSUPPORTED;
     }
 
     port->io->IOSer.io_Command = CMD_WRITE;
@@ -186,29 +186,29 @@ solo_status_t solo_serial_write(solo_serial_t *port, const char *buf, size_t len
         if (!CheckIO((struct IORequest *)port->io)) {
             AbortIO((struct IORequest *)port->io);
             WaitIO((struct IORequest *)port->io);
-            return SOLO_AGAIN; /* Timeout: 0 bytes written */
+            return CAIS_AGAIN; /* Timeout: 0 bytes written */
         }
         WaitIO((struct IORequest *)port->io);
         if (port->io->IOSer.io_Error != 0) {
-            return SOLO_ERROR;
+            return CAIS_ERROR;
         }
         if (written_bytes != NULL) {
             *written_bytes = len;
         }
-        return SOLO_OK;
+        return CAIS_OK;
     }
 
     if (DoIO((struct IORequest *)port->io) != 0) {
-        return SOLO_ERROR;
+        return CAIS_ERROR;
     }
 
     if (written_bytes != NULL) {
         *written_bytes = len;
     }
-    return SOLO_OK;
+    return CAIS_OK;
 }
 
-solo_status_t solo_serial_read(solo_serial_t *port, char *buf, size_t max_len, size_t *read_bytes, int timeout_ms)
+cais_status_t cais_serial_read(cais_serial_t *port, char *buf, size_t max_len, size_t *read_bytes, int timeout_ms)
 {
     int effective_timeout;
 
@@ -217,22 +217,22 @@ solo_status_t solo_serial_read(solo_serial_t *port, char *buf, size_t max_len, s
     }
 
     if (port == NULL || port->io == NULL || buf == NULL || !port->is_open || max_len == 0) {
-        return SOLO_ERROR;
+        return CAIS_ERROR;
     }
 
     effective_timeout = (timeout_ms < 0) ? port->timeout_ms : timeout_ms;
     if (effective_timeout > 0) {
         /* Amiga serial.device does not implement arbitrary millisecond timeouts without timer.device */
-        return SOLO_UNSUPPORTED;
+        return CAIS_UNSUPPORTED;
     }
     if (effective_timeout == 0) {
         /* Non-blocking check via SDCMD_QUERY */
         port->io->IOSer.io_Command = SDCMD_QUERY;
         if (DoIO((struct IORequest *)port->io) != 0) {
-            return SOLO_ERROR;
+            return CAIS_ERROR;
         }
         if (port->io->IOSer.io_Actual == 0) {
-            return SOLO_AGAIN; /* No data ready */
+            return CAIS_AGAIN; /* No data ready */
         }
         if (max_len > port->io->IOSer.io_Actual) {
             max_len = port->io->IOSer.io_Actual;
@@ -243,80 +243,80 @@ solo_status_t solo_serial_read(solo_serial_t *port, char *buf, size_t max_len, s
     port->io->IOSer.io_Data = (APTR)buf;
     port->io->IOSer.io_Length = (ULONG)max_len;
     if (DoIO((struct IORequest *)port->io) != 0) {
-        return SOLO_ERROR;
+        return CAIS_ERROR;
     }
 
     if (read_bytes != NULL) {
         *read_bytes = (size_t)port->io->IOSer.io_Actual;
     }
-    return SOLO_OK;
+    return CAIS_OK;
 }
 
-solo_serial_status_t solo_serial_set_timeout(solo_serial_t *port, int timeout_ms)
+cais_serial_status_t cais_serial_set_timeout(cais_serial_t *port, int timeout_ms)
 {
     if (port == NULL || !port->is_open) {
-        return SOLO_SERIAL_ERROR;
+        return CAIS_SERIAL_ERROR;
     }
     if (timeout_ms > 0) {
         /* Amiga serial.device does not implement arbitrary millisecond timeouts without timer.device */
-        return SOLO_SERIAL_UNSUPPORTED;
+        return CAIS_SERIAL_UNSUPPORTED;
     }
     port->timeout_ms = timeout_ms;
-    return SOLO_SERIAL_OK;
+    return CAIS_SERIAL_OK;
 }
 
-solo_line_state_t solo_serial_get_cts(solo_serial_t *port)
+cais_line_state_t cais_serial_get_cts(cais_serial_t *port)
 {
     (void)port;
-    return SOLO_LINE_ERROR;
+    return CAIS_LINE_ERROR;
 }
 
-solo_line_state_t solo_serial_get_dsr(solo_serial_t *port)
+cais_line_state_t cais_serial_get_dsr(cais_serial_t *port)
 {
     (void)port;
-    return SOLO_LINE_ERROR;
+    return CAIS_LINE_ERROR;
 }
 
-solo_line_state_t solo_serial_get_cd(solo_serial_t *port)
+cais_line_state_t cais_serial_get_cd(cais_serial_t *port)
 {
     (void)port;
-    return SOLO_LINE_ERROR;
+    return CAIS_LINE_ERROR;
 }
 
-solo_line_state_t solo_serial_get_ri(solo_serial_t *port)
+cais_line_state_t cais_serial_get_ri(cais_serial_t *port)
 {
     (void)port;
-    return SOLO_LINE_ERROR;
+    return CAIS_LINE_ERROR;
 }
 
-solo_serial_status_t solo_serial_drain(solo_serial_t *port)
+cais_serial_status_t cais_serial_drain(cais_serial_t *port)
 {
     if (port == NULL || port->io == NULL || !port->is_open) {
-        return SOLO_SERIAL_ERROR;
+        return CAIS_SERIAL_ERROR;
     }
     /* DoIO CMD_WRITE is synchronous in Exec serial.device */
-    return SOLO_SERIAL_OK;
+    return CAIS_SERIAL_OK;
 }
 
-solo_serial_status_t solo_serial_set_rts(solo_serial_t *port, solo_serial_line_t state)
+cais_serial_status_t cais_serial_set_rts(cais_serial_t *port, cais_serial_line_t state)
 {
     if (port == NULL || port->io == NULL || !port->is_open) {
-        return SOLO_SERIAL_ERROR;
+        return CAIS_SERIAL_ERROR;
     }
     (void)state;
-    return SOLO_SERIAL_OK;
+    return CAIS_SERIAL_OK;
 }
 
-solo_serial_status_t solo_serial_set_dtr(solo_serial_t *port, solo_serial_line_t state)
+cais_serial_status_t cais_serial_set_dtr(cais_serial_t *port, cais_serial_line_t state)
 {
     if (port == NULL || port->io == NULL || !port->is_open) {
-        return SOLO_SERIAL_ERROR;
+        return CAIS_SERIAL_ERROR;
     }
     (void)state;
-    return SOLO_SERIAL_OK;
+    return CAIS_SERIAL_OK;
 }
 
-void solo_serial_close(solo_serial_t *port)
+void cais_serial_close(cais_serial_t *port)
 {
     if (port != NULL) {
         if (port->is_open && port->io != NULL) {
@@ -338,4 +338,4 @@ void solo_serial_close(solo_serial_t *port)
 #else
 /* ISO C forbids an empty translation unit */
 typedef int make_iso_compilers_happy_serial_amiga;
-#endif /* SOLO_IS_AMIGA */
+#endif /* CAIS_IS_AMIGA */

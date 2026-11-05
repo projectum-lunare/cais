@@ -1,6 +1,6 @@
 /*
- * solo - Physical I/O, System Foundations & Hardware Abstractions
- * Projectum Lunare <https://github.com/projectum-lunare/solo>
+ * cais - Physical I/O, System Foundations & Hardware Abstractions
+ * Projectum Lunare <https://github.com/projectum-lunare/cais>
  * Copyright (C) 2026 Gustavo Veiga <gustavo.veiga@outlook.com.br>
  * Mozilla Public License Version 2.0
  */
@@ -9,10 +9,10 @@
 
 /*
  * ============================================================================
- * Solo C Unit Test Suite Entry Point
+ * Cais C Unit Test Suite Entry Point
  * ============================================================================
  * This executable orchestrates and executes all modular test suites for the
- * Solo native C library using the Greatest testing framework.
+ * Cais native C library using the Greatest testing framework.
  *
  * Each subsystem test suite is defined in its own compilation unit (.c) and
  * declared here via SUITE_EXTERN():

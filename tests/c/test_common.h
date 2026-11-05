@@ -1,12 +1,12 @@
 /*
- * solo - Physical I/O, System Foundations & Hardware Abstractions
- * Projectum Lunare <https://github.com/projectum-lunare/solo>
+ * cais - Physical I/O, System Foundations & Hardware Abstractions
+ * Projectum Lunare <https://github.com/projectum-lunare/cais>
  * Copyright (C) 2026 Gustavo Veiga <gustavo.veiga@outlook.com.br>
  * Mozilla Public License Version 2.0
  */
 
-#ifndef SOLO_TEST_COMMON_H
-#define SOLO_TEST_COMMON_H
+#ifndef CAIS_TEST_COMMON_H
+#define CAIS_TEST_COMMON_H
 
 /*
  * ============================================================================
@@ -35,15 +35,15 @@
 /* Greatest testing framework: lightweight C89 unit testing harness */
 #include <greatest/greatest.h>
 
-/* Public solo API headers */
-#include <solo/solo.h>
+/* Public cais API headers */
+#include <cais/cais.h>
 
 /* POSIX headers conditionally included for PTY and child-process isolation */
-#if SOLO_IS_POSIX
+#if CAIS_IS_POSIX
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #endif
 
-#endif /* SOLO_TEST_COMMON_H */
+#endif /* CAIS_TEST_COMMON_H */

@@ -1,6 +1,6 @@
 /*
- * solo - Physical I/O, System Foundations & Hardware Abstractions
- * Projectum Lunare <https://github.com/projectum-lunare/solo>
+ * cais - Physical I/O, System Foundations & Hardware Abstractions
+ * Projectum Lunare <https://github.com/projectum-lunare/cais>
  * Copyright (C) 2026 Gustavo Veiga <gustavo.veiga@outlook.com.br>
  * Mozilla Public License Version 2.0
  */
@@ -16,64 +16,64 @@
 TEST test_filesystem_existence(void)
 {
     /* Canonical boolean constants verification */
-    ASSERT_EQ(0, SOLO_FALSE);
-    ASSERT_EQ(1, SOLO_TRUE);
+    ASSERT_EQ(0, CAIS_FALSE);
+    ASSERT_EQ(1, CAIS_TRUE);
 
     /* 1. Current working directory */
-    ASSERT_EQ(SOLO_TRUE, solo_fs_exists("."));
+    ASSERT_EQ(CAIS_TRUE, cais_fs_exists("."));
 
     /* 2. Known project header file */
-    ASSERT_EQ(SOLO_TRUE, solo_fs_exists("include/solo/solo.h"));
+    ASSERT_EQ(CAIS_TRUE, cais_fs_exists("include/cais/cais.h"));
 
     /* 3. Nonexistent absolute and relative paths */
-    ASSERT_EQ(SOLO_FALSE, solo_fs_exists("/nonexistent_solo_xyz_12345"));
-    ASSERT_EQ(SOLO_FALSE, solo_fs_exists("nonexistent_relative_xyz_67890"));
+    ASSERT_EQ(CAIS_FALSE, cais_fs_exists("/nonexistent_cais_xyz_12345"));
+    ASSERT_EQ(CAIS_FALSE, cais_fs_exists("nonexistent_relative_xyz_67890"));
 
     /* 4. NULL and empty defense */
-    ASSERT_EQ(SOLO_FALSE, solo_fs_exists(NULL));
-    ASSERT_EQ(SOLO_FALSE, solo_fs_exists(""));
+    ASSERT_EQ(CAIS_FALSE, cais_fs_exists(NULL));
+    ASSERT_EQ(CAIS_FALSE, cais_fs_exists(""));
 
     PASS();
 }
 
 TEST test_filesystem_path_algebra(void)
 {
-    char out[SOLO_PATH_MAX];
-    char sep = solo_fs_path_separator();
+    char out[CAIS_PATH_MAX];
+    char sep = cais_fs_path_separator();
 
     ASSERT(sep == '/' || sep == '\\');
 
     /* Path join */
-    ASSERT_EQ(SOLO_OK, solo_fs_path_join("foo", "bar", out, sizeof(out)));
+    ASSERT_EQ(CAIS_OK, cais_fs_path_join("foo", "bar", out, sizeof(out)));
     ASSERT(strstr(out, "foo") != NULL);
     ASSERT(strstr(out, "bar") != NULL);
 
     /* Path basename */
-    ASSERT_EQ(SOLO_OK, solo_fs_path_basename("path/to/file.txt", out, sizeof(out)));
+    ASSERT_EQ(CAIS_OK, cais_fs_path_basename("path/to/file.txt", out, sizeof(out)));
     ASSERT_STR_EQ("file.txt", out);
 
-    ASSERT_EQ(SOLO_OK, solo_fs_path_basename("path/to/directory/", out, sizeof(out)));
+    ASSERT_EQ(CAIS_OK, cais_fs_path_basename("path/to/directory/", out, sizeof(out)));
     ASSERT_STR_EQ("directory", out);
 
     /* Path dirname */
-    ASSERT_EQ(SOLO_OK, solo_fs_path_dirname("path/to/file.txt", out, sizeof(out)));
+    ASSERT_EQ(CAIS_OK, cais_fs_path_dirname("path/to/file.txt", out, sizeof(out)));
     ASSERT(strstr(out, "path") != NULL);
 
     /* Path extension */
-    ASSERT_EQ(SOLO_OK, solo_fs_path_ext("archive.tar.gz", out, sizeof(out)));
+    ASSERT_EQ(CAIS_OK, cais_fs_path_ext("archive.tar.gz", out, sizeof(out)));
     ASSERT_STR_EQ(".gz", out);
 
-    ASSERT_EQ(SOLO_OK, solo_fs_path_ext("README", out, sizeof(out)));
+    ASSERT_EQ(CAIS_OK, cais_fs_path_ext("README", out, sizeof(out)));
     ASSERT_STR_EQ("", out);
 
     /* Path normalize */
-    ASSERT_EQ(SOLO_OK, solo_fs_path_normalize("a//b/./c/../d", out, sizeof(out)));
+    ASSERT_EQ(CAIS_OK, cais_fs_path_normalize("a//b/./c/../d", out, sizeof(out)));
     ASSERT(strstr(out, "c") == NULL);
     ASSERT(strstr(out, "d") != NULL);
 
     /* Path absolute */
-    ASSERT_EQ(SOLO_TRUE, solo_fs_path_is_absolute("/usr/local"));
-    ASSERT_EQ(SOLO_FALSE, solo_fs_path_is_absolute("relative/path"));
+    ASSERT_EQ(CAIS_TRUE, cais_fs_path_is_absolute("/usr/local"));
+    ASSERT_EQ(CAIS_FALSE, cais_fs_path_is_absolute("relative/path"));
 
     PASS();
 }
@@ -81,23 +81,23 @@ TEST test_filesystem_path_algebra(void)
 TEST test_filesystem_stat_and_predicates(void)
 {
     char err[128];
-    solo_fs_stat_t st;
-    solo_fsize_t sz = 0;
+    cais_fs_stat_t st;
+    cais_fsize_t sz = 0;
 
     err[0] = '\0';
-    ASSERT_EQ(SOLO_OK, solo_fs_stat("include/solo/solo.h", &st, err, sizeof(err)));
-    ASSERT_EQ(SOLO_FS_TYPE_FILE, st.type);
+    ASSERT_EQ(CAIS_OK, cais_fs_stat("include/cais/cais.h", &st, err, sizeof(err)));
+    ASSERT_EQ(CAIS_FS_TYPE_FILE, st.type);
     ASSERT(st.size > 0);
 
-    ASSERT_EQ(SOLO_TRUE, solo_fs_is_file("include/solo/solo.h"));
-    ASSERT_EQ(SOLO_FALSE, solo_fs_is_dir("include/solo/solo.h"));
+    ASSERT_EQ(CAIS_TRUE, cais_fs_is_file("include/cais/cais.h"));
+    ASSERT_EQ(CAIS_FALSE, cais_fs_is_dir("include/cais/cais.h"));
 
-    ASSERT_EQ(SOLO_OK, solo_fs_stat("src", &st, err, sizeof(err)));
-    ASSERT_EQ(SOLO_FS_TYPE_DIR, st.type);
-    ASSERT_EQ(SOLO_TRUE, solo_fs_is_dir("src"));
-    ASSERT_EQ(SOLO_FALSE, solo_fs_is_file("src"));
+    ASSERT_EQ(CAIS_OK, cais_fs_stat("src", &st, err, sizeof(err)));
+    ASSERT_EQ(CAIS_FS_TYPE_DIR, st.type);
+    ASSERT_EQ(CAIS_TRUE, cais_fs_is_dir("src"));
+    ASSERT_EQ(CAIS_FALSE, cais_fs_is_file("src"));
 
-    ASSERT_EQ(SOLO_OK, solo_fs_file_size("include/solo/solo.h", &sz));
+    ASSERT_EQ(CAIS_OK, cais_fs_file_size("include/cais/cais.h", &sz));
     ASSERT(sz > 0);
 
     PASS();
@@ -108,55 +108,55 @@ TEST test_filesystem_mutation_and_iteration(void)
     char err[128];
     char *read_buf = NULL;
     size_t read_len = 0;
-    solo_fs_dir_t *dir;
-    solo_fs_dirent_t ent;
+    cais_fs_dir_t *dir;
+    cais_fs_dirent_t ent;
     int found_file = 0;
 
     /* 1. Recursive mkdir */
     err[0] = '\0';
-    ASSERT_EQ(SOLO_OK, solo_fs_mkdir_p("build/test_fs_c/nested/deep", 0777, err, sizeof(err)));
-    ASSERT_EQ(SOLO_TRUE, solo_fs_is_dir("build/test_fs_c/nested/deep"));
+    ASSERT_EQ(CAIS_OK, cais_fs_mkdir_p("build/test_fs_c/nested/deep", 0777, err, sizeof(err)));
+    ASSERT_EQ(CAIS_TRUE, cais_fs_is_dir("build/test_fs_c/nested/deep"));
 
     /* 2. Write file */
-    ASSERT_EQ(SOLO_OK, solo_fs_write_file("build/test_fs_c/nested/deep/item.txt", "hello", 5, err, sizeof(err)));
-    ASSERT_EQ(SOLO_TRUE, solo_fs_is_file("build/test_fs_c/nested/deep/item.txt"));
+    ASSERT_EQ(CAIS_OK, cais_fs_write_file("build/test_fs_c/nested/deep/item.txt", "hello", 5, err, sizeof(err)));
+    ASSERT_EQ(CAIS_TRUE, cais_fs_is_file("build/test_fs_c/nested/deep/item.txt"));
 
     /* 3. Append file */
-    ASSERT_EQ(SOLO_OK, solo_fs_append_file("build/test_fs_c/nested/deep/item.txt", " world", 6, err, sizeof(err)));
+    ASSERT_EQ(CAIS_OK, cais_fs_append_file("build/test_fs_c/nested/deep/item.txt", " world", 6, err, sizeof(err)));
 
     /* 4. Read file */
-    ASSERT_EQ(SOLO_OK, solo_fs_read_file("build/test_fs_c/nested/deep/item.txt", (void **)&read_buf, &read_len, err, sizeof(err)));
+    ASSERT_EQ(CAIS_OK, cais_fs_read_file("build/test_fs_c/nested/deep/item.txt", (void **)&read_buf, &read_len, err, sizeof(err)));
     ASSERT_EQ(11, read_len);
     ASSERT_STR_EQ("hello world", read_buf);
     free(read_buf);
 
     /* 5. Copy file */
-    ASSERT_EQ(SOLO_OK, solo_fs_copy_file("build/test_fs_c/nested/deep/item.txt",
-                                         "build/test_fs_c/nested/deep/copy.txt", SOLO_TRUE, err, sizeof(err)));
-    ASSERT_EQ(SOLO_TRUE, solo_fs_is_file("build/test_fs_c/nested/deep/copy.txt"));
+    ASSERT_EQ(CAIS_OK, cais_fs_copy_file("build/test_fs_c/nested/deep/item.txt",
+                                         "build/test_fs_c/nested/deep/copy.txt", CAIS_TRUE, err, sizeof(err)));
+    ASSERT_EQ(CAIS_TRUE, cais_fs_is_file("build/test_fs_c/nested/deep/copy.txt"));
 
     /* 6. Rename file */
-    ASSERT_EQ(SOLO_OK, solo_fs_rename("build/test_fs_c/nested/deep/copy.txt",
+    ASSERT_EQ(CAIS_OK, cais_fs_rename("build/test_fs_c/nested/deep/copy.txt",
                                       "build/test_fs_c/nested/deep/renamed.txt", err, sizeof(err)));
-    ASSERT_EQ(SOLO_FALSE, solo_fs_exists("build/test_fs_c/nested/deep/copy.txt"));
-    ASSERT_EQ(SOLO_TRUE, solo_fs_exists("build/test_fs_c/nested/deep/renamed.txt"));
+    ASSERT_EQ(CAIS_FALSE, cais_fs_exists("build/test_fs_c/nested/deep/copy.txt"));
+    ASSERT_EQ(CAIS_TRUE, cais_fs_exists("build/test_fs_c/nested/deep/renamed.txt"));
 
     /* 7. Directory iteration */
-    dir = solo_fs_dir_open("build/test_fs_c/nested/deep", err, sizeof(err));
+    dir = cais_fs_dir_open("build/test_fs_c/nested/deep", err, sizeof(err));
     ASSERT(dir != NULL);
 
-    while (solo_fs_dir_next(dir, &ent) == SOLO_OK) {
+    while (cais_fs_dir_next(dir, &ent) == CAIS_OK) {
         if (strcmp(ent.name, "item.txt") == 0 || strcmp(ent.name, "renamed.txt") == 0) {
             found_file++;
-            ASSERT_EQ(SOLO_FS_TYPE_FILE, ent.type);
+            ASSERT_EQ(CAIS_FS_TYPE_FILE, ent.type);
         }
     }
-    solo_fs_dir_close(dir);
+    cais_fs_dir_close(dir);
     ASSERT_EQ(2, found_file);
 
     /* 8. Remove all */
-    ASSERT_EQ(SOLO_OK, solo_fs_remove_all("build/test_fs_c", err, sizeof(err)));
-    ASSERT_EQ(SOLO_FALSE, solo_fs_exists("build/test_fs_c"));
+    ASSERT_EQ(CAIS_OK, cais_fs_remove_all("build/test_fs_c", err, sizeof(err)));
+    ASSERT_EQ(CAIS_FALSE, cais_fs_exists("build/test_fs_c"));
 
     PASS();
 }
@@ -167,46 +167,46 @@ TEST test_filesystem_file_stream(void)
     char buf[16];
     size_t io_bytes = 0;
     long pos = 0;
-    solo_file_t *f;
+    cais_file_t *f;
 
     err[0] = '\0';
-    f = solo_file_open("build/test_c_stream.bin", "w+", err, sizeof(err));
+    f = cais_file_open("build/test_c_stream.bin", "w+", err, sizeof(err));
     ASSERT(f != NULL);
 
-    ASSERT_EQ(SOLO_OK, solo_file_write(f, "abcdefgh", 8, &io_bytes));
+    ASSERT_EQ(CAIS_OK, cais_file_write(f, "abcdefgh", 8, &io_bytes));
     ASSERT_EQ(8, io_bytes);
 
-    ASSERT_EQ(SOLO_OK, solo_file_tell(f, &pos));
+    ASSERT_EQ(CAIS_OK, cais_file_tell(f, &pos));
     ASSERT_EQ(8, pos);
 
-    ASSERT_EQ(SOLO_OK, solo_file_seek(f, 2, SOLO_FS_SEEK_SET, &pos));
+    ASSERT_EQ(CAIS_OK, cais_file_seek(f, 2, CAIS_FS_SEEK_SET, &pos));
     ASSERT_EQ(2, pos);
 
     memset(buf, 0, sizeof(buf));
-    ASSERT_EQ(SOLO_OK, solo_file_read(f, buf, 4, &io_bytes));
+    ASSERT_EQ(CAIS_OK, cais_file_read(f, buf, 4, &io_bytes));
     ASSERT_EQ(4, io_bytes);
     ASSERT(memcmp(buf, "cdef", 4) == 0);
 
-    ASSERT_EQ(SOLO_OK, solo_file_flush(f));
-    solo_file_close(f);
+    ASSERT_EQ(CAIS_OK, cais_file_flush(f));
+    cais_file_close(f);
 
-    ASSERT_EQ(SOLO_OK, solo_fs_remove("build/test_c_stream.bin", err, sizeof(err)));
-    ASSERT_EQ(SOLO_FALSE, solo_fs_exists("build/test_c_stream.bin"));
+    ASSERT_EQ(CAIS_OK, cais_fs_remove("build/test_c_stream.bin", err, sizeof(err)));
+    ASSERT_EQ(CAIS_FALSE, cais_fs_exists("build/test_c_stream.bin"));
 
     PASS();
 }
 
 TEST test_filesystem_environment(void)
 {
-    char cwd[SOLO_PATH_MAX];
-    char temp[SOLO_PATH_MAX];
+    char cwd[CAIS_PATH_MAX];
+    char temp[CAIS_PATH_MAX];
     char err[128];
 
     err[0] = '\0';
-    ASSERT_EQ(SOLO_OK, solo_fs_getcwd(cwd, sizeof(cwd), err, sizeof(err)));
+    ASSERT_EQ(CAIS_OK, cais_fs_getcwd(cwd, sizeof(cwd), err, sizeof(err)));
     ASSERT(strlen(cwd) > 0);
 
-    ASSERT_EQ(SOLO_OK, solo_fs_temp_dir(temp, sizeof(temp), err, sizeof(err)));
+    ASSERT_EQ(CAIS_OK, cais_fs_temp_dir(temp, sizeof(temp), err, sizeof(err)));
     ASSERT(strlen(temp) > 0);
 
     PASS();

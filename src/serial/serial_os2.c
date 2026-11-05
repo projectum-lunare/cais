@@ -1,6 +1,6 @@
 /*
- * solo - Physical I/O, System Foundations & Hardware Abstractions
- * Projectum Lunare <https://github.com/projectum-lunare/solo>
+ * cais - Physical I/O, System Foundations & Hardware Abstractions
+ * Projectum Lunare <https://github.com/projectum-lunare/cais>
  * Copyright (C) 2026 Gustavo Veiga <gustavo.veiga@outlook.com.br>
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
@@ -8,9 +8,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-#include <solo/platform.h>
+#include <cais/platform.h>
 
-#if SOLO_IS_OS2
+#if CAIS_IS_OS2
 
 #define INCL_DOS
 #define INCL_DOSERRORS
@@ -21,7 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <solo/serial.h>
+#include <cais/serial.h>
 
 struct serial_port {
     HFILE handle;
@@ -29,7 +29,7 @@ struct serial_port {
     char name[16];
 };
 
-static solo_serial_status_t solo_serial_set_rts_internal(HFILE handle, int on)
+static cais_serial_status_t cais_serial_set_rts_internal(HFILE handle, int on)
 {
     MODEMSTATUS ms;
     ULONG cbParam = sizeof(ms);
@@ -46,10 +46,10 @@ static solo_serial_status_t solo_serial_set_rts_internal(HFILE handle, int on)
 
     rc = DosDevIOCtl(handle, IOCTL_ASYNC, ASYNC_SETMODEMCTRL, &ms, sizeof(ms), &cbParam, NULL, 0,
                      NULL);
-    return (rc == 0) ? SOLO_SERIAL_OK : SOLO_SERIAL_ERROR;
+    return (rc == 0) ? CAIS_SERIAL_OK : CAIS_SERIAL_ERROR;
 }
 
-static solo_serial_status_t solo_serial_set_dtr_internal(HFILE handle, int on)
+static cais_serial_status_t cais_serial_set_dtr_internal(HFILE handle, int on)
 {
     MODEMSTATUS ms;
     ULONG cbParam = sizeof(ms);
@@ -66,16 +66,16 @@ static solo_serial_status_t solo_serial_set_dtr_internal(HFILE handle, int on)
 
     rc = DosDevIOCtl(handle, IOCTL_ASYNC, ASYNC_SETMODEMCTRL, &ms, sizeof(ms), &cbParam, NULL, 0,
                      NULL);
-    return (rc == 0) ? SOLO_SERIAL_OK : SOLO_SERIAL_ERROR;
+    return (rc == 0) ? CAIS_SERIAL_OK : CAIS_SERIAL_ERROR;
 }
 
-solo_serial_t *solo_serial_open(const char *path, const solo_serial_opts_t *opts, char *err_buf, size_t err_cap)
+cais_serial_t *cais_serial_open(const char *path, const cais_serial_opts_t *opts, char *err_buf, size_t err_cap)
 {
     HFILE hfile = NULLHANDLE;
     ULONG action = 0;
     APIRET rc;
-    solo_serial_t *port;
-    solo_serial_opts_t default_opts;
+    cais_serial_t *port;
+    cais_serial_opts_t default_opts;
     const char *p = (path && path[0] != '\0') ? path : "COM1";
 
     if (err_buf != NULL && err_cap > 0) {
@@ -104,7 +104,7 @@ solo_serial_t *solo_serial_open(const char *path, const solo_serial_opts_t *opts
                  OPEN_SHARE_DENYREADWRITE | OPEN_ACCESS_READWRITE, NULL);
 
     if (rc != 0) {
-        solo_set_err_fmt(err_buf, err_cap, "DosOpen(%s) failed (SYS%04lu)", p, (unsigned long)rc);
+        cais_set_err_fmt(err_buf, err_cap, "DosOpen(%s) failed (SYS%04lu)", p, (unsigned long)rc);
         return NULL;
     }
 
@@ -209,17 +209,17 @@ solo_serial_t *solo_serial_open(const char *path, const solo_serial_opts_t *opts
 
         /* 4. Initial Modem Lines (RTS / DTR) */
         if (opts->rts != -1) {
-            solo_serial_set_rts_internal(hfile, opts->rts);
+            cais_serial_set_rts_internal(hfile, opts->rts);
         }
         if (opts->dtr != -1) {
-            solo_serial_set_dtr_internal(hfile, opts->dtr);
+            cais_serial_set_dtr_internal(hfile, opts->dtr);
         }
     }
 
-    port = (solo_serial_t *)malloc(sizeof(solo_serial_t));
+    port = (cais_serial_t *)malloc(sizeof(cais_serial_t));
     if (port == NULL) {
         DosClose(hfile);
-        solo_set_err(err_buf, err_cap, "Out of memory allocating serial port structure");
+        cais_set_err(err_buf, err_cap, "Out of memory allocating serial port structure");
         return NULL;
     }
 
@@ -231,7 +231,7 @@ solo_serial_t *solo_serial_open(const char *path, const solo_serial_opts_t *opts
     return port;
 }
 
-static solo_serial_status_t solo_serial_apply_dcb_timeout(HFILE handle, int timeout_ms)
+static cais_serial_status_t cais_serial_apply_dcb_timeout(HFILE handle, int timeout_ms)
 {
     DCBINFO dcb;
     ULONG cbData;
@@ -240,7 +240,7 @@ static solo_serial_status_t solo_serial_apply_dcb_timeout(HFILE handle, int time
     memset(&dcb, 0, sizeof(dcb));
     cbData = sizeof(dcb);
     if (DosDevIOCtl(handle, IOCTL_ASYNC, ASYNC_GETDCBINFO, NULL, 0, NULL, &dcb, sizeof(dcb), &cbData) != 0) {
-        return SOLO_SERIAL_ERROR;
+        return CAIS_SERIAL_ERROR;
     }
 
     if (timeout_ms > 0) {
@@ -261,13 +261,13 @@ static solo_serial_status_t solo_serial_apply_dcb_timeout(HFILE handle, int time
 
     cbParam = sizeof(dcb);
     if (DosDevIOCtl(handle, IOCTL_ASYNC, ASYNC_SETDCBINFO, &dcb, sizeof(dcb), &cbParam, NULL, 0, NULL) != 0) {
-        return SOLO_SERIAL_ERROR;
+        return CAIS_SERIAL_ERROR;
     }
 
-    return SOLO_SERIAL_OK;
+    return CAIS_SERIAL_OK;
 }
 
-solo_status_t solo_serial_write(solo_serial_t *port, const char *buf, size_t len, size_t *written_bytes)
+cais_status_t cais_serial_write(cais_serial_t *port, const char *buf, size_t len, size_t *written_bytes)
 {
     ULONG written = 0;
     APIRET rc;
@@ -277,29 +277,29 @@ solo_status_t solo_serial_write(solo_serial_t *port, const char *buf, size_t len
     }
 
     if (port == NULL || port->handle == NULLHANDLE || buf == NULL) {
-        return SOLO_ERROR;
+        return CAIS_ERROR;
     }
     if (len == 0) {
-        return SOLO_OK;
+        return CAIS_OK;
     }
 
     rc = DosWrite(port->handle, (PVOID)buf, (ULONG)len, &written);
     if (rc != 0) {
         if (rc == ERROR_TIMEOUT) {
             if (written_bytes != NULL) *written_bytes = (size_t)written;
-            return (written > 0) ? SOLO_OK : SOLO_AGAIN;
+            return (written > 0) ? CAIS_OK : CAIS_AGAIN;
         }
         if (written_bytes != NULL) *written_bytes = (size_t)written;
-        return (written > 0) ? SOLO_OK : SOLO_ERROR;
+        return (written > 0) ? CAIS_OK : CAIS_ERROR;
     }
 
     if (written_bytes != NULL) {
         *written_bytes = (size_t)written;
     }
-    return SOLO_OK;
+    return CAIS_OK;
 }
 
-solo_status_t solo_serial_read(solo_serial_t *port, char *buf, size_t max_len, size_t *read_bytes, int timeout_ms)
+cais_status_t cais_serial_read(cais_serial_t *port, char *buf, size_t max_len, size_t *read_bytes, int timeout_ms)
 {
     ULONG read_len = 0;
     APIRET rc;
@@ -310,11 +310,11 @@ solo_status_t solo_serial_read(solo_serial_t *port, char *buf, size_t max_len, s
     }
 
     if (port == NULL || port->handle == NULLHANDLE || buf == NULL || max_len == 0) {
-        return SOLO_ERROR;
+        return CAIS_ERROR;
     }
 
     if (timeout_ms >= 0 && timeout_ms != port->timeout_ms) {
-        if (solo_serial_apply_dcb_timeout(port->handle, timeout_ms) == SOLO_SERIAL_OK) {
+        if (cais_serial_apply_dcb_timeout(port->handle, timeout_ms) == CAIS_SERIAL_OK) {
             need_restore = 1;
         }
     }
@@ -322,71 +322,71 @@ solo_status_t solo_serial_read(solo_serial_t *port, char *buf, size_t max_len, s
     rc = DosRead(port->handle, (PVOID)buf, (ULONG)max_len, &read_len);
 
     if (need_restore) {
-        solo_serial_apply_dcb_timeout(port->handle, port->timeout_ms);
+        cais_serial_apply_dcb_timeout(port->handle, port->timeout_ms);
     }
 
     if (rc != 0) {
         if (rc == ERROR_TIMEOUT) {
             if (read_bytes != NULL) *read_bytes = (size_t)read_len;
-            return (read_len > 0) ? SOLO_OK : SOLO_AGAIN;
+            return (read_len > 0) ? CAIS_OK : CAIS_AGAIN;
         }
-        return SOLO_ERROR;
+        return CAIS_ERROR;
     }
 
     if (read_len == 0) {
-        return SOLO_AGAIN;
+        return CAIS_AGAIN;
     }
 
     if (read_bytes != NULL) {
         *read_bytes = (size_t)read_len;
     }
-    return SOLO_OK;
+    return CAIS_OK;
 }
 
-solo_serial_status_t solo_serial_set_timeout(solo_serial_t *port, int timeout_ms)
+cais_serial_status_t cais_serial_set_timeout(cais_serial_t *port, int timeout_ms)
 {
     if (port == NULL || port->handle == NULLHANDLE) {
-        return SOLO_SERIAL_ERROR;
+        return CAIS_SERIAL_ERROR;
     }
-    if (solo_serial_apply_dcb_timeout(port->handle, timeout_ms) != SOLO_SERIAL_OK) {
-        return SOLO_SERIAL_ERROR;
+    if (cais_serial_apply_dcb_timeout(port->handle, timeout_ms) != CAIS_SERIAL_OK) {
+        return CAIS_SERIAL_ERROR;
     }
     port->timeout_ms = timeout_ms;
-    return SOLO_SERIAL_OK;
+    return CAIS_SERIAL_OK;
 }
 
-solo_line_state_t solo_serial_get_cts(solo_serial_t *port)
+cais_line_state_t cais_serial_get_cts(cais_serial_t *port)
 {
     (void)port;
-    return SOLO_LINE_ERROR;
+    return CAIS_LINE_ERROR;
 }
 
-solo_line_state_t solo_serial_get_dsr(solo_serial_t *port)
+cais_line_state_t cais_serial_get_dsr(cais_serial_t *port)
 {
     (void)port;
-    return SOLO_LINE_ERROR;
+    return CAIS_LINE_ERROR;
 }
 
-solo_line_state_t solo_serial_get_cd(solo_serial_t *port)
+cais_line_state_t cais_serial_get_cd(cais_serial_t *port)
 {
     (void)port;
-    return SOLO_LINE_ERROR;
+    return CAIS_LINE_ERROR;
 }
 
-solo_line_state_t solo_serial_get_ri(solo_serial_t *port)
+cais_line_state_t cais_serial_get_ri(cais_serial_t *port)
 {
     (void)port;
-    return SOLO_LINE_ERROR;
+    return CAIS_LINE_ERROR;
 }
 
-solo_serial_status_t solo_serial_drain(solo_serial_t *port)
+cais_serial_status_t cais_serial_drain(cais_serial_t *port)
 {
     int attempts = 0;
     USHORT outQue = 0;
     ULONG cbData;
 
     if (port == NULL || port->handle == NULLHANDLE) {
-        return SOLO_SERIAL_ERROR;
+        return CAIS_SERIAL_ERROR;
     }
 
     /* Flush OS/2 device write buffers */
@@ -406,26 +406,26 @@ solo_serial_status_t solo_serial_drain(solo_serial_t *port)
         DosSleep(10); /* 10 ms */
     }
 
-    return SOLO_SERIAL_OK;
+    return CAIS_SERIAL_OK;
 }
 
-solo_serial_status_t solo_serial_set_rts(solo_serial_t *port, solo_serial_line_t state)
+cais_serial_status_t cais_serial_set_rts(cais_serial_t *port, cais_serial_line_t state)
 {
     if (port == NULL || port->handle == NULLHANDLE) {
-        return SOLO_SERIAL_ERROR;
+        return CAIS_SERIAL_ERROR;
     }
-    return solo_serial_set_rts_internal(port->handle, (state == SOLO_SERIAL_LINE_ON || (int)state == 1) ? 1 : 0);
+    return cais_serial_set_rts_internal(port->handle, (state == CAIS_SERIAL_LINE_ON || (int)state == 1) ? 1 : 0);
 }
 
-solo_serial_status_t solo_serial_set_dtr(solo_serial_t *port, solo_serial_line_t state)
+cais_serial_status_t cais_serial_set_dtr(cais_serial_t *port, cais_serial_line_t state)
 {
     if (port == NULL || port->handle == NULLHANDLE) {
-        return SOLO_SERIAL_ERROR;
+        return CAIS_SERIAL_ERROR;
     }
-    return solo_serial_set_dtr_internal(port->handle, (state == SOLO_SERIAL_LINE_ON || (int)state == 1) ? 1 : 0);
+    return cais_serial_set_dtr_internal(port->handle, (state == CAIS_SERIAL_LINE_ON || (int)state == 1) ? 1 : 0);
 }
 
-void solo_serial_close(solo_serial_t *port)
+void cais_serial_close(cais_serial_t *port)
 {
     if (port != NULL) {
         if (port->handle != NULLHANDLE) {
@@ -439,4 +439,4 @@ void solo_serial_close(solo_serial_t *port)
 #else
 /* ISO C forbids an empty translation unit */
 typedef int make_iso_compilers_happy_serial_os2;
-#endif /* SOLO_IS_OS2 */
+#endif /* CAIS_IS_OS2 */
