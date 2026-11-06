@@ -9,6 +9,7 @@ edit_uri: ""
 watch:
   - include
   - src
+  - docs/templates/doxy
 
 theme:
   name: material
