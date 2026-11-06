@@ -21,6 +21,7 @@ local suites = {
     "tests.lua.test_serial",
     "tests.lua.test_parallel",
     "tests.lua.test_socket",
+    "tests.lua.test_noise",
     "tests.lua.test_submodules",
 }
 

@@ -106,6 +106,13 @@ describe("cais standalone submodules (Independent C Module Loading)", function()
         local sbx = require("cais.sandbox")
         assert_eq(type(sbx.is_supported), "function")
     end)
+
+    -- 7. Independent cais.noise loading
+    test("loads cais.noise independently", function()
+        local ns = require("cais.noise")
+        assert_eq(type(ns.keygen), "function")
+        assert_eq(ns.pattern.XX, 0)
+    end)
 end)
 
 if arg and arg[0] and arg[0]:match("test_.*%.lua$") then

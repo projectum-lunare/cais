@@ -31,6 +31,7 @@ SUITE_EXTERN(sandbox_suite);
 SUITE_EXTERN(serial_suite);
 SUITE_EXTERN(parallel_suite);
 SUITE_EXTERN(socket_suite);
+SUITE_EXTERN(noise_suite);
 
 /* Greatest framework global definition macro (must appear only once across the binary) */
 GREATEST_MAIN_DEFS();
@@ -47,6 +48,7 @@ int main(int argc, char **argv)
     RUN_SUITE(serial_suite);
     RUN_SUITE(parallel_suite);
     RUN_SUITE(socket_suite);
+    RUN_SUITE(noise_suite);
 
     /* Print test summary (total tests, passed, failed, skipped, assertions) and exit */
     GREATEST_MAIN_END();
