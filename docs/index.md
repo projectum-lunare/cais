@@ -23,6 +23,7 @@ graph TD
     SubSerial["cais.serial"]
     SubParallel["cais.parallel"]
     SubSandbox["cais.sandbox"]
+    SubNoise["cais.noise"]
     
     PAL["Platform Abstraction Layer (PAL)"]
     
@@ -38,8 +39,9 @@ graph TD
     Cais --> SubSerial
     Cais --> SubParallel
     Cais --> SubSandbox
+    Cais --> SubNoise
     
-    SubPlatform & SubFS & SubSocket & SubSerial & SubParallel & SubSandbox --> PAL
+    SubPlatform & SubFS & SubSocket & SubSerial & SubParallel & SubSandbox & SubNoise --> PAL
     PAL --> OSModern
     PAL --> OSVintage
     PAL --> OSRetro
@@ -58,6 +60,7 @@ graph TD
 | **`serial`** | RS-232 UART driver, baud rates, parity, modem control lines | `require("cais.serial")` | [`cais/serial.h`](file:///home/gustavo/Projetos/cais/include/cais/serial.h) |
 | **`parallel`** | IEEE 1284 Centronics printer port, raw pin access, strobe timing | `require("cais.parallel")` | [`cais/parallel.h`](file:///home/gustavo/Projetos/cais/include/cais/parallel.h) |
 | **`sandbox`** | Kernel-level sandboxing (Linux Landlock, OpenBSD Pledge, Capsicum) | `require("cais.sandbox")` | [`cais/sandbox.h`](file:///home/gustavo/Projetos/cais/include/cais/sandbox.h) |
+| **`noise`** | Noise-based cryptographic transport (XX, NN, NK, IK, 32-bit BLAKE2s) | `require("cais.noise")` | [`cais/noise.h`](file:///home/gustavo/Projetos/cais/include/cais/noise.h) |
 
 ---
 

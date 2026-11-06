@@ -110,12 +110,14 @@ nav:
       - Serial Port (UART): subsystems/serial.md
       - Parallel Port (IEEE 1284): subsystems/parallel.md
       - Kernel Sandboxing: subsystems/sandbox.md
+      - Noise Cryptographic Transport: subsystems/noise.md
   - Recipes & Guides:
       - Overview: recipes/index.md
       - Asynchronous TCP Echo Server: recipes/tcp-echo-server.md
       - Industrial Serial GPS Reader: recipes/industrial-serial.md
       - Defense-in-Depth CLI Sandbox: recipes/hardened-cli.md
       - Centronics Impact Printing: recipes/parallel-strobe.md
+      - Cryptographic Noise Links: recipes/noise-secure-channel.md
   - C API Reference:
       - Overview: c-api/index.md
       - Headers: c-api/files.md
@@ -140,6 +142,7 @@ nav:
       - cais.serial: lua-api/serial.md
       - cais.parallel: lua-api/parallel.md
       - cais.sandbox: lua-api/sandbox.md
+      - cais.noise: lua-api/noise.md
   - Platforms:
       - Overview & Support Matrix: platforms/index.md
       - Linux: platforms/linux.md

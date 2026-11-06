@@ -16,20 +16,22 @@
 
 The library is structured as a cohesive monorepo divided into specialized subsystems, available both as a native C API (`libcais.a` / `libcais.so`) and as Lua modules (`cais.*`):
 
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│                   cais (libcais / Lua API)                             │
-├────────────────────────────────────────────────────────────────────────┤
-│ • cais.platform   │ Compiler, OS & CPU detection, bits & endianness    │
-│ • cais.filesystem │ Safe file and directory I/O (alias: cais.fs)       │
-│ • cais.parallel   │ Centronics parallel port (LPT / SPP)               │
-│ • cais.serial     │ RS-232 serial UART with hardware flow control      │
-│ • cais.socket     │ Raw TCP & UDP stream/datagram sockets (IPv4)       │
-│ • cais.sandbox    │ Kernel sandboxing (Landlock, Seatbelt, Win32, OpenBSD)│
-└────────────────────────────────────────────────────────────────────────┘
+```text
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│                           cais (libcais / Lua API)                               │
+├──────────────────────────────────────────────────────────────────────────────────┤
+│ • cais.platform   │ Compiler, OS & CPU detection, bits & endianness              │
+│ • cais.filesystem │ Safe file and directory I/O (alias: cais.fs)                 │
+│ • cais.parallel   │ Centronics parallel port (LPT / SPP)                         │
+│ • cais.serial     │ RS-232 serial UART with hardware flow control                │
+│ • cais.socket     │ Raw TCP & UDP stream/datagram sockets (IPv4)                 │
+│ • cais.sandbox    │ Kernel sandboxing (Landlock, Seatbelt, Win32, OpenBSD)       │
+│ • cais.noise      │ Noise-based secure transport (XX, NN, NK, IK, 32-bit BLAKE2s)│
+└──────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 All subsystems share a unified canonical type foundation (`include/cais/types.h`) providing strict C89/C90 types with seamless C99/C++ interoperability:
+
 - `cais_status_t`: Canonical I/O and syscall return status (`CAIS_OK`, `CAIS_ERROR`, `CAIS_AGAIN`, `CAIS_EOF`, `CAIS_UNSUPPORTED`).
 - `cais_bool_t`: Canonical boolean type (`CAIS_TRUE` = 1, `CAIS_FALSE` = 0) eliminating ambiguous integer truth values.
 - `cais_line_state_t`: Physical signal line state (`CAIS_LINE_HIGH`, `CAIS_LINE_LOW`, `CAIS_LINE_ERROR`).
@@ -83,6 +85,13 @@ All subsystems share a unified canonical type foundation (`include/cais/types.h`
   - **OpenBSD:** Automatic synthesis of `unveil(2)` path rules and `pledge(2)` promises from policy declarations.
   - **FreeBSD:** Capsicum capability mode.
   - **Other platforms:** Safe fallback stub returning `CAIS_SANDBOX_UNSUPPORTED` with zero runtime overhead.
+
+### 7. `noise` — Noise-Based Cryptographic Transport
+
+- Certificate-less, zero-allocation secure channels powered by the Noise Protocol Framework (`Noise_XX`, `Noise_NN`, `Noise_NK`, `Noise_IK` with X25519, ChaCha20-Poly1305, and native 32-bit BLAKE2s).
+- Full mutual authentication, identity hiding, WireGuard-style 1-RTT session resumption (`Noise_IK`), and forward secrecy.
+- Automatic transport framing over stream sockets (`cais.socket`) and physical serial UART (`cais.serial`).
+- Zero heap allocation on common paths and lazy loading in Lua.
 
 ---
 
@@ -253,7 +262,9 @@ xmake build cais_smoke
 ```
 
 #### C Preprocessor Flags
+
 If embedding `cais` directly in a custom build system or firmware, unneeded subsystems can be excluded via compile-time defines:
+
 - `-DCAIS_NO_SOCKET`: Exclude networking and TCP/UDP sockets.
 - `-DCAIS_NO_SERIAL`: Exclude serial port abstractions.
 - `-DCAIS_NO_PARALLEL`: Exclude parallel port abstractions.
@@ -262,7 +273,9 @@ If embedding `cais` directly in a custom build system or firmware, unneeded subs
 - `-DCAIS_NO_PLATFORM`: Exclude platform metadata.
 
 #### Standalone Lua Submodules
+
 Submodules can be required independently without loading the umbrella library or its dependencies:
+
 ```lua
 local platform = require("cais.platform") -- only platform detection (~17 KB)
 local serial   = require("cais.serial")   -- only serial communication (~27 KB)

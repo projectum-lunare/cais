@@ -50,6 +50,12 @@
 
     Kernel security containment via Landlock, Pledge, Capsicum, or AppContainer with fluent OOP policy builders.
 
+- :material-lock-check-outline: **[`cais.noise`](noise.md)**
+
+    ---
+
+    Noise Protocol cryptographic transport (`Noise_[Pattern]_25519_ChaChaPoly_BLAKE2s`) with mutual authentication and 1-RTT sessions.
+
 </div>
 
 ---
