@@ -13,6 +13,9 @@ local describe, test = T.describe, T.test
 local assert_eq, assert_true, assert_false, assert_nil = T.assert_eq, T.assert_true, T.assert_false, T.assert_nil
 
 local cais = require("cais")
+if not cais.noise then
+    return
+end
 
 -- ============================================================================
 -- cais.noise (Noise-Based Cryptographic Transport Substrate Tests)

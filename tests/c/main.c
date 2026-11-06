@@ -25,13 +25,27 @@
  */
 
 /* External test suite declarations */
+#ifndef CAIS_NO_PLATFORM
 SUITE_EXTERN(platform_suite);
+#endif
+#ifndef CAIS_NO_FILESYSTEM
 SUITE_EXTERN(filesystem_suite);
+#endif
+#ifndef CAIS_NO_SANDBOX
 SUITE_EXTERN(sandbox_suite);
+#endif
+#ifndef CAIS_NO_SERIAL
 SUITE_EXTERN(serial_suite);
+#endif
+#ifndef CAIS_NO_PARALLEL
 SUITE_EXTERN(parallel_suite);
+#endif
+#ifndef CAIS_NO_SOCKET
 SUITE_EXTERN(socket_suite);
+#endif
+#ifndef CAIS_NO_NOISE
 SUITE_EXTERN(noise_suite);
+#endif
 
 /* Greatest framework global definition macro (must appear only once across the binary) */
 GREATEST_MAIN_DEFS();
@@ -42,13 +56,27 @@ int main(int argc, char **argv)
     GREATEST_MAIN_BEGIN();
 
     /* Sequentially execute modular test suites */
+#ifndef CAIS_NO_PLATFORM
     RUN_SUITE(platform_suite);
+#endif
+#ifndef CAIS_NO_FILESYSTEM
     RUN_SUITE(filesystem_suite);
+#endif
+#ifndef CAIS_NO_SANDBOX
     RUN_SUITE(sandbox_suite);
+#endif
+#ifndef CAIS_NO_SERIAL
     RUN_SUITE(serial_suite);
+#endif
+#ifndef CAIS_NO_PARALLEL
     RUN_SUITE(parallel_suite);
+#endif
+#ifndef CAIS_NO_SOCKET
     RUN_SUITE(socket_suite);
+#endif
+#ifndef CAIS_NO_NOISE
     RUN_SUITE(noise_suite);
+#endif
 
     /* Print test summary (total tests, passed, failed, skipped, assertions) and exit */
     GREATEST_MAIN_END();

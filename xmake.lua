@@ -19,10 +19,74 @@ add_repositories("projectum-lunare https://github.com/projectum-lunare/xmake-rep
 add_addons("recudo v0.2.8")
 includes("@addon/recudo/recudo.lua")
 
+-- ==============================================================================
+-- Modular Subsystem & Language Binding Options
+-- ==============================================================================
+option("lua")
+    set_default(true)
+    set_showmenu(true)
+    set_category("bindings")
+    set_description("Build Lua C bindings and runtime modules")
+option_end()
+
+option("filesystem")
+    set_default(true)
+    set_showmenu(true)
+    set_category("subsystems")
+    set_description("Enable filesystem and path I/O subsystem")
+option_end()
+
+option("socket")
+    set_default(true)
+    set_showmenu(true)
+    set_category("subsystems")
+    set_description("Enable raw TCP/UDP socket subsystem")
+option_end()
+
+option("serial")
+    set_default(true)
+    set_showmenu(true)
+    set_category("subsystems")
+    set_description("Enable RS-232 serial UART driver")
+option_end()
+
+option("parallel")
+    set_default(true)
+    set_showmenu(true)
+    set_category("subsystems")
+    set_description("Enable IEEE 1284 parallel port driver")
+option_end()
+
+option("sandbox")
+    set_default(true)
+    set_showmenu(true)
+    set_category("subsystems")
+    set_description("Enable kernel security sandboxing")
+option_end()
+
+option("noise")
+    set_default(true)
+    set_showmenu(true)
+    set_category("subsystems")
+    set_description("Enable Noise cryptographic transport subsystem")
+option_end()
+
+-- Propagate exclusion macros for disabled subsystems
+if not has_config("filesystem") then add_defines("CAIS_NO_FILESYSTEM") end
+if not has_config("socket")     then add_defines("CAIS_NO_SOCKET") end
+if not has_config("serial")     then add_defines("CAIS_NO_SERIAL") end
+if not has_config("parallel")   then add_defines("CAIS_NO_PARALLEL") end
+if not has_config("sandbox")    then add_defines("CAIS_NO_SANDBOX") end
+if not has_config("noise")      then add_defines("CAIS_NO_NOISE") end
+
 -- Dependencies for Lua C bindings and C test suites
-add_requires("lua >=5.4")
-add_requires("monocypher", {configs = {optional = false, shared = false}})
-add_requires("blake2", {configs = {shared = false}})
+if has_config("lua") then
+    add_requires("lua >=5.4")
+end
+if has_config("noise") then
+    add_requires("monocypher", {configs = {optional = false, shared = false}})
+    add_requires("blake2", {configs = {shared = false}})
+end
 if is_plat("linux", "macosx", "bsd", "windows", "mingw") then
     add_requires("greatest")
 end
@@ -226,22 +290,44 @@ target("cais_static")
     set_basename("cais")
     set_targetdir(target_dir)
     add_headerfiles("include/(cais/*.h)")
-    add_packages("monocypher", "blake2")
+    if has_config("noise") then
+        add_packages("monocypher", "blake2")
+    end
     add_files(
         "src/cais.c",
-        "src/platform/platform.c",
-        "src/filesystem/filesystem.c",
-        "src/socket/socket_common.c",
-        "src/filesystem/filesystem_" .. conf.filesystem .. ".c",
-        "src/parallel/parallel_" .. conf.parallel .. ".c",
-        "src/serial/serial_" .. conf.serial .. ".c",
-        "src/socket/socket_" .. conf.socket .. ".c",
-        "src/sandbox/sandbox.c",
-        "src/sandbox/sandbox_" .. conf.sandbox .. ".c",
-        "src/noise/noise_crypto.c",
-        "src/noise/noise_protocol.c",
-        "src/noise/noise_transport.c"
+        "src/platform/platform.c"
     )
+    if has_config("filesystem") then
+        add_files(
+            "src/filesystem/filesystem.c",
+            "src/filesystem/filesystem_" .. conf.filesystem .. ".c"
+        )
+    end
+    if has_config("parallel") then
+        add_files("src/parallel/parallel_" .. conf.parallel .. ".c")
+    end
+    if has_config("serial") then
+        add_files("src/serial/serial_" .. conf.serial .. ".c")
+    end
+    if has_config("socket") then
+        add_files(
+            "src/socket/socket_common.c",
+            "src/socket/socket_" .. conf.socket .. ".c"
+        )
+    end
+    if has_config("sandbox") then
+        add_files(
+            "src/sandbox/sandbox.c",
+            "src/sandbox/sandbox_" .. conf.sandbox .. ".c"
+        )
+    end
+    if has_config("noise") then
+        add_files(
+            "src/noise/noise_crypto.c",
+            "src/noise/noise_protocol.c",
+            "src/noise/noise_transport.c"
+        )
+    end
     apply_platform_rules(conf)
 
 -- ==============================================================================
@@ -255,13 +341,25 @@ target("cais_static")
 -- when several subsystem libraries are combined on the same link line.
 local c_subsystems = {
     platform   = {"src/platform/platform.c"},
-    filesystem = {"src/filesystem/filesystem.c", "src/filesystem/filesystem_" .. conf.filesystem .. ".c", "src/platform/platform.c"},
-    serial     = {"src/serial/serial_" .. conf.serial .. ".c", "src/platform/platform.c"},
-    parallel   = {"src/parallel/parallel_" .. conf.parallel .. ".c", "src/platform/platform.c"},
-    socket     = {"src/socket/socket_common.c", "src/socket/socket_" .. conf.socket .. ".c", "src/platform/platform.c"},
-    sandbox    = {"src/sandbox/sandbox.c", "src/sandbox/sandbox_" .. conf.sandbox .. ".c", "src/platform/platform.c"},
-    noise      = {"src/noise/noise_crypto.c", "src/noise/noise_protocol.c", "src/noise/noise_transport.c", "src/platform/platform.c"},
 }
+if has_config("filesystem") then
+    c_subsystems.filesystem = {"src/filesystem/filesystem.c", "src/filesystem/filesystem_" .. conf.filesystem .. ".c", "src/platform/platform.c"}
+end
+if has_config("serial") then
+    c_subsystems.serial = {"src/serial/serial_" .. conf.serial .. ".c", "src/platform/platform.c"}
+end
+if has_config("parallel") then
+    c_subsystems.parallel = {"src/parallel/parallel_" .. conf.parallel .. ".c", "src/platform/platform.c"}
+end
+if has_config("socket") then
+    c_subsystems.socket = {"src/socket/socket_common.c", "src/socket/socket_" .. conf.socket .. ".c", "src/platform/platform.c"}
+end
+if has_config("sandbox") then
+    c_subsystems.sandbox = {"src/sandbox/sandbox.c", "src/sandbox/sandbox_" .. conf.sandbox .. ".c", "src/platform/platform.c"}
+end
+if has_config("noise") then
+    c_subsystems.noise = {"src/noise/noise_crypto.c", "src/noise/noise_protocol.c", "src/noise/noise_transport.c", "src/platform/platform.c"}
+end
 
 for sub_name, files in pairs(c_subsystems) do
     target("cais_" .. sub_name)
@@ -279,111 +377,143 @@ for sub_name, files in pairs(c_subsystems) do
 end
 
 -- ==============================================================================
--- 3. Lua Subsystem & C Modules (Powered by recudo.lua.module)
+-- 3. Native C API Test Suite
 -- ==============================================================================
-
--- 3.1 Static Lua C Module (libcais_lua.a / cais_lua.lib) for embedding
-target("cais_lua_static")
-    add_rules("recudo.lua.module")
-    set_values("recudo.lua.kind", "static")
-    set_basename("cais_lua")
-    add_deps("cais_static")
-    add_defines("LUA_USE_C89")
-    add_files("src/**_lua.c")
-
 if is_plat("linux", "macosx", "bsd", "windows", "mingw") then
-
--- 3.2 Umbrella Shared Lua C Module (build/lua/cais.so & ./cais.so)
-target("cais")
-    add_rules("recudo.lua.module")
-    set_values("recudo.lua.kind", "shared")
-    add_deps("cais_static")
-    add_defines("LUA_USE_C89")
-    add_files("src/**_lua.c")
-    if is_plat("linux", "bsd") then
-        -- Hide symbols pulled from the statically embedded Lua runtime: keeps
-        -- the module from interposing on a foreign host VM (e.g. LuaJIT) and
-        -- trims the dynamic symbol table. macOS uses a two-level namespace and
-        -- PE exports are explicit, so both are already safe without this.
-        add_shflags("-Wl,--exclude-libs,ALL")
-    end
-    after_build(function (target)
-        if target:kind() ~= "shared" then
-            return
-        end
-        -- Mirror shared module to project root for zero-config require("cais")
-        os.trycp(target:targetfile(), path.join(os.projectdir(), path.filename(target:targetfile())))
-    end)
-
--- 3.3 Standalone C Modules (build/lua/cais/<submodule>.so)
-local submodules = {
-    platform   = {"src/platform/platform_lua.c", "src/platform/platform.c"},
-    filesystem = {"src/filesystem/filesystem_lua.c", "src/filesystem/filesystem.c", "src/filesystem/filesystem_" .. conf.filesystem .. ".c", "src/platform/platform.c"},
-    fs         = {"src/filesystem/filesystem_lua.c", "src/filesystem/filesystem.c", "src/filesystem/filesystem_" .. conf.filesystem .. ".c", "src/platform/platform.c"},
-    serial     = {"src/serial/serial_lua.c", "src/serial/serial_" .. conf.serial .. ".c", "src/platform/platform.c"},
-    parallel   = {"src/parallel/parallel_lua.c", "src/parallel/parallel_" .. conf.parallel .. ".c", "src/platform/platform.c"},
-    socket     = {"src/socket/socket_lua.c", "src/socket/socket_common.c", "src/socket/socket_" .. conf.socket .. ".c", "src/platform/platform.c"},
-    sandbox    = {"src/sandbox/sandbox_lua.c", "src/sandbox/sandbox.c", "src/sandbox/sandbox_" .. conf.sandbox .. ".c", "src/platform/platform.c"},
-    noise      = {"src/noise/noise_lua.c", "src/noise/noise_crypto.c", "src/noise/noise_protocol.c", "src/noise/noise_transport.c", "src/platform/platform.c"},
-}
-
-for mod_name, files in pairs(submodules) do
-    target("cais." .. mod_name)
-        add_rules("recudo.lua.module")
-        set_values("recudo.lua.kind", "shared")
-        add_defines("LUA_USE_C89")
-        if mod_name == "noise" then
+    target("test_c_api")
+        set_kind("binary")
+        set_toolchains("recudo-c")
+        set_default(false)
+        set_targetdir("tests")
+        set_rundir(os.projectdir())
+        add_files("tests/c/main.c", "tests/c/test_platform.c")
+        if has_config("filesystem") then add_files("tests/c/test_filesystem.c") end
+        if has_config("sandbox") then add_files("tests/c/test_sandbox.c") end
+        if has_config("serial") then add_files("tests/c/test_serial.c") end
+        if has_config("parallel") then add_files("tests/c/test_parallel.c") end
+        if has_config("socket") then add_files("tests/c/test_socket.c") end
+        if has_config("noise") then
+            add_files("tests/c/test_noise.c")
             add_packages("monocypher", "blake2")
         end
-        add_files(files)
-        if is_plat("linux", "bsd") then
-            -- Same interposition guard as the umbrella module (see above).
-            add_shflags("-Wl,--exclude-libs,ALL")
-        end
+        add_deps("cais_static")
+        add_packages("greatest")
+        add_tests("c_api")
+        on_install(function (target) end) -- test-only artifact: never packaged
 end
 
 -- ==============================================================================
--- 4. Test Suites & Application Launchers (Powered by recudo.lua.app)
+-- 4. Lua Subsystem & C Modules (Powered by recudo.lua.module)
 -- ==============================================================================
+if has_config("lua") then
 
--- 4.1 C API Test Suite
-target("test_c_api")
-    set_kind("binary")
-    set_toolchains("recudo-c")
-    set_default(false)
-    set_targetdir("tests")
-    set_rundir(os.projectdir())
-    add_files("tests/c/*.c")
-    add_deps("cais_static")
-    add_packages("greatest", "monocypher", "blake2")
-    add_tests("c_api")
-    on_install(function (target) end) -- test-only artifact: never packaged
+    local umbrella_lua_files = {
+        "src/cais_lua.c",
+        "src/platform/platform_lua.c"
+    }
+    if has_config("filesystem") then table.insert(umbrella_lua_files, "src/filesystem/filesystem_lua.c") end
+    if has_config("serial") then table.insert(umbrella_lua_files, "src/serial/serial_lua.c") end
+    if has_config("parallel") then table.insert(umbrella_lua_files, "src/parallel/parallel_lua.c") end
+    if has_config("socket") then table.insert(umbrella_lua_files, "src/socket/socket_lua.c") end
+    if has_config("sandbox") then table.insert(umbrella_lua_files, "src/sandbox/sandbox_lua.c") end
+    if has_config("noise") then table.insert(umbrella_lua_files, "src/noise/noise_lua.c") end
 
--- 4.2 Lua Test Suite & Portable Launcher (xmake run test_lua)
-target("test_lua")
-    add_rules("recudo.lua.app")
-    set_toolchains("recudo-c")
-    set_values("recudo.lua.entry", "tests/runner.lua")
-    set_default(false)
-    add_deps(
-        "cais",
-        "cais.platform",
-        "cais.filesystem",
-        "cais.fs",
-        "cais.serial",
-        "cais.parallel",
-        "cais.socket",
-        "cais.sandbox",
-        "cais.noise"
-    )
-    on_test(function (target)
-        os.execv(path.join(os.projectdir(), "build/bin/test_lua"))
-        return true
-    end)
-    add_tests("lua_suite")
-    on_install(function (target) end) -- test-only artifact: never packaged
+    -- 4.1 Static Lua C Module (libcais_lua.a / cais_lua.lib) for embedding
+    target("cais_lua_static")
+        add_rules("recudo.lua.module")
+        set_values("recudo.lua.kind", "static")
+        set_basename("cais_lua")
+        add_deps("cais_static")
+        add_defines("LUA_USE_C89")
+        add_files(umbrella_lua_files)
 
-end -- is_plat(host)
+    if is_plat("linux", "macosx", "bsd", "windows", "mingw") then
+
+    -- 4.2 Umbrella Shared Lua C Module (build/lua/cais.so & ./cais.so)
+    target("cais")
+        add_rules("recudo.lua.module")
+        set_values("recudo.lua.kind", "shared")
+        add_deps("cais_static")
+        add_defines("LUA_USE_C89")
+        add_files(umbrella_lua_files)
+        if is_plat("linux", "bsd") then
+            -- Hide symbols pulled from the statically embedded Lua runtime: keeps
+            -- the module from interposing on a foreign host VM (e.g. LuaJIT) and
+            -- trims the dynamic symbol table. macOS uses a two-level namespace and
+            -- PE exports are explicit, so both are already safe without this.
+            add_shflags("-Wl,--exclude-libs,ALL")
+        end
+        after_build(function (target)
+            if target:kind() ~= "shared" then
+                return
+            end
+            -- Mirror shared module to project root for zero-config require("cais")
+            os.trycp(target:targetfile(), path.join(os.projectdir(), path.filename(target:targetfile())))
+        end)
+
+    -- 4.3 Standalone C Modules (build/lua/cais/<submodule>.so)
+    local submodules = {
+        platform   = {"src/platform/platform_lua.c", "src/platform/platform.c"},
+    }
+    if has_config("filesystem") then
+        submodules.filesystem = {"src/filesystem/filesystem_lua.c", "src/filesystem/filesystem.c", "src/filesystem/filesystem_" .. conf.filesystem .. ".c", "src/platform/platform.c"}
+        submodules.fs         = {"src/filesystem/filesystem_lua.c", "src/filesystem/filesystem.c", "src/filesystem/filesystem_" .. conf.filesystem .. ".c", "src/platform/platform.c"}
+    end
+    if has_config("serial") then
+        submodules.serial = {"src/serial/serial_lua.c", "src/serial/serial_" .. conf.serial .. ".c", "src/platform/platform.c"}
+    end
+    if has_config("parallel") then
+        submodules.parallel = {"src/parallel/parallel_lua.c", "src/parallel/parallel_" .. conf.parallel .. ".c", "src/platform/platform.c"}
+    end
+    if has_config("socket") then
+        submodules.socket = {"src/socket/socket_lua.c", "src/socket/socket_common.c", "src/socket/socket_" .. conf.socket .. ".c", "src/platform/platform.c"}
+    end
+    if has_config("sandbox") then
+        submodules.sandbox = {"src/sandbox/sandbox_lua.c", "src/sandbox/sandbox.c", "src/sandbox/sandbox_" .. conf.sandbox .. ".c", "src/platform/platform.c"}
+    end
+    if has_config("noise") then
+        submodules.noise = {"src/noise/noise_lua.c", "src/noise/noise_crypto.c", "src/noise/noise_protocol.c", "src/noise/noise_transport.c", "src/platform/platform.c"}
+    end
+
+    for mod_name, files in pairs(submodules) do
+        target("cais." .. mod_name)
+            add_rules("recudo.lua.module")
+            set_values("recudo.lua.kind", "shared")
+            add_defines("LUA_USE_C89")
+            if mod_name == "noise" then
+                add_packages("monocypher", "blake2")
+            end
+            add_files(files)
+            if is_plat("linux", "bsd") then
+                -- Same interposition guard as the umbrella module (see above).
+                add_shflags("-Wl,--exclude-libs,ALL")
+            end
+    end
+
+    -- 4.4 Lua Test Suite & Portable Launcher (xmake run test_lua)
+    local test_lua_deps = {"cais", "cais.platform"}
+    if has_config("filesystem") then table.insert(test_lua_deps, "cais.filesystem"); table.insert(test_lua_deps, "cais.fs") end
+    if has_config("serial") then table.insert(test_lua_deps, "cais.serial") end
+    if has_config("parallel") then table.insert(test_lua_deps, "cais.parallel") end
+    if has_config("socket") then table.insert(test_lua_deps, "cais.socket") end
+    if has_config("sandbox") then table.insert(test_lua_deps, "cais.sandbox") end
+    if has_config("noise") then table.insert(test_lua_deps, "cais.noise") end
+
+    target("test_lua")
+        add_rules("recudo.lua.app")
+        set_toolchains("recudo-c")
+        set_values("recudo.lua.entry", "tests/runner.lua")
+        set_default(false)
+        add_deps(table.unpack(test_lua_deps))
+        on_test(function (target)
+            os.execv(path.join(os.projectdir(), "build/bin/test_lua"))
+            return true
+        end)
+        add_tests("lua_suite")
+        on_install(function (target) end) -- test-only artifact: never packaged
+
+    end -- is_plat(host)
+end -- has_config("lua")
 
 -- ==============================================================================
 -- 5. Cross-Platform Smoke Binary

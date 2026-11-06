@@ -74,45 +74,57 @@ describe("cais standalone submodules (Independent C Module Loading)", function()
     end)
 
     -- 2. Independent cais.serial loading
-    test("loads cais.serial independently", function()
-        local s = require("cais.serial")
-        assert_eq(type(s.open), "function")
-        assert_eq(s.flow.HARDWARE, 1)
-        assert_eq(s.parity.NONE, string.byte("n"))
-    end)
+    if cais.serial then
+        test("loads cais.serial independently", function()
+            local s = require("cais.serial")
+            assert_eq(type(s.open), "function")
+            assert_eq(s.flow.HARDWARE, 1)
+            assert_eq(s.parity.NONE, string.byte("n"))
+        end)
+    end
 
     -- 3. Independent cais.socket loading
-    test("loads cais.socket independently", function()
-        local sock = require("cais.socket")
-        assert_eq(type(sock.connect), "function")
-    end)
+    if cais.socket then
+        test("loads cais.socket independently", function()
+            local sock = require("cais.socket")
+            assert_eq(type(sock.connect), "function")
+        end)
+    end
 
     -- 4. Independent cais.fs loading
-    test("loads cais.fs independently", function()
-        local fs = require("cais.fs")
-        assert_eq(type(fs.exists), "function")
-    end)
+    if cais.fs then
+        test("loads cais.fs independently", function()
+            local fs = require("cais.fs")
+            assert_eq(type(fs.exists), "function")
+        end)
+    end
 
     -- 5. Independent cais.parallel loading
-    test("loads cais.parallel independently", function()
-        local par = require("cais.parallel")
-        assert_eq(type(par.open), "function")
-        assert_eq(par.mode.SPP, 0)
-        assert_eq(par.pin.BUSY, 1)
-    end)
+    if cais.parallel then
+        test("loads cais.parallel independently", function()
+            local par = require("cais.parallel")
+            assert_eq(type(par.open), "function")
+            assert_eq(par.mode.SPP, 0)
+            assert_eq(par.pin.BUSY, 1)
+        end)
+    end
 
     -- 6. Independent cais.sandbox loading
-    test("loads cais.sandbox independently", function()
-        local sbx = require("cais.sandbox")
-        assert_eq(type(sbx.is_supported), "function")
-    end)
+    if cais.sandbox then
+        test("loads cais.sandbox independently", function()
+            local sbx = require("cais.sandbox")
+            assert_eq(type(sbx.is_supported), "function")
+        end)
+    end
 
     -- 7. Independent cais.noise loading
-    test("loads cais.noise independently", function()
-        local ns = require("cais.noise")
-        assert_eq(type(ns.keygen), "function")
-        assert_eq(ns.pattern.XX, 0)
-    end)
+    if cais.noise then
+        test("loads cais.noise independently", function()
+            local ns = require("cais.noise")
+            assert_eq(type(ns.keygen), "function")
+            assert_eq(ns.pattern.XX, 0)
+        end)
+    end
 end)
 
 if arg and arg[0] and arg[0]:match("test_.*%.lua$") then
