@@ -26,7 +26,9 @@ extern "C" {
 
 #if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
 typedef unsigned long long cais_fsize_t;
-#elif defined(_MSC_VER) || defined(__GNUC__) || defined(__clang__)
+#elif defined(_MSC_VER)
+typedef unsigned __int64 cais_fsize_t;
+#elif defined(__GNUC__) || defined(__clang__)
 __extension__ typedef unsigned long long cais_fsize_t;
 #else
 typedef unsigned long cais_fsize_t;
