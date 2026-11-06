@@ -4,7 +4,7 @@
 -- Mozilla Public License Version 2.0
 
 set_project("cais")
-set_version("0.3.0")
+set_version("0.3.1")
 
 set_languages("c89")
 set_warnings("all", "extra")
