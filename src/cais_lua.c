@@ -45,6 +45,10 @@ int luaopen_cais_sandbox(lua_State *L);
 int luaopen_cais_noise(lua_State *L);
 #endif
 
+#ifndef CAIS_NO_TLS
+int luaopen_cais_tls(lua_State *L);
+#endif
+
 static int lcais_version(lua_State *L)
 {
     lua_pushstring(L, cais_version());
@@ -91,6 +95,9 @@ static const struct cais_subsystem cais_subsystems[] = {
 #endif
 #ifndef CAIS_NO_NOISE
     {"noise", "cais.noise", luaopen_cais_noise},
+#endif
+#ifndef CAIS_NO_TLS
+    {"tls", "cais.tls", luaopen_cais_tls},
 #endif
     {NULL, NULL, NULL}
 };

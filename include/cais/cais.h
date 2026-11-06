@@ -40,6 +40,10 @@
 #include <cais/noise.h>
 #endif
 
+#ifndef CAIS_NO_TLS
+#include <cais/tls.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -71,6 +71,21 @@ option("noise")
     set_description("Enable Noise cryptographic transport subsystem")
 option_end()
 
+option("tls")
+    set_default(true)
+    set_showmenu(true)
+    set_category("subsystems")
+    set_description("Enable TLS secure transport subsystem")
+option_end()
+
+option("tls_backend")
+    set_default("bearssl")
+    set_values("bearssl", "stub")
+    set_showmenu(true)
+    set_category("subsystems")
+    set_description("TLS engine backend implementation")
+option_end()
+
 -- Propagate exclusion macros for disabled subsystems
 if not has_config("filesystem") then add_defines("CAIS_NO_FILESYSTEM") end
 if not has_config("socket")     then add_defines("CAIS_NO_SOCKET") end
@@ -78,6 +93,7 @@ if not has_config("serial")     then add_defines("CAIS_NO_SERIAL") end
 if not has_config("parallel")   then add_defines("CAIS_NO_PARALLEL") end
 if not has_config("sandbox")    then add_defines("CAIS_NO_SANDBOX") end
 if not has_config("noise")      then add_defines("CAIS_NO_NOISE") end
+if not has_config("tls")        then add_defines("CAIS_NO_TLS") end
 
 -- Dependencies for Lua C bindings and C test suites
 if has_config("lua") then
@@ -86,6 +102,12 @@ end
 if has_config("noise") then
     add_requires("monocypher", {configs = {optional = false, shared = false}})
     add_requires("blake2", {configs = {shared = false}})
+end
+if has_config("tls") then
+    local backend = get_config("tls_backend") or "bearssl"
+    if backend == "bearssl" then
+        add_requires("bearssl", {configs = {shared = false}})
+    end
 end
 if is_plat("linux", "macosx", "bsd", "windows", "mingw") then
     add_requires("greatest")
@@ -328,6 +350,15 @@ target("cais_static")
             "src/noise/noise_transport.c"
         )
     end
+    if has_config("tls") then
+        local backend = get_config("tls_backend") or "bearssl"
+        if backend == "bearssl" then
+            add_packages("bearssl")
+            add_files("src/tls/tls.c", "src/tls/tls_bearssl.c")
+        else
+            add_files("src/tls/tls.c", "src/tls/tls_stub.c")
+        end
+    end
     apply_platform_rules(conf)
 
 -- ==============================================================================
@@ -360,6 +391,14 @@ end
 if has_config("noise") then
     c_subsystems.noise = {"src/noise/noise_crypto.c", "src/noise/noise_protocol.c", "src/noise/noise_transport.c", "src/platform/platform.c"}
 end
+if has_config("tls") then
+    local backend = get_config("tls_backend") or "bearssl"
+    if backend == "bearssl" then
+        c_subsystems.tls = {"src/tls/tls.c", "src/tls/tls_bearssl.c", "src/platform/platform.c"}
+    else
+        c_subsystems.tls = {"src/tls/tls.c", "src/tls/tls_stub.c", "src/platform/platform.c"}
+    end
+end
 
 for sub_name, files in pairs(c_subsystems) do
     target("cais_" .. sub_name)
@@ -371,6 +410,9 @@ for sub_name, files in pairs(c_subsystems) do
         add_headerfiles("include/(cais/*.h)")
         if sub_name == "noise" then
             add_packages("monocypher", "blake2")
+        end
+        if sub_name == "tls" and (get_config("tls_backend") or "bearssl") == "bearssl" then
+            add_packages("bearssl")
         end
         add_files(files)
         apply_platform_rules(conf)
@@ -396,6 +438,12 @@ if is_plat("linux", "macosx", "bsd", "windows", "mingw") then
             add_files("tests/c/test_noise.c")
             add_packages("monocypher", "blake2")
         end
+        if has_config("tls") then
+            add_files("tests/c/test_tls.c")
+            if (get_config("tls_backend") or "bearssl") == "bearssl" then
+                add_packages("bearssl")
+            end
+        end
         add_deps("cais_static")
         add_packages("greatest")
         add_tests("c_api")
@@ -417,6 +465,7 @@ if has_config("lua") then
     if has_config("socket") then table.insert(umbrella_lua_files, "src/socket/socket_lua.c") end
     if has_config("sandbox") then table.insert(umbrella_lua_files, "src/sandbox/sandbox_lua.c") end
     if has_config("noise") then table.insert(umbrella_lua_files, "src/noise/noise_lua.c") end
+    if has_config("tls") then table.insert(umbrella_lua_files, "src/tls/tls_lua.c") end
 
     -- 4.1 Static Lua C Module (libcais_lua.a / cais_lua.lib) for embedding
     target("cais_lua_static")
@@ -474,6 +523,14 @@ if has_config("lua") then
     if has_config("noise") then
         submodules.noise = {"src/noise/noise_lua.c", "src/noise/noise_crypto.c", "src/noise/noise_protocol.c", "src/noise/noise_transport.c", "src/platform/platform.c"}
     end
+    if has_config("tls") then
+        local backend = get_config("tls_backend") or "bearssl"
+        if backend == "bearssl" then
+            submodules.tls = {"src/tls/tls_lua.c", "src/tls/tls.c", "src/tls/tls_bearssl.c", "src/platform/platform.c"}
+        else
+            submodules.tls = {"src/tls/tls_lua.c", "src/tls/tls.c", "src/tls/tls_stub.c", "src/platform/platform.c"}
+        end
+    end
 
     for mod_name, files in pairs(submodules) do
         target("cais." .. mod_name)
@@ -482,6 +539,9 @@ if has_config("lua") then
             add_defines("LUA_USE_C89")
             if mod_name == "noise" then
                 add_packages("monocypher", "blake2")
+            end
+            if mod_name == "tls" and (get_config("tls_backend") or "bearssl") == "bearssl" then
+                add_packages("bearssl")
             end
             add_files(files)
             if is_plat("linux", "bsd") then
@@ -498,6 +558,7 @@ if has_config("lua") then
     if has_config("socket") then table.insert(test_lua_deps, "cais.socket") end
     if has_config("sandbox") then table.insert(test_lua_deps, "cais.sandbox") end
     if has_config("noise") then table.insert(test_lua_deps, "cais.noise") end
+    if has_config("tls") then table.insert(test_lua_deps, "cais.tls") end
 
     target("test_lua")
         add_rules("recudo.lua.app")
