@@ -1,0 +1,17 @@
+{% filter indent(config.get('indent_level', 0), True) %}
+# Data Structures
+
+{% if nodes|length > 0 %}
+Here are the data structures and structs with brief descriptions:
+{% for node in nodes recursive %}
+{%- if node.is_parent %}
+* **{{node.kind.value}}** [**{{node.name_short}}**]({{node.url}}) {{node.brief}}
+{%- if node.has_children %}
+  {{- loop(node.children)|indent(4, true) }}
+{%- endif %}
+{%- endif -%}
+{%- endfor %}
+{% else %}
+No data structures found.
+{% endif %}
+{% endfilter %}

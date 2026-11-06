@@ -52,10 +52,14 @@ plugins:
           src-dirs: include/cais
           full-doc: True
           api-path: api
+          template-dir: docs/templates/doxy
           doxy-cfg:
             FILE_PATTERNS: "*.h"
             RECURSIVE: NO
             OPTIMIZE_OUTPUT_FOR_C: YES
+            EXTENSION_MAPPING: "h=C"
+            TYPEDEF_HIDES_STRUCT: YES
+            HIDE_SCOPE_NAMES: YES
             EXTRACT_ALL: YES
             EXTRACT_STATIC: YES
 

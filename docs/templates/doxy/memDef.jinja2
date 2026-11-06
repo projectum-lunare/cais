@@ -1,0 +1,34 @@
+---
+brief: True
+details: True
+implements: True
+url_source: True
+---
+
+{# Custom C-friendly memDef template #}
+{% filter indent(config.get('indent_level', 0), True) %}
+
+{% if node.is_enum -%}
+### enum {{node.name_short}} {: #{{node.anchor}} }
+{%- else -%}
+### {{node.name_short}} {: #{{node.anchor}} }
+{%- endif %}
+
+{% if configMemDef.get('brief') -%}
+{% if node.has_brief -%}
+{{node.brief + "\n"}}
+{%- endif -%}
+{%- endif -%}
+
+{{node.codeblock | use_code_language('c')}}
+
+
+{% if configMemDef.get('details') -%}
+{% if node.has_details -%}
+{{node.details | use_code_language('c')}}
+{%- endif -%}
+{%- endif -%}
+
+{% endfilter %}
+
+<hr>

@@ -1,0 +1,10 @@
+{% filter indent(config.get('indent_level', 0), True) %}
+# Data Structure Hierarchy
+
+{% for node in classes recursive %}
+* **{{ 'struct' if node.is_struct else node.kind.value }}** [**{{ node.name_long.replace('::', '.') }}**]({{node.url}})
+{%- if node.has_children %}
+  {{- loop(node.children)|indent(4, true) }}
+{%- endif %}
+{%- endfor %}
+{% endfilter %}
