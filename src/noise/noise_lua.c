@@ -119,6 +119,17 @@ static int lcais_noise_create(lua_State *L)
         }
         lua_pop(L, 1);
 
+        /* Ephemeral key configuration (testing / test vectors) */
+        lua_getfield(L, 1, "ephemeral_key");
+        if (lua_isstring(L, -1)) {
+            size_t klen;
+            const char *k = lua_tolstring(L, -1, &klen);
+            if (klen == CAIS_NOISE_KEY_LEN) {
+                cais_noise_set_ephemeral_key(handle, (const unsigned char *)k, err, sizeof(err));
+            }
+        }
+        lua_pop(L, 1);
+
         /* Optional prologue */
         lua_getfield(L, 1, "prologue");
         if (lua_isstring(L, -1)) {
@@ -197,6 +208,26 @@ static int lcais_noise_session_remote_static(lua_State *L)
     }
 
     lua_pushlstring(L, (const char *)rs, CAIS_NOISE_KEY_LEN);
+    return 1;
+}
+
+static int lcais_noise_session_handshake_hash(lua_State *L)
+{
+    lcais_noise_t *n = (lcais_noise_t *)luaL_checkudata(L, 1, NOISE_SESSION_MT);
+    unsigned char hash[CAIS_NOISE_HASH_LEN];
+    char err[128];
+
+    if (!n->handle) {
+        return luaL_error(L, "attempt to query closed Noise session");
+    }
+
+    if (cais_noise_get_handshake_hash(n->handle, hash, err, sizeof(err)) != CAIS_OK) {
+        lua_pushnil(L);
+        lua_pushstring(L, err[0] ? err : "failed to get handshake hash");
+        return 2;
+    }
+
+    lua_pushlstring(L, (const char *)hash, CAIS_NOISE_HASH_LEN);
     return 1;
 }
 
@@ -328,15 +359,16 @@ static int lcais_noise_session_close(lua_State *L)
 }
 
 static const struct luaL_Reg session_methods[] = {
-    {"action",        lcais_noise_session_action},
-    {"is_complete",   lcais_noise_session_is_complete},
-    {"remote_static", lcais_noise_session_remote_static},
-    {"write_message", lcais_noise_session_write_message},
-    {"read_message",  lcais_noise_session_read_message},
-    {"encrypt",       lcais_noise_session_encrypt},
-    {"decrypt",       lcais_noise_session_decrypt},
-    {"close",         lcais_noise_session_close},
-    {"__gc",          lcais_noise_session_close},
+    {"action",         lcais_noise_session_action},
+    {"is_complete",    lcais_noise_session_is_complete},
+    {"remote_static",  lcais_noise_session_remote_static},
+    {"handshake_hash", lcais_noise_session_handshake_hash},
+    {"write_message",  lcais_noise_session_write_message},
+    {"read_message",   lcais_noise_session_read_message},
+    {"encrypt",        lcais_noise_session_encrypt},
+    {"decrypt",        lcais_noise_session_decrypt},
+    {"close",          lcais_noise_session_close},
+    {"__gc",           lcais_noise_session_close},
     {NULL, NULL}
 };
 

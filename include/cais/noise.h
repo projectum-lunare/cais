@@ -29,6 +29,7 @@ struct serial_port;
  * =============================================================================
  */
 #define CAIS_NOISE_KEY_LEN     32
+#define CAIS_NOISE_HASH_LEN    32
 #define CAIS_NOISE_TAG_LEN     16
 #define CAIS_NOISE_MAX_MSG_LEN 65535
 
@@ -115,6 +116,20 @@ cais_status_t cais_noise_set_static_key(cais_noise_t *noise,
 cais_status_t cais_noise_set_remote_key(cais_noise_t *noise,
                                         const unsigned char pub[CAIS_NOISE_KEY_LEN],
                                         char *err_buf, size_t err_cap);
+
+/*
+ * Injects a fixed ephemeral private key (32 bytes) for deterministic testing against test vectors.
+ */
+cais_status_t cais_noise_set_ephemeral_key(cais_noise_t *noise,
+                                           const unsigned char priv[CAIS_NOISE_KEY_LEN],
+                                           char *err_buf, size_t err_cap);
+
+/*
+ * Retrieves the current 32-byte handshake hash (h) for channel binding or vector verification.
+ */
+cais_status_t cais_noise_get_handshake_hash(const cais_noise_t *noise,
+                                            unsigned char out_hash[CAIS_NOISE_HASH_LEN],
+                                            char *err_buf, size_t err_cap);
 
 /*
  * Configures an optional handshake prologue data block.

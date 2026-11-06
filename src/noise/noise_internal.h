@@ -99,6 +99,10 @@ struct cais_noise {
     uint8_t re[32];
     int     has_re;
 
+    /* Prologue buffer */
+    uint8_t prologue[256];
+    size_t  prologue_len;
+
     /* Handshake state */
     int                 step;
     cais_noise_action_t action;

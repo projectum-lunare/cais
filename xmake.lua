@@ -109,8 +109,12 @@ if has_config("tls") then
         add_requires("bearssl", {configs = {shared = false}})
     end
 end
+-- Test harness dependencies (exclusively used by test_c_api; never linked into production artifacts)
 if is_plat("linux", "macosx", "bsd", "windows", "mingw") then
     add_requires("greatest")
+    if has_config("noise") then
+        add_requires("parson")
+    end
 end
 
 -- ==============================================================================
@@ -436,7 +440,7 @@ if is_plat("linux", "macosx", "bsd", "windows", "mingw") then
         if has_config("socket") then add_files("tests/c/test_socket.c") end
         if has_config("noise") then
             add_files("tests/c/test_noise.c")
-            add_packages("monocypher", "blake2")
+            add_packages("monocypher", "blake2", "parson")
         end
         if has_config("tls") then
             add_files("tests/c/test_tls.c")

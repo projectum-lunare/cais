@@ -6,6 +6,7 @@
  */
 
 #include "test_common.h"
+#include <parson.h>
 
 TEST test_noise_keygen(void)
 {
@@ -421,6 +422,228 @@ TEST test_noise_socket_framed_transfer(void)
     PASS();
 }
 
+static size_t hex_to_bin(const char *hex, unsigned char *out, size_t max_out)
+{
+    size_t i, len;
+    if (!hex) return 0;
+    len = strlen(hex);
+    if (len % 2 != 0 || len / 2 > max_out) return 0;
+    for (i = 0; i < len; i += 2) {
+        unsigned int byte_val;
+        if (sscanf(hex + i, "%02x", &byte_val) != 1) return 0;
+        out[i / 2] = (unsigned char)byte_val;
+    }
+    return len / 2;
+}
+
+static JSON_Object *find_cacophony_vector(JSON_Value *root, const char *proto_name)
+{
+    JSON_Array *vectors;
+    size_t i, count;
+    if (!root) return NULL;
+    vectors = json_object_get_array(json_value_get_object(root), "vectors");
+    if (!vectors) return NULL;
+    count = json_array_get_count(vectors);
+    for (i = 0; i < count; i++) {
+        JSON_Object *vec = json_array_get_object(vectors, i);
+        const char *name = json_object_get_string(vec, "protocol_name");
+        if (name && strcmp(name, proto_name) == 0) {
+            return vec;
+        }
+    }
+    return NULL;
+}
+
+static int run_cacophony_vector(JSON_Object *vec)
+{
+    const char *proto;
+    cais_noise_pattern_t pattern;
+    cais_noise_t *client = NULL;
+    cais_noise_t *server = NULL;
+    char err[128];
+    const char *s;
+    unsigned char key_buf[32];
+    unsigned char pro_buf[256];
+    size_t pro_len;
+    JSON_Array *msgs;
+    size_t m_count, m;
+    int handshake_verified = 0;
+    int transport_sender = 0; /* 0 = initiator (client), 1 = responder (server) */
+
+    if (!vec) return 0;
+    proto = json_object_get_string(vec, "protocol_name");
+    if (!proto) return 0;
+
+    if (strstr(proto, "Noise_NN_")) pattern = CAIS_NOISE_NN;
+    else if (strstr(proto, "Noise_NK_")) pattern = CAIS_NOISE_NK;
+    else if (strstr(proto, "Noise_IK_")) pattern = CAIS_NOISE_IK;
+    else if (strstr(proto, "Noise_XX_")) pattern = CAIS_NOISE_XX;
+    else return 0;
+
+    client = cais_noise_create(pattern, CAIS_NOISE_INITIATOR, err, sizeof(err));
+    server = cais_noise_create(pattern, CAIS_NOISE_RESPONDER, err, sizeof(err));
+    if (!client || !server) {
+        if (client) cais_noise_free(client);
+        if (server) cais_noise_free(server);
+        return 0;
+    }
+
+    s = json_object_get_string(vec, "init_static");
+    if (s && hex_to_bin(s, key_buf, 32) == 32) {
+        if (cais_noise_set_static_key(client, key_buf, err, sizeof(err)) != CAIS_OK) goto fail;
+    }
+    s = json_object_get_string(vec, "resp_static");
+    if (s && hex_to_bin(s, key_buf, 32) == 32) {
+        if (cais_noise_set_static_key(server, key_buf, err, sizeof(err)) != CAIS_OK) goto fail;
+    }
+    s = json_object_get_string(vec, "init_remote_static");
+    if (s && hex_to_bin(s, key_buf, 32) == 32) {
+        if (cais_noise_set_remote_key(client, key_buf, err, sizeof(err)) != CAIS_OK) goto fail;
+    }
+    s = json_object_get_string(vec, "resp_remote_static");
+    if (s && hex_to_bin(s, key_buf, 32) == 32) {
+        if (cais_noise_set_remote_key(server, key_buf, err, sizeof(err)) != CAIS_OK) goto fail;
+    }
+    s = json_object_get_string(vec, "init_ephemeral");
+    if (s && hex_to_bin(s, key_buf, 32) == 32) {
+        if (cais_noise_set_ephemeral_key(client, key_buf, err, sizeof(err)) != CAIS_OK) goto fail;
+    }
+    s = json_object_get_string(vec, "resp_ephemeral");
+    if (s && hex_to_bin(s, key_buf, 32) == 32) {
+        if (cais_noise_set_ephemeral_key(server, key_buf, err, sizeof(err)) != CAIS_OK) goto fail;
+    }
+    s = json_object_get_string(vec, "init_prologue");
+    if (s) {
+        pro_len = hex_to_bin(s, pro_buf, sizeof(pro_buf));
+        if (cais_noise_set_prologue(client, pro_buf, pro_len, err, sizeof(err)) != CAIS_OK) goto fail;
+    }
+    s = json_object_get_string(vec, "resp_prologue");
+    if (s) {
+        pro_len = hex_to_bin(s, pro_buf, sizeof(pro_buf));
+        if (cais_noise_set_prologue(server, pro_buf, pro_len, err, sizeof(err)) != CAIS_OK) goto fail;
+    }
+
+    if (cais_noise_start(client, err, sizeof(err)) != CAIS_OK) goto fail;
+    if (cais_noise_start(server, err, sizeof(err)) != CAIS_OK) goto fail;
+
+    msgs = json_object_get_array(vec, "messages");
+    if (!msgs) goto fail;
+    m_count = json_array_get_count(msgs);
+
+    for (m = 0; m < m_count; m++) {
+        JSON_Object *msg_obj = json_array_get_object(msgs, m);
+        const char *hex_pld = json_object_get_string(msg_obj, "payload");
+        const char *hex_cip = json_object_get_string(msg_obj, "ciphertext");
+        unsigned char exp_pld[512], exp_cip[512], actual_cip[512], actual_pld[512];
+        size_t exp_pld_len = hex_to_bin(hex_pld, exp_pld, sizeof(exp_pld));
+        size_t exp_cip_len = hex_to_bin(hex_cip, exp_cip, sizeof(exp_cip));
+        size_t act_cip_len = 0, act_pld_len = 0;
+
+        if (!cais_noise_is_complete(client)) {
+            /* Handshake step */
+            if (cais_noise_get_action(client) == CAIS_NOISE_ACTION_WRITE_MSG) {
+                /* Initiator -> Responder */
+                if (cais_noise_write_message(client, exp_pld, exp_pld_len, actual_cip, sizeof(actual_cip), &act_cip_len, err, sizeof(err)) != CAIS_OK) goto fail;
+                if (act_cip_len != exp_cip_len || memcmp(actual_cip, exp_cip, act_cip_len) != 0) goto fail;
+                if (cais_noise_read_message(server, actual_cip, act_cip_len, actual_pld, sizeof(actual_pld), &act_pld_len, err, sizeof(err)) != CAIS_OK) goto fail;
+                if (act_pld_len != exp_pld_len || memcmp(actual_pld, exp_pld, act_pld_len) != 0) goto fail;
+                transport_sender = 1;
+            } else {
+                /* Responder -> Initiator */
+                if (cais_noise_write_message(server, exp_pld, exp_pld_len, actual_cip, sizeof(actual_cip), &act_cip_len, err, sizeof(err)) != CAIS_OK) goto fail;
+                if (act_cip_len != exp_cip_len || memcmp(actual_cip, exp_cip, act_cip_len) != 0) goto fail;
+                if (cais_noise_read_message(client, actual_cip, act_cip_len, actual_pld, sizeof(actual_pld), &act_pld_len, err, sizeof(err)) != CAIS_OK) goto fail;
+                if (act_pld_len != exp_pld_len || memcmp(actual_pld, exp_pld, act_pld_len) != 0) goto fail;
+                transport_sender = 0;
+            }
+
+            if (cais_noise_is_complete(client) && !handshake_verified) {
+                const char *hex_hash = json_object_get_string(vec, "handshake_hash");
+                unsigned char exp_h[32], act_h_client[32], act_h_server[32];
+                if (!hex_hash || hex_to_bin(hex_hash, exp_h, 32) != 32) goto fail;
+                if (cais_noise_get_handshake_hash(client, act_h_client, err, sizeof(err)) != CAIS_OK) goto fail;
+                if (cais_noise_get_handshake_hash(server, act_h_server, err, sizeof(err)) != CAIS_OK) goto fail;
+                if (memcmp(act_h_client, exp_h, 32) != 0 || memcmp(act_h_server, exp_h, 32) != 0) goto fail;
+                handshake_verified = 1;
+            }
+        } else {
+            /* Transport message (post-handshake split) */
+            if (transport_sender == 0) {
+                /* Initiator -> Responder */
+                if (cais_noise_encrypt(client, exp_pld, exp_pld_len, actual_cip, sizeof(actual_cip), &act_cip_len, err, sizeof(err)) != CAIS_OK) goto fail;
+                if (act_cip_len != exp_cip_len || memcmp(actual_cip, exp_cip, act_cip_len) != 0) goto fail;
+                if (cais_noise_decrypt(server, actual_cip, act_cip_len, actual_pld, sizeof(actual_pld), &act_pld_len, err, sizeof(err)) != CAIS_OK) goto fail;
+                if (act_pld_len != exp_pld_len || memcmp(actual_pld, exp_pld, act_pld_len) != 0) goto fail;
+                transport_sender = 1;
+            } else {
+                /* Responder -> Initiator */
+                if (cais_noise_encrypt(server, exp_pld, exp_pld_len, actual_cip, sizeof(actual_cip), &act_cip_len, err, sizeof(err)) != CAIS_OK) goto fail;
+                if (act_cip_len != exp_cip_len || memcmp(actual_cip, exp_cip, act_cip_len) != 0) goto fail;
+                if (cais_noise_decrypt(client, actual_cip, act_cip_len, actual_pld, sizeof(actual_pld), &act_pld_len, err, sizeof(err)) != CAIS_OK) goto fail;
+                if (act_pld_len != exp_pld_len || memcmp(actual_pld, exp_pld, act_pld_len) != 0) goto fail;
+                transport_sender = 0;
+            }
+        }
+    }
+
+    cais_noise_free(client);
+    cais_noise_free(server);
+    return 1;
+
+fail:
+    if (client) cais_noise_free(client);
+    if (server) cais_noise_free(server);
+    return 0;
+}
+
+TEST test_noise_vector_cacophony_nn(void)
+{
+    JSON_Value *root = json_parse_file("tests/vectors/cacophony.json");
+    JSON_Object *vec;
+    ASSERT(root != NULL);
+    vec = find_cacophony_vector(root, "Noise_NN_25519_ChaChaPoly_BLAKE2s");
+    ASSERT(vec != NULL);
+    ASSERT_EQ(1, run_cacophony_vector(vec));
+    json_value_free(root);
+    PASS();
+}
+
+TEST test_noise_vector_cacophony_nk(void)
+{
+    JSON_Value *root = json_parse_file("tests/vectors/cacophony.json");
+    JSON_Object *vec;
+    ASSERT(root != NULL);
+    vec = find_cacophony_vector(root, "Noise_NK_25519_ChaChaPoly_BLAKE2s");
+    ASSERT(vec != NULL);
+    ASSERT_EQ(1, run_cacophony_vector(vec));
+    json_value_free(root);
+    PASS();
+}
+
+TEST test_noise_vector_cacophony_ik(void)
+{
+    JSON_Value *root = json_parse_file("tests/vectors/cacophony.json");
+    JSON_Object *vec;
+    ASSERT(root != NULL);
+    vec = find_cacophony_vector(root, "Noise_IK_25519_ChaChaPoly_BLAKE2s");
+    ASSERT(vec != NULL);
+    ASSERT_EQ(1, run_cacophony_vector(vec));
+    json_value_free(root);
+    PASS();
+}
+
+TEST test_noise_vector_cacophony_xx(void)
+{
+    JSON_Value *root = json_parse_file("tests/vectors/cacophony.json");
+    JSON_Object *vec;
+    ASSERT(root != NULL);
+    vec = find_cacophony_vector(root, "Noise_XX_25519_ChaChaPoly_BLAKE2s");
+    ASSERT(vec != NULL);
+    ASSERT_EQ(1, run_cacophony_vector(vec));
+    json_value_free(root);
+    PASS();
+}
+
 SUITE(noise_suite)
 {
     RUN_TEST(test_noise_keygen);
@@ -430,4 +653,8 @@ SUITE(noise_suite)
     RUN_TEST(test_noise_ik_handshake);
     RUN_TEST(test_noise_tamper_detection);
     RUN_TEST(test_noise_socket_framed_transfer);
+    RUN_TEST(test_noise_vector_cacophony_nn);
+    RUN_TEST(test_noise_vector_cacophony_nk);
+    RUN_TEST(test_noise_vector_cacophony_ik);
+    RUN_TEST(test_noise_vector_cacophony_xx);
 }

@@ -211,6 +211,32 @@ cais_status_t cais_noise_set_remote_key(cais_noise_t *noise,
     return CAIS_OK;
 }
 
+cais_status_t cais_noise_set_ephemeral_key(cais_noise_t *noise,
+                                           const unsigned char priv[CAIS_NOISE_KEY_LEN],
+                                           char *err_buf, size_t err_cap)
+{
+    if (noise == NULL || priv == NULL) {
+        cais_noise_set_err(err_buf, err_cap, "invalid null argument");
+        return CAIS_ERROR;
+    }
+    memcpy(noise->e_priv, priv, CAIS_NOISE_KEY_LEN);
+    crypto_x25519_public_key(noise->e_pub, noise->e_priv);
+    noise->has_e = 1;
+    return CAIS_OK;
+}
+
+cais_status_t cais_noise_get_handshake_hash(const cais_noise_t *noise,
+                                            unsigned char out_hash[CAIS_NOISE_HASH_LEN],
+                                            char *err_buf, size_t err_cap)
+{
+    if (noise == NULL || out_hash == NULL) {
+        cais_noise_set_err(err_buf, err_cap, "invalid null argument");
+        return CAIS_ERROR;
+    }
+    memcpy(out_hash, noise->sym.h, CAIS_NOISE_HASH_LEN);
+    return CAIS_OK;
+}
+
 cais_status_t cais_noise_set_prologue(cais_noise_t *noise,
                                       const void *prologue, size_t len,
                                       char *err_buf, size_t err_cap)
@@ -219,7 +245,14 @@ cais_status_t cais_noise_set_prologue(cais_noise_t *noise,
         cais_noise_set_err(err_buf, err_cap, "invalid null noise session");
         return CAIS_ERROR;
     }
-    cais_noise_sym_mix_hash(&noise->sym, prologue, len);
+    if (len > sizeof(noise->prologue)) {
+        cais_noise_set_err(err_buf, err_cap, "prologue exceeds maximum capacity (256 bytes)");
+        return CAIS_ERROR;
+    }
+    if (len > 0 && prologue != NULL) {
+        memcpy(noise->prologue, prologue, len);
+    }
+    noise->prologue_len = len;
     return CAIS_OK;
 }
 
@@ -270,6 +303,10 @@ cais_status_t cais_noise_start(cais_noise_t *noise,
     }
 
     cais_noise_sym_init(&noise->sym, pname);
+
+    if (noise->prologue_len > 0) {
+        cais_noise_sym_mix_hash(&noise->sym, noise->prologue, noise->prologue_len);
+    }
 
     /* Pre-messages for NK and IK (<- s) */
     if (noise->pattern == CAIS_NOISE_NK || noise->pattern == CAIS_NOISE_IK) {
@@ -337,10 +374,12 @@ cais_status_t cais_noise_write_message(cais_noise_t *noise,
                 cais_noise_set_err(err_buf, err_cap, "output buffer too small for message 1");
                 return CAIS_ERROR;
             }
-            if (cais_noise_keygen(noise->e_priv, noise->e_pub, err_buf, err_cap) != CAIS_OK) {
-                return CAIS_ERROR;
+            if (!noise->has_e) {
+                if (cais_noise_keygen(noise->e_priv, noise->e_pub, err_buf, err_cap) != CAIS_OK) {
+                    return CAIS_ERROR;
+                }
+                noise->has_e = 1;
             }
-            noise->has_e = 1;
             memcpy(p, noise->e_pub, 32);
             cais_noise_sym_mix_hash(&noise->sym, noise->e_pub, 32);
             p += 32;
@@ -363,10 +402,12 @@ cais_status_t cais_noise_write_message(cais_noise_t *noise,
                 cais_noise_set_err(err_buf, err_cap, "output buffer too small for message 2");
                 return CAIS_ERROR;
             }
-            if (cais_noise_keygen(noise->e_priv, noise->e_pub, err_buf, err_cap) != CAIS_OK) {
-                return CAIS_ERROR;
+            if (!noise->has_e) {
+                if (cais_noise_keygen(noise->e_priv, noise->e_pub, err_buf, err_cap) != CAIS_OK) {
+                    return CAIS_ERROR;
+                }
+                noise->has_e = 1;
             }
-            noise->has_e = 1;
             memcpy(p, noise->e_pub, 32);
             cais_noise_sym_mix_hash(&noise->sym, noise->e_pub, 32);
             p += 32;
@@ -402,10 +443,12 @@ cais_status_t cais_noise_write_message(cais_noise_t *noise,
                 cais_noise_set_err(err_buf, err_cap, "output buffer too small for XX msg 1");
                 return CAIS_ERROR;
             }
-            if (cais_noise_keygen(noise->e_priv, noise->e_pub, err_buf, err_cap) != CAIS_OK) {
-                return CAIS_ERROR;
+            if (!noise->has_e) {
+                if (cais_noise_keygen(noise->e_priv, noise->e_pub, err_buf, err_cap) != CAIS_OK) {
+                    return CAIS_ERROR;
+                }
+                noise->has_e = 1;
             }
-            noise->has_e = 1;
             memcpy(p, noise->e_pub, 32);
             cais_noise_sym_mix_hash(&noise->sym, noise->e_pub, 32);
             p += 32;
@@ -428,10 +471,12 @@ cais_status_t cais_noise_write_message(cais_noise_t *noise,
                 cais_noise_set_err(err_buf, err_cap, "output buffer too small for XX msg 2");
                 return CAIS_ERROR;
             }
-            if (cais_noise_keygen(noise->e_priv, noise->e_pub, err_buf, err_cap) != CAIS_OK) {
-                return CAIS_ERROR;
+            if (!noise->has_e) {
+                if (cais_noise_keygen(noise->e_priv, noise->e_pub, err_buf, err_cap) != CAIS_OK) {
+                    return CAIS_ERROR;
+                }
+                noise->has_e = 1;
             }
-            noise->has_e = 1;
             memcpy(p, noise->e_pub, 32);
             cais_noise_sym_mix_hash(&noise->sym, noise->e_pub, 32);
             p += 32;
@@ -510,10 +555,12 @@ cais_status_t cais_noise_write_message(cais_noise_t *noise,
                 cais_noise_set_err(err_buf, err_cap, "output buffer too small for NK msg 1");
                 return CAIS_ERROR;
             }
-            if (cais_noise_keygen(noise->e_priv, noise->e_pub, err_buf, err_cap) != CAIS_OK) {
-                return CAIS_ERROR;
+            if (!noise->has_e) {
+                if (cais_noise_keygen(noise->e_priv, noise->e_pub, err_buf, err_cap) != CAIS_OK) {
+                    return CAIS_ERROR;
+                }
+                noise->has_e = 1;
             }
-            noise->has_e = 1;
             memcpy(p, noise->e_pub, 32);
             cais_noise_sym_mix_hash(&noise->sym, noise->e_pub, 32);
             p += 32;
@@ -541,10 +588,12 @@ cais_status_t cais_noise_write_message(cais_noise_t *noise,
                 cais_noise_set_err(err_buf, err_cap, "output buffer too small for NK msg 2");
                 return CAIS_ERROR;
             }
-            if (cais_noise_keygen(noise->e_priv, noise->e_pub, err_buf, err_cap) != CAIS_OK) {
-                return CAIS_ERROR;
+            if (!noise->has_e) {
+                if (cais_noise_keygen(noise->e_priv, noise->e_pub, err_buf, err_cap) != CAIS_OK) {
+                    return CAIS_ERROR;
+                }
+                noise->has_e = 1;
             }
-            noise->has_e = 1;
             memcpy(p, noise->e_pub, 32);
             cais_noise_sym_mix_hash(&noise->sym, noise->e_pub, 32);
             p += 32;
@@ -580,10 +629,12 @@ cais_status_t cais_noise_write_message(cais_noise_t *noise,
                 cais_noise_set_err(err_buf, err_cap, "output buffer too small for IK msg 1");
                 return CAIS_ERROR;
             }
-            if (cais_noise_keygen(noise->e_priv, noise->e_pub, err_buf, err_cap) != CAIS_OK) {
-                return CAIS_ERROR;
+            if (!noise->has_e) {
+                if (cais_noise_keygen(noise->e_priv, noise->e_pub, err_buf, err_cap) != CAIS_OK) {
+                    return CAIS_ERROR;
+                }
+                noise->has_e = 1;
             }
-            noise->has_e = 1;
             memcpy(p, noise->e_pub, 32);
             cais_noise_sym_mix_hash(&noise->sym, noise->e_pub, 32);
             p += 32;
@@ -623,10 +674,12 @@ cais_status_t cais_noise_write_message(cais_noise_t *noise,
                 cais_noise_set_err(err_buf, err_cap, "output buffer too small for IK msg 2");
                 return CAIS_ERROR;
             }
-            if (cais_noise_keygen(noise->e_priv, noise->e_pub, err_buf, err_cap) != CAIS_OK) {
-                return CAIS_ERROR;
+            if (!noise->has_e) {
+                if (cais_noise_keygen(noise->e_priv, noise->e_pub, err_buf, err_cap) != CAIS_OK) {
+                    return CAIS_ERROR;
+                }
+                noise->has_e = 1;
             }
-            noise->has_e = 1;
             memcpy(p, noise->e_pub, 32);
             cais_noise_sym_mix_hash(&noise->sym, noise->e_pub, 32);
             p += 32;
