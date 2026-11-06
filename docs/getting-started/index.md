@@ -62,7 +62,7 @@ if cais.fs.exists("main.c") then
 end
 ```
 
-Run with standard Lua 5.1..5.4 or LuaJIT:
+Run with standard Lua 5.4 or 5.5:
 ```bash
 lua example.lua
 ```

@@ -11,20 +11,24 @@ This document serves as an engineering post-mortem of how `cais` resolves these 
 One of the most dangerous portability bugs in C networking involves `select()` and `fd_set`.
 
 ### In POSIX (Linux, BSD, macOS)
+
 On POSIX systems, `fd_set` is a **fixed-size bitmask** containing an array of integers (typically totaling 1024 bits).
 * Bit `n` corresponds to file descriptor integer `n`.
 * If a high-volume server process has opened many files (pipes, logs, database connections) and receives socket file descriptor `1024` or higher, calling `FD_SET(1024, &fds)` writes past the bounds of the stack bitmask.
 * **The Result:** Silent stack corruption and random memory crashes.
-* **The `cais` Solution:** On POSIX, `cais` uses native `poll(2)` (`cais_posix_poll`), which accepts a dynamic array of `struct pollfd`. High descriptor IDs ($fd \ge 1024$) are handled transparently with zero risk of buffer overflows.
+* **The `cais` Solution:** On POSIX, `cais` uses native `poll(2)` (`cais_posix_poll`), which accepts a dynamic array of `struct pollfd`. High descriptor IDs (`fd >= 1024`) are handled transparently with zero risk of buffer overflows.
 
 ### In Winsock (Windows NT 3.51 to 11)
+
 Microsoft chose a completely different ABI for Winsock in 1993:
+
 ```c
 typedef struct fd_set {
     u_int   fd_count;               /* Number of sockets currently in array */
     SOCKET  fd_array[FD_SETSIZE];   /* Explicit array of SOCKET handles */
 } fd_set;
 ```
+
 * In Winsock, `SOCKET` values are arbitrary 32/64-bit kernel object pointers, **not sequential indices**.
 * `FD_SET` does not index a bitmask; it simply appends the handle to `fd_array` and increments `fd_count`.
 * **Redefining `FD_SETSIZE`:** Because it is an explicit array, redefining `#define FD_SETSIZE 1024` before including `<winsock2.h>` safely expands the array capacity from the default 64 to 1024 sockets without any ABI breakage or stack corruption.
@@ -46,6 +50,7 @@ If that executable is launched on **Windows NT 3.51, Windows NT 4.0, Windows 200
 > *"The procedure entry point WSAPoll could not be located in the dynamic link library WS2_32.DLL"*
 
 ### The `cais` Solution
+
 `cais` uses dynamic runtime probing:
 1. `GetModuleHandleA("ws2_32.dll")` is called.
 2. `GetProcAddress(hws2, "WSAPoll")` queries the function pointer.
@@ -60,6 +65,7 @@ If that executable is launched on **Windows NT 3.51, Windows NT 4.0, Windows 200
 On Commodore Amiga (AmigaOS 3.x/4.x), networking is provided by `bsdsocket.library` (AmiTCP, Roadshow, Miami).
 
 AmigaOS is not POSIX and lacks hardware interrupt signals like `SIGALRM` or `SIGIO`. Instead, multitasking is driven by the **Exec microkernel Signal System**:
+
 * Each Amiga task has 32 signal bits allocated.
 * When a network socket receives data, `bsdsocket.library` asserts an Exec Signal bit assigned to that process.
 * Multiplexing is implemented via `WaitSelect()`, which maps BSD `select()` descriptor masks to Exec signal masks.
@@ -70,6 +76,7 @@ AmigaOS is not POSIX and lacks hardware interrupt signals like `SIGALRM` or `SIG
 ## 4. MS-DOS & WATT-32 Packet Drivers
 
 In 16-bit and 32-bit MS-DOS:
+
 * Network cards use **Packet Drivers** (Class 1 Ethernet interface, hooked onto interrupt vectors between `0x60` and `0x7F`).
 * There is no preemptive multitasking in the OS; background packet processing occurs during BIOS timer ticks (`INT 08h` / `INT 1Ch`) and serial UART interrupts.
 * **WATT-32 Integration:** `cais` links with Waterloo TCP/IP (WATT-32). In non-blocking loops, `select_s` regularly calls `dbug_yield()` to allow DOS packet drivers to service the NIC ring buffers.
@@ -80,11 +87,11 @@ In 16-bit and 32-bit MS-DOS:
 
 Kernel-level sandboxing models differ radically across operating systems:
 
-| Feature | Linux Landlock | OpenBSD Pledge / Unveil | FreeBSD Capsicum |
-| :--- | :--- | :--- | :--- |
-| **Enforcement Level** | LSM (Linux Security Module) | Kernel Syscall Filters | Capability Mode |
-| **Minimum OS Version** | Linux 5.13 (2021) | OpenBSD 5.9 (Pledge) / 6.4 (Unveil) | FreeBSD 10.0 |
-| **Model** | Filesystem Path Restriction | Syscall Allowlist + Path Restriction | File Descriptor Rights |
-| **Inheritance** | Strictly inherited by `fork()` and `clone()` | Inherited by `fork()`, dropped by `execve()` | Inherited across descriptors |
+| Feature                | Linux Landlock                               | Apple Darwin Seatbelt           | Windows NT Mitigations             | OpenBSD Pledge / Unveil                      | FreeBSD Capsicum             |
+| :--------------------- | :------------------------------------------- | :------------------------------ | :--------------------------------- | :------------------------------------------- | :--------------------------- |
+| **Enforcement Level**  | LSM (Linux Security Module)                  | Kernel MAC Framework (Seatbelt) | Process Mitigation Policies & SRM  | Kernel Syscall Filters                       | Capability Mode              |
+| **Minimum OS Version** | Linux 5.13 (2021)                            | macOS 10.5+                     | Windows 8+ (NT 6.2+)               | OpenBSD 5.9 (Pledge) / 6.4 (Unveil)          | FreeBSD 10.0                 |
+| **Model**              | Filesystem Path & TCP Restriction            | SBPL Profile Language           | Dynamic Code & Child Process Rules | Syscall Allowlist + Path Restriction         | File Descriptor Rights       |
+| **Inheritance**        | Strictly inherited by `fork()` and `clone()` | Inherited by child processes    | Inherited across child creation    | Inherited by `fork()`, dropped by `execve()` | Inherited across descriptors |
 
-`cais` bridges these paradigms into a uniform API: `unveil()` defines allowed filesystem scopes, and `lock()` seals the process.
+`cais` bridges these paradigms into a uniform API: `cais_sandbox_apply()` compiles a declarative policy (`cais_sandbox_policy_t`) into the native kernel primitive of each operating system.

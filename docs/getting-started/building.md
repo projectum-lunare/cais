@@ -8,7 +8,7 @@
 
 - **xmake** (v2.8.0 or newer)
 - Standard C compiler (GCC, Clang, MSVC, MinGW, or Open Watcom)
-- *(Optional)* Lua (5.1, 5.2, 5.3, 5.4, or LuaJIT) if building Lua bindings
+- *(Optional)* Lua (>= 5.4) if building Lua bindings
 
 ---
 

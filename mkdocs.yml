@@ -123,11 +123,19 @@ nav:
           - sandbox.h: api/sandbox_8h.md
           - platform.h: api/platform_8h.md
   - Platforms:
-      - Support Matrix: platforms/matrix.md
-      - Modern POSIX: platforms/posix.md
-      - Windows (NT 3.51..11, CE): platforms/windows.md
-      - Retro Stacks (DOS, Amiga, Atari): platforms/retro.md
-      - Exotic Kernels (KolibriOS, OS/2, Plan 9): platforms/exotic.md
+      - Overview & Support Matrix: platforms/index.md
+      - Linux: platforms/linux.md
+      - macOS (Darwin): platforms/macos.md
+      - Windows NT & CE: platforms/windows.md
+      - OpenBSD: platforms/openbsd.md
+      - FreeBSD: platforms/freebsd.md
+      - NetBSD & DragonFly BSD: platforms/netbsd.md
+      - MS-DOS & FreeDOS: platforms/dos.md
+      - Commodore AmigaOS: platforms/amigaos.md
+      - Atari ST (TOS & MiNT): platforms/atarist.md
+      - KolibriOS: platforms/kolibrios.md
+      - IBM OS/2 & ArcaOS: platforms/os2.md
+      - Plan 9 from Bell Labs: platforms/plan9.md
       - Kernel Internals & Gotchas: platforms/internals.md
   - Cross-Compilation:
     - Recudo Multi-Target Matrix: cross-compilation/recudo.md

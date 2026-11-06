@@ -25,7 +25,7 @@ The library is structured as a cohesive monorepo divided into specialized subsys
 │ • cais.parallel   │ Centronics parallel port (LPT / SPP)               │
 │ • cais.serial     │ RS-232 serial UART with hardware flow control      │
 │ • cais.socket     │ Raw TCP & UDP stream/datagram sockets (IPv4)       │
-│ • cais.sandbox    │ Kernel sandboxing (Landlock, Pledge, Capsicum)     │
+│ • cais.sandbox    │ Kernel sandboxing (Landlock, Seatbelt, Win32, OpenBSD)│
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -76,9 +76,11 @@ All subsystems share a unified canonical type foundation (`include/cais/types.h`
 
 ### 6. `sandbox` — Kernel-Level Sandboxing
 
-- Enforces the principle of least privilege directly inside operating system kernels:
-  - **Linux:** Modern Landlock LSM filesystem restriction and `prctl(PR_SET_NO_NEW_PRIVS)`. The Landlock ruleset is process-wide; `cais.sandbox.lock()` locks the ruleset for the process and its descendants. Calling lock without prior unveil restricts the entire filesystem.
-  - **OpenBSD:** Unveil filesystem paths (`unveil`) and syscall restrictions (`pledge`).
+- Enforces the principle of least privilege directly inside operating system kernels via unified declarative policies (`cais_sandbox_apply` in C, `cais.sandbox.apply` in Lua):
+  - **Linux:** Modern Landlock LSM filesystem and TCP network restriction with `prctl(PR_SET_NO_NEW_PRIVS)`.
+  - **macOS (Darwin):** Apple Seatbelt (`sandbox_init`) compiled dynamically from declarative policies into Sandbox Profile Language (SBPL).
+  - **Windows NT (10 / 11 / Server):** Process Mitigation Policies (child process creation restriction, dynamic code / W^X enforcement, strict handle checking).
+  - **OpenBSD:** Automatic synthesis of `unveil(2)` path rules and `pledge(2)` promises from policy declarations.
   - **FreeBSD:** Capsicum capability mode.
   - **Other platforms:** Safe fallback stub returning `CAIS_SANDBOX_UNSUPPORTED` with zero runtime overhead.
 
@@ -90,8 +92,8 @@ All subsystems share a unified canonical type foundation (`include/cais/types.h`
 | :-------------------------------- | :--------: | :----------- | :------------------- | :------------------ | :--------------------- | :------------------- |
 | **Linux (Modern & Embedded)**     |     ✅     | ✅ POSIX     | ✅ `/dev/lp*`        | ✅ termios          | ✅ BSD Sockets         | ✅ Landlock LSM      |
 | **OpenBSD / FreeBSD / NetBSD**    |     ✅     | ✅ POSIX     | ✅ `/dev/lpt*`       | ✅ termios          | ✅ BSD Sockets         | ✅ Pledge / Capsicum |
-| **macOS (Darwin)**                |     ✅     | ✅ POSIX     | ⚠️ Stub              | ✅ termios          | ✅ BSD Sockets         | ⚠️ Stub              |
-| **Windows NT (10 / 11 / Server)** |     ✅     | ✅ Win32     | ✅ Win32 LPT         | ✅ Comm API         | ✅ Winsock 2           | ⚠️ Stub              |
+| **macOS (Darwin)**                |     ✅     | ✅ POSIX     | ⚠️ Stub              | ✅ termios          | ✅ BSD Sockets         | ✅ Seatbelt SBPL     |
+| **Windows NT (10 / 11 / Server)** |     ✅     | ✅ Win32     | ✅ Win32 LPT         | ✅ Comm API         | ✅ Winsock 2           | ✅ Mitigations       |
 | **Windows CE / Pocket PC**        |     ✅     | ✅ WinCE     | ✅ WinCE LPT         | ✅ Comm API         | ✅ Winsock CE          | ⚠️ Stub              |
 | **MS-DOS (16/32-bit WATT-32)**    |     ✅     | ✅ DOS io    | ✅ `INT 17h` / I/O   | ✅ `INT 14h` / 8250 | ✅ WATT-32 TCP/IP      | ⚠️ Stub              |
 | **AmigaOS (m68k / AROS)**         |     ✅     | ✅ Lock DOS  | ✅ `parallel.device` | ✅ `serial.device`  | ✅ `bsdsocket.library` | ⚠️ Stub              |
@@ -99,6 +101,9 @@ All subsystems share a unified canonical type foundation (`include/cais/types.h`
 | **KolibriOS**                     |     ✅     | ⚠️ Stub      | ✅ Syscall 46 / I/O  | ✅ Syscall 46 / UART| ✅ Syscall 75          | ⚠️ Stub              |
 | **OS/2 / ArcaOS**                 |     ✅     | ✅ access    | ✅ DosOpen LPT       | ✅ DosDevIOCtl      | ✅ TCP/IP Sockets      | ⚠️ Stub              |
 | **Plan 9 from Bell Labs**         |     ✅     | ✅ access    | ✅ `/dev/lp`         | ✅ `/dev/eia*`      | ✅ `/net/tcp`          | ⚠️ Stub              |
+
+> [!TIP]
+> For the comprehensive breakdown of minimum operating system versions and runtime dynamic degradation guarantees (from Windows NT 3.1 in 1993 to Linux 6.12+ in 2026), see the [Platform Architecture & Support Directory](https://projectum-lunare.github.io/cais/platforms/).
 
 ---
 
@@ -117,13 +122,15 @@ if cais.fs.exists("/etc/hosts") then
     print("Found hosts file via cais.fs!")
 end
 
--- 3. Kernel Sandboxing
+-- 3. Kernel Sandboxing (OOP builder or declarative table)
 local backend, version = cais.sandbox.backend()
 print("Sandbox backend: " .. backend)
 
--- Restrict filesystem access to safe paths
-cais.sandbox.unveil(".", "r")
-cais.sandbox.lock()
+-- Restrict filesystem & network via fluent method chaining:
+cais.sandbox.policy()
+    :allow(".", "r")
+    :deny_network()
+    :apply()
 
 -- 4. Network Sockets (socket)
 local client, err = cais.socket.connect("127.0.0.1", 9100)
