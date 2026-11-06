@@ -16,7 +16,7 @@ add_includedirs("include")
 
 -- Official Projectum Lunare Package Repository & Build Infrastructure Addon
 add_repositories("projectum-lunare https://github.com/projectum-lunare/xmake-repo.git")
-add_addons("recudo v0.2.8")
+add_addons("recudo v0.2.10")
 includes("@addon/recudo/recudo.lua")
 
 -- ==============================================================================

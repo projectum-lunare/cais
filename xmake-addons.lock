@@ -4,9 +4,9 @@
     },
     recudo = {
         repo = {
-            commit = "590f7d528c883372c029f09c53e04c311b17e266",
+            commit = "3c4eedee2a2ae15e5acc173ff4946d07a97c7b5e",
             url = "https://github.com/projectum-lunare/xmake-repo.git"
         },
-        version = "v0.2.8"
+        version = "v0.2.10"
     }
 }
