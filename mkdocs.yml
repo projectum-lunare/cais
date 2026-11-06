@@ -113,7 +113,7 @@ nav:
       - Defense-in-Depth CLI Sandbox: recipes/hardened-cli.md
       - Centronics Impact Printing: recipes/parallel-strobe.md
   - C API Reference:
-      - Overview: api/links.md
+      - Overview: api/index.md
       - Headers: api/files.md
       - Data Structures: api/classes.md
       - Functions: api/functions.md
