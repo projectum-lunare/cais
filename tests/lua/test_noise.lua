@@ -51,6 +51,50 @@ describe("cais.noise (Noise-Based Cryptographic Transport)", function()
         assert_true(priv ~= pub)
     end)
 
+    test("validates create options and rejects invalid keys, patterns and oversized prologue", function()
+        -- Invalid pattern
+        local s, err = n.create({ pattern = "INVALID", role = "initiator" })
+        assert_nil(s)
+        assert_true(err and err:find("Noise pattern", 1, true) ~= nil)
+
+        -- Invalid role
+        s, err = n.create({ pattern = "NN", role = "invalid_role" })
+        assert_nil(s)
+        assert_true(err and err:find("Noise role", 1, true) ~= nil)
+
+        -- Invalid private_key length (e.g., 64-byte hex string instead of 32-byte binary)
+        local hex64 = string.rep("ab", 32)
+        s, err = n.create({ pattern = "XX", role = "initiator", private_key = hex64 })
+        assert_nil(s)
+        assert_true(err and err:find("private_key must be exactly 32 bytes", 1, true) ~= nil)
+
+        -- Non-string private_key
+        s, err = n.create({ pattern = "XX", role = "initiator", private_key = 12345 })
+        assert_nil(s)
+        assert_true(err and err:find("private_key must be a 32-byte binary string", 1, true) ~= nil)
+
+        -- Invalid remote_key length
+        s, err = n.create({ pattern = "NK", role = "initiator", remote_key = "too_short" })
+        assert_nil(s)
+        assert_true(err and err:find("remote_key must be exactly 32 bytes", 1, true) ~= nil)
+
+        -- Invalid ephemeral_key length
+        s, err = n.create({ pattern = "NN", role = "initiator", ephemeral_key = "too_short" })
+        assert_nil(s)
+        assert_true(err and err:find("ephemeral_key must be exactly 32 bytes", 1, true) ~= nil)
+
+        -- Oversized prologue (> 256 bytes)
+        local big_prologue = string.rep("x", 257)
+        s, err = n.create({ pattern = "NN", role = "initiator", prologue = big_prologue })
+        assert_nil(s)
+        assert_true(err and err:find("prologue", 1, true) ~= nil)
+
+        -- Non-string prologue
+        s, err = n.create({ pattern = "NN", role = "initiator", prologue = 999 })
+        assert_nil(s)
+        assert_true(err and err:find("prologue must be a string", 1, true) ~= nil)
+    end)
+
     -- 2. Noise_NN Handshake
     test("executes complete Noise_NN opportunistic handshake and transport", function()
         local client = n.create({ pattern = "NN", role = "initiator" })

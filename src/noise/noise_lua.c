@@ -72,8 +72,23 @@ static int lcais_noise_create(lua_State *L)
             else if (strcmp(p, "NN") == 0 || strcmp(p, "nn") == 0) pattern = CAIS_NOISE_NN;
             else if (strcmp(p, "NK") == 0 || strcmp(p, "nk") == 0) pattern = CAIS_NOISE_NK;
             else if (strcmp(p, "IK") == 0 || strcmp(p, "ik") == 0) pattern = CAIS_NOISE_IK;
+            else {
+                lua_pushnil(L);
+                lua_pushfstring(L, "unknown or unsupported Noise pattern '%s'", p);
+                return 2;
+            }
         } else if (lua_isinteger(L, -1)) {
-            pattern = (cais_noise_pattern_t)lua_tointeger(L, -1);
+            lua_Integer p_int = lua_tointeger(L, -1);
+            if (p_int < 0 || p_int > 3) {
+                lua_pushnil(L);
+                lua_pushliteral(L, "invalid Noise pattern identifier");
+                return 2;
+            }
+            pattern = (cais_noise_pattern_t)p_int;
+        } else if (!lua_isnil(L, -1)) {
+            lua_pushnil(L);
+            lua_pushliteral(L, "invalid pattern option (expected string or integer)");
+            return 2;
         }
         lua_pop(L, 1);
 
@@ -81,10 +96,25 @@ static int lcais_noise_create(lua_State *L)
         lua_getfield(L, 1, "role");
         if (lua_isstring(L, -1)) {
             const char *r = lua_tostring(L, -1);
-            if (strcmp(r, "initiator") == 0) role = CAIS_NOISE_INITIATOR;
-            else if (strcmp(r, "responder") == 0) role = CAIS_NOISE_RESPONDER;
+            if (strcmp(r, "initiator") == 0 || strcmp(r, "INITIATOR") == 0) role = CAIS_NOISE_INITIATOR;
+            else if (strcmp(r, "responder") == 0 || strcmp(r, "RESPONDER") == 0) role = CAIS_NOISE_RESPONDER;
+            else {
+                lua_pushnil(L);
+                lua_pushfstring(L, "invalid Noise role '%s' (must be 'initiator' or 'responder')", r);
+                return 2;
+            }
         } else if (lua_isinteger(L, -1)) {
-            role = (cais_noise_role_t)lua_tointeger(L, -1);
+            lua_Integer r_int = lua_tointeger(L, -1);
+            if (r_int < 0 || r_int > 1) {
+                lua_pushnil(L);
+                lua_pushliteral(L, "invalid Noise role identifier");
+                return 2;
+            }
+            role = (cais_noise_role_t)r_int;
+        } else if (!lua_isnil(L, -1)) {
+            lua_pushnil(L);
+            lua_pushliteral(L, "invalid role option (expected string or integer)");
+            return 2;
         }
         lua_pop(L, 1);
     }
@@ -99,43 +129,103 @@ static int lcais_noise_create(lua_State *L)
     if (lua_istable(L, 1)) {
         /* Private key configuration */
         lua_getfield(L, 1, "private_key");
-        if (lua_isstring(L, -1)) {
-            size_t klen;
-            const char *k = lua_tolstring(L, -1, &klen);
-            if (klen == CAIS_NOISE_KEY_LEN) {
-                cais_noise_set_static_key(handle, (const unsigned char *)k, err, sizeof(err));
+        if (!lua_isnil(L, -1)) {
+            size_t klen = 0;
+            const char *k;
+            if (lua_type(L, -1) != LUA_TSTRING) {
+                cais_noise_free(handle);
+                lua_pushnil(L);
+                lua_pushliteral(L, "private_key must be a 32-byte binary string");
+                return 2;
+            }
+            k = lua_tolstring(L, -1, &klen);
+            if (klen != CAIS_NOISE_KEY_LEN) {
+                cais_noise_free(handle);
+                lua_pushnil(L);
+                lua_pushfstring(L, "private_key must be exactly 32 bytes (got %d)", (int)klen);
+                return 2;
+            }
+            if (cais_noise_set_static_key(handle, (const unsigned char *)k, err, sizeof(err)) != CAIS_OK) {
+                cais_noise_free(handle);
+                lua_pushnil(L);
+                lua_pushstring(L, err[0] ? err : "failed to set private key");
+                return 2;
             }
         }
         lua_pop(L, 1);
 
         /* Remote key configuration */
         lua_getfield(L, 1, "remote_key");
-        if (lua_isstring(L, -1)) {
-            size_t klen;
-            const char *k = lua_tolstring(L, -1, &klen);
-            if (klen == CAIS_NOISE_KEY_LEN) {
-                cais_noise_set_remote_key(handle, (const unsigned char *)k, err, sizeof(err));
+        if (!lua_isnil(L, -1)) {
+            size_t klen = 0;
+            const char *k;
+            if (lua_type(L, -1) != LUA_TSTRING) {
+                cais_noise_free(handle);
+                lua_pushnil(L);
+                lua_pushliteral(L, "remote_key must be a 32-byte binary string");
+                return 2;
+            }
+            k = lua_tolstring(L, -1, &klen);
+            if (klen != CAIS_NOISE_KEY_LEN) {
+                cais_noise_free(handle);
+                lua_pushnil(L);
+                lua_pushfstring(L, "remote_key must be exactly 32 bytes (got %d)", (int)klen);
+                return 2;
+            }
+            if (cais_noise_set_remote_key(handle, (const unsigned char *)k, err, sizeof(err)) != CAIS_OK) {
+                cais_noise_free(handle);
+                lua_pushnil(L);
+                lua_pushstring(L, err[0] ? err : "failed to set remote public key");
+                return 2;
             }
         }
         lua_pop(L, 1);
 
         /* Ephemeral key configuration (testing / test vectors) */
         lua_getfield(L, 1, "ephemeral_key");
-        if (lua_isstring(L, -1)) {
-            size_t klen;
-            const char *k = lua_tolstring(L, -1, &klen);
-            if (klen == CAIS_NOISE_KEY_LEN) {
-                cais_noise_set_ephemeral_key(handle, (const unsigned char *)k, err, sizeof(err));
+        if (!lua_isnil(L, -1)) {
+            size_t klen = 0;
+            const char *k;
+            if (lua_type(L, -1) != LUA_TSTRING) {
+                cais_noise_free(handle);
+                lua_pushnil(L);
+                lua_pushliteral(L, "ephemeral_key must be a 32-byte binary string");
+                return 2;
+            }
+            k = lua_tolstring(L, -1, &klen);
+            if (klen != CAIS_NOISE_KEY_LEN) {
+                cais_noise_free(handle);
+                lua_pushnil(L);
+                lua_pushfstring(L, "ephemeral_key must be exactly 32 bytes (got %d)", (int)klen);
+                return 2;
+            }
+            if (cais_noise_set_ephemeral_key(handle, (const unsigned char *)k, err, sizeof(err)) != CAIS_OK) {
+                cais_noise_free(handle);
+                lua_pushnil(L);
+                lua_pushstring(L, err[0] ? err : "failed to set ephemeral key");
+                return 2;
             }
         }
         lua_pop(L, 1);
 
         /* Optional prologue */
         lua_getfield(L, 1, "prologue");
-        if (lua_isstring(L, -1)) {
-            size_t plen;
-            const char *p = lua_tolstring(L, -1, &plen);
-            cais_noise_set_prologue(handle, p, plen, err, sizeof(err));
+        if (!lua_isnil(L, -1)) {
+            size_t plen = 0;
+            const char *p;
+            if (lua_type(L, -1) != LUA_TSTRING) {
+                cais_noise_free(handle);
+                lua_pushnil(L);
+                lua_pushliteral(L, "prologue must be a string");
+                return 2;
+            }
+            p = lua_tolstring(L, -1, &plen);
+            if (cais_noise_set_prologue(handle, p, plen, err, sizeof(err)) != CAIS_OK) {
+                cais_noise_free(handle);
+                lua_pushnil(L);
+                lua_pushstring(L, err[0] ? err : "failed to set prologue");
+                return 2;
+            }
         }
         lua_pop(L, 1);
     }
