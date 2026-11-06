@@ -21,6 +21,8 @@ includes("@addon/recudo/recudo.lua")
 
 -- Dependencies for Lua C bindings and C test suites
 add_requires("lua >=5.4")
+add_requires("monocypher", {configs = {optional = false, shared = false}})
+add_requires("blake2", {configs = {shared = false}})
 if is_plat("linux", "macosx", "bsd", "windows", "mingw") then
     add_requires("greatest")
 end
@@ -224,6 +226,7 @@ target("cais_static")
     set_basename("cais")
     set_targetdir(target_dir)
     add_headerfiles("include/(cais/*.h)")
+    add_packages("monocypher", "blake2")
     add_files(
         "src/cais.c",
         "src/platform/platform.c",
@@ -234,7 +237,10 @@ target("cais_static")
         "src/serial/serial_" .. conf.serial .. ".c",
         "src/socket/socket_" .. conf.socket .. ".c",
         "src/sandbox/sandbox.c",
-        "src/sandbox/sandbox_" .. conf.sandbox .. ".c"
+        "src/sandbox/sandbox_" .. conf.sandbox .. ".c",
+        "src/noise/noise_crypto.c",
+        "src/noise/noise_protocol.c",
+        "src/noise/noise_transport.c"
     )
     apply_platform_rules(conf)
 
@@ -254,6 +260,7 @@ local c_subsystems = {
     parallel   = {"src/parallel/parallel_" .. conf.parallel .. ".c", "src/platform/platform.c"},
     socket     = {"src/socket/socket_common.c", "src/socket/socket_" .. conf.socket .. ".c", "src/platform/platform.c"},
     sandbox    = {"src/sandbox/sandbox.c", "src/sandbox/sandbox_" .. conf.sandbox .. ".c", "src/platform/platform.c"},
+    noise      = {"src/noise/noise_crypto.c", "src/noise/noise_protocol.c", "src/noise/noise_transport.c", "src/platform/platform.c"},
 }
 
 for sub_name, files in pairs(c_subsystems) do
@@ -264,6 +271,9 @@ for sub_name, files in pairs(c_subsystems) do
         set_basename("cais_" .. sub_name)
         set_targetdir(target_dir)
         add_headerfiles("include/(cais/*.h)")
+        if sub_name == "noise" then
+            add_packages("monocypher", "blake2")
+        end
         add_files(files)
         apply_platform_rules(conf)
 end
@@ -314,6 +324,7 @@ local submodules = {
     parallel   = {"src/parallel/parallel_lua.c", "src/parallel/parallel_" .. conf.parallel .. ".c", "src/platform/platform.c"},
     socket     = {"src/socket/socket_lua.c", "src/socket/socket_common.c", "src/socket/socket_" .. conf.socket .. ".c", "src/platform/platform.c"},
     sandbox    = {"src/sandbox/sandbox_lua.c", "src/sandbox/sandbox.c", "src/sandbox/sandbox_" .. conf.sandbox .. ".c", "src/platform/platform.c"},
+    noise      = {"src/noise/noise_lua.c", "src/noise/noise_crypto.c", "src/noise/noise_protocol.c", "src/noise/noise_transport.c", "src/platform/platform.c"},
 }
 
 for mod_name, files in pairs(submodules) do
@@ -321,6 +332,9 @@ for mod_name, files in pairs(submodules) do
         add_rules("recudo.lua.module")
         set_values("recudo.lua.kind", "shared")
         add_defines("LUA_USE_C89")
+        if mod_name == "noise" then
+            add_packages("monocypher", "blake2")
+        end
         add_files(files)
         if is_plat("linux", "bsd") then
             -- Same interposition guard as the umbrella module (see above).
@@ -341,7 +355,7 @@ target("test_c_api")
     set_rundir(os.projectdir())
     add_files("tests/c/*.c")
     add_deps("cais_static")
-    add_packages("greatest")
+    add_packages("greatest", "monocypher", "blake2")
     add_tests("c_api")
     on_install(function (target) end) -- test-only artifact: never packaged
 
@@ -359,7 +373,8 @@ target("test_lua")
         "cais.serial",
         "cais.parallel",
         "cais.socket",
-        "cais.sandbox"
+        "cais.sandbox",
+        "cais.noise"
     )
     on_test(function (target)
         os.execv(path.join(os.projectdir(), "build/bin/test_lua"))

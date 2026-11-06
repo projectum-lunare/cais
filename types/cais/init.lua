@@ -42,4 +42,8 @@ cais.parallel = require("cais.parallel")
 ---@type cais.sandbox
 cais.sandbox = require("cais.sandbox")
 
+---Noise-Based Cryptographic Transport Substrate.
+---@type cais.noise
+cais.noise = require("cais.noise")
+
 return cais

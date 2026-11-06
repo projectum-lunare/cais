@@ -36,6 +36,10 @@
 #include <cais/sandbox.h>
 #endif
 
+#ifndef CAIS_NO_NOISE
+#include <cais/noise.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
