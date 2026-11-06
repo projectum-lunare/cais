@@ -56,6 +56,12 @@
 
     Noise Protocol cryptographic transport (`Noise_[Pattern]_25519_ChaChaPoly_BLAKE2s`) with mutual authentication and 1-RTT sessions.
 
+- :material-security: **[`cais.tls`](tls.md)**
+
+    ---
+
+    Modular Transport Layer Security (TLS 1.2 / TLS 1.3) engine with pluggable backends (BearSSL) and custom I/O decoupling.
+
 </div>
 
 ---

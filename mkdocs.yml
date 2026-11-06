@@ -111,6 +111,7 @@ nav:
       - Parallel Port (IEEE 1284): subsystems/parallel.md
       - Kernel Sandboxing: subsystems/sandbox.md
       - Noise Cryptographic Transport: subsystems/noise.md
+      - Modular TLS Transport: subsystems/tls.md
   - Recipes & Guides:
       - Overview: recipes/index.md
       - Asynchronous TCP Echo Server: recipes/tcp-echo-server.md
@@ -143,6 +144,7 @@ nav:
       - cais.parallel: lua-api/parallel.md
       - cais.sandbox: lua-api/sandbox.md
       - cais.noise: lua-api/noise.md
+      - cais.tls: lua-api/tls.md
   - Platforms:
       - Overview & Support Matrix: platforms/index.md
       - Linux: platforms/linux.md

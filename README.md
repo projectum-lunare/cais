@@ -27,6 +27,7 @@ The library is structured as a cohesive monorepo divided into specialized subsys
 │ • cais.socket     │ Raw TCP & UDP stream/datagram sockets (IPv4)                 │
 │ • cais.sandbox    │ Kernel sandboxing (Landlock, Seatbelt, Win32, OpenBSD)       │
 │ • cais.noise      │ Noise-based secure transport (XX, NN, NK, IK, 32-bit BLAKE2s)│
+│ • cais.tls        │ Modular TLS transport (TLS 1.2/1.3, BearSSL driver, custom IO)│
 └──────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -92,6 +93,13 @@ All subsystems share a unified canonical type foundation (`include/cais/types.h`
 - Full mutual authentication, identity hiding, WireGuard-style 1-RTT session resumption (`Noise_IK`), and forward secrecy.
 - Automatic transport framing over stream sockets (`cais.socket`) and physical serial UART (`cais.serial`).
 - Zero heap allocation on common paths and lazy loading in Lua.
+
+### 8. `tls` — Modular TLS Secure Transport
+
+- Pluggable, extensible TLS engine supporting TLS 1.0–1.2 with first-class **BearSSL** driver and modular backend abstraction (`cais_tls_backend_ops_t`).
+- Decoupled I/O: seamlessly wraps `cais.socket` or accepts arbitrary custom read/write callbacks for serial links, pipes, and in-memory streams.
+- Zero runtime heap allocation during packet processing, with support for both strict X.509 certificate validation and lightweight unverified modes (`CAIS_TLS_VERIFY_NONE`) for embedded or constrained environments.
+- Non-blocking event loop integration (`CAIS_TLS_WANT_READ`, `CAIS_TLS_WANT_WRITE`) and lazy module loading in Lua.
 
 ---
 
@@ -271,6 +279,8 @@ If embedding `cais` directly in a custom build system or firmware, unneeded subs
 - `-DCAIS_NO_FILESYSTEM`: Exclude filesystem abstractions.
 - `-DCAIS_NO_SANDBOX`: Exclude OS kernel sandboxing.
 - `-DCAIS_NO_PLATFORM`: Exclude platform metadata.
+- `-DCAIS_NO_NOISE`: Exclude Noise cryptographic transport.
+- `-DCAIS_NO_TLS`: Exclude TLS secure transport subsystem.
 
 #### Standalone Lua Submodules
 
