@@ -27,7 +27,7 @@ The library is structured as a cohesive monorepo divided into specialized subsys
 │ • cais.socket     │ Raw TCP & UDP stream/datagram sockets (IPv4)                 │
 │ • cais.sandbox    │ Kernel sandboxing (Landlock, Seatbelt, Win32, OpenBSD)       │
 │ • cais.noise      │ Noise-based secure transport (XX, NN, NK, IK, 32-bit BLAKE2s)│
-│ • cais.tls        │ Modular TLS transport (TLS 1.2/1.3, BearSSL driver, custom IO)│
+│ • cais.tls        │ Modular TLS transport (pluggable backends, custom I/O)        │
 └──────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -96,7 +96,7 @@ All subsystems share a unified canonical type foundation (`include/cais/types.h`
 
 ### 8. `tls` — Modular TLS Secure Transport
 
-- Pluggable, extensible TLS engine supporting TLS 1.0–1.2 with first-class **BearSSL** driver and modular backend abstraction (`cais_tls_backend_ops_t`).
+- Pluggable, extensible TLS engine with a modular backend driver architecture (`cais_tls_backend_ops_t`); supported protocol versions, ciphersuites, and features depend on the active driver (such as the lightweight **BearSSL** client driver).
 - Decoupled I/O: seamlessly wraps `cais.socket` or accepts arbitrary custom read/write callbacks for serial links, pipes, and in-memory streams.
 - Zero runtime heap allocation during packet processing, with support for both strict X.509 certificate validation and lightweight unverified modes (`CAIS_TLS_VERIFY_NONE`) for embedded or constrained environments.
 - Non-blocking event loop integration (`CAIS_TLS_WANT_READ`, `CAIS_TLS_WANT_WRITE`) and lazy module loading in Lua.

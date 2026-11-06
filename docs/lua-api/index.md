@@ -60,7 +60,7 @@
 
     ---
 
-    Modular Transport Layer Security (TLS 1.2 / TLS 1.3) engine with pluggable backends (BearSSL) and custom I/O decoupling.
+    Modular Transport Layer Security (TLS) engine with pluggable backends (BearSSL) and custom I/O decoupling; protocol versions depend on the backend driver.
 
 </div>
 

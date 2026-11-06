@@ -1,6 +1,6 @@
 # Modular TLS Secure Transport (`cais.tls`)
 
-The `tls` subsystem provides an extensible, modular, and standard-compliant **Transport Layer Security (TLS 1.2 / TLS 1.3)** substrate. It is designed to secure stream transports across modern POSIX systems, Windows, and vintage embedded platforms using pluggable, lightweight cryptographic backends.
+The `tls` subsystem provides an extensible, modular, and standard-compliant **Transport Layer Security (TLS)** substrate. It is designed to secure stream transports across modern POSIX systems, Windows, and vintage embedded platforms using pluggable, lightweight cryptographic backends. Supported protocol versions (such as TLS 1.0, 1.1, 1.2, or 1.3), cipher suites, and cryptographic capabilities are defined by the active backend driver rather than the abstraction layer itself.
 
 While `cais.noise` remains our primary recommendation for certificate-less, zero-overhead peer-to-peer secure communications, `cais.tls` enables mandatory interoperability with the broader Internet ecosystem (HTTPS, MQTTS, secure WebSockets, FTPS) where standard X.509 certificate validation and legacy TLS protocol conformance are required.
 
@@ -46,10 +46,14 @@ This ensures zero vendor lock-in: applications and scripts interact with identic
 
 ## 🔌 2. Available Drivers
 
+Protocol version support, cipher suites, and runtime capabilities depend directly on the chosen backend driver:
+
 | Backend Driver | Target TLS Versions | X.509 Support | Memory Footprint | Primary Target Environments |
 | :------------- | :------------------ | :------------ | :--------------- | :-------------------------- |
 | **`bearssl`**  | TLS 1.0, 1.1, 1.2   | X.509 & None  | ~25 KB RAM       | Embedded, Vintage x86/ARM/m68k, POSIX, Windows |
 | **`stub`**     | None (Fallback)     | None          | 0 KB             | Platforms without TLS requirements or `--tls=n` |
+
+*(Additional drivers, such as `wolfssl` or `mbedtls`, may be plugged in to provide TLS 1.3).*
 
 ### BearSSL Driver Highlights
 * **Zero Dynamic Heap Allocations During I/O:** BearSSL operates strictly on static or caller-allocated memory buffers (`br_ssl_client_context` and internal I/O buffers).

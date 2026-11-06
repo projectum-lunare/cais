@@ -52,7 +52,7 @@ typedef enum cais_tls_verify {
 typedef enum cais_tls_backend_type {
     CAIS_TLS_BACKEND_NONE     = 0, /* Subsystem disabled or stub */
     CAIS_TLS_BACKEND_BEARSSL  = 1, /* BearSSL (strict C89, ultra-lightweight) */
-    CAIS_TLS_BACKEND_WOLFSSL  = 2, /* wolfSSL (embedded TLS 1.3) */
+    CAIS_TLS_BACKEND_WOLFSSL  = 2, /* wolfSSL (embedded TLS) */
     CAIS_TLS_BACKEND_MBEDTLS  = 3, /* mbedTLS (ARM ecosystem) */
     CAIS_TLS_BACKEND_SCHANNEL = 4  /* Windows native SChannel */
 } cais_tls_backend_type_t;
