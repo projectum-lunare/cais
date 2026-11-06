@@ -19,9 +19,10 @@ add_repositories("projectum-lunare https://github.com/projectum-lunare/xmake-rep
 add_addons("recudo v0.2.8")
 includes("@addon/recudo/recudo.lua")
 
--- Host dependencies for Lua C bindings and C test suites
+-- Dependencies for Lua C bindings and C test suites
+add_requires("lua >=5.4")
 if is_plat("linux", "macosx", "bsd", "windows", "mingw") then
-    add_requires("lua >=5.4", "greatest")
+    add_requires("greatest")
 end
 
 -- ==============================================================================
@@ -94,7 +95,7 @@ local PLATFORMS = {
         parallel   = "windows_nt",
         serial     = "windows_nt",
         socket     = "bsd",
-        sandbox    = "stub",
+        sandbox    = "windows",
         can_test   = true,
     },
     mingw = {
@@ -103,7 +104,7 @@ local PLATFORMS = {
         parallel   = "windows_nt",
         serial     = "windows_nt",
         socket     = "bsd",
-        sandbox    = "stub",
+        sandbox    = "windows",
         can_test   = true,
     },
 
@@ -184,7 +185,7 @@ local PLATFORMS = {
         parallel   = "stub",
         serial     = "posix",
         socket     = "bsd",
-        sandbox    = "stub",
+        sandbox    = "darwin",
         pic        = true,
         can_test   = true,
     },
@@ -232,6 +233,7 @@ target("cais_static")
         "src/parallel/parallel_" .. conf.parallel .. ".c",
         "src/serial/serial_" .. conf.serial .. ".c",
         "src/socket/socket_" .. conf.socket .. ".c",
+        "src/sandbox/sandbox.c",
         "src/sandbox/sandbox_" .. conf.sandbox .. ".c"
     )
     apply_platform_rules(conf)
@@ -251,7 +253,7 @@ local c_subsystems = {
     serial     = {"src/serial/serial_" .. conf.serial .. ".c", "src/platform/platform.c"},
     parallel   = {"src/parallel/parallel_" .. conf.parallel .. ".c", "src/platform/platform.c"},
     socket     = {"src/socket/socket_common.c", "src/socket/socket_" .. conf.socket .. ".c", "src/platform/platform.c"},
-    sandbox    = {"src/sandbox/sandbox_" .. conf.sandbox .. ".c", "src/platform/platform.c"},
+    sandbox    = {"src/sandbox/sandbox.c", "src/sandbox/sandbox_" .. conf.sandbox .. ".c", "src/platform/platform.c"},
 }
 
 for sub_name, files in pairs(c_subsystems) do
@@ -269,7 +271,6 @@ end
 -- ==============================================================================
 -- 3. Lua Subsystem & C Modules (Powered by recudo.lua.module)
 -- ==============================================================================
-if is_plat("linux", "macosx", "bsd", "windows", "mingw") then
 
 -- 3.1 Static Lua C Module (libcais_lua.a / cais_lua.lib) for embedding
 target("cais_lua_static")
@@ -279,6 +280,8 @@ target("cais_lua_static")
     add_deps("cais_static")
     add_defines("LUA_USE_C89")
     add_files("src/**_lua.c")
+
+if is_plat("linux", "macosx", "bsd", "windows", "mingw") then
 
 -- 3.2 Umbrella Shared Lua C Module (build/lua/cais.so & ./cais.so)
 target("cais")
@@ -310,7 +313,7 @@ local submodules = {
     serial     = {"src/serial/serial_lua.c", "src/serial/serial_" .. conf.serial .. ".c", "src/platform/platform.c"},
     parallel   = {"src/parallel/parallel_lua.c", "src/parallel/parallel_" .. conf.parallel .. ".c", "src/platform/platform.c"},
     socket     = {"src/socket/socket_lua.c", "src/socket/socket_common.c", "src/socket/socket_" .. conf.socket .. ".c", "src/platform/platform.c"},
-    sandbox    = {"src/sandbox/sandbox_lua.c", "src/sandbox/sandbox_" .. conf.sandbox .. ".c", "src/platform/platform.c"},
+    sandbox    = {"src/sandbox/sandbox_lua.c", "src/sandbox/sandbox.c", "src/sandbox/sandbox_" .. conf.sandbox .. ".c", "src/platform/platform.c"},
 }
 
 for mod_name, files in pairs(submodules) do

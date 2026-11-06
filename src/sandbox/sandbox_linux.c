@@ -12,8 +12,7 @@
 #define _GNU_SOURCE
 #endif
 
-#include <cais/platform.h>
-#include <cais/sandbox.h>
+#include "sandbox_internal.h"
 
 #if CAIS_IS_LINUX || defined(__linux__)
 
@@ -36,13 +35,6 @@
 
 /*
  * Landlock system call numbers fallback definition.
- * Prioritizes kernel UAPI / libc headers from <sys/syscall.h> and <asm/unistd.h>.
- * Only if __NR_landlock_create_ruleset is still undefined do we apply per-arch constants:
- *   - x86_64, aarch64, riscv: 444, 445, 446
- *   - i386: 435, 436, 437
- *   - arm (EABI): 442, 443, 444
- * Any unverified architecture is left undefined so probe_landlock_abi() returns
- * CAIS_SANDBOX_UNSUPPORTED instead of calling an arbitrary system call.
  */
 #ifndef __NR_landlock_create_ruleset
 #if defined(__x86_64__) || defined(__aarch64__) || defined(__riscv)
@@ -77,8 +69,6 @@
 
 /*
  * Landlock access rights flags (Linux kernel UAPI).
- * Symbolic constants are used instead of opaque magic hex numbers to prevent
- * ABI desynchronization across kernel versions.
  */
 #define CAIS_LANDLOCK_ACCESS_FS_EXECUTE     (1UL << 0)
 #define CAIS_LANDLOCK_ACCESS_FS_WRITE_FILE  (1UL << 1)
@@ -96,6 +86,10 @@
 #define CAIS_LANDLOCK_ACCESS_FS_REFER       (1UL << 13) /* ABI >= 2 */
 #define CAIS_LANDLOCK_ACCESS_FS_TRUNCATE    (1UL << 14) /* ABI >= 3 */
 #define CAIS_LANDLOCK_ACCESS_FS_IOCTL_DEV   (1UL << 15) /* ABI >= 5 */
+
+/* Landlock ABI 4+ Network Flags */
+#define CAIS_LANDLOCK_ACCESS_NET_BIND_TCP    (1UL << 0)
+#define CAIS_LANDLOCK_ACCESS_NET_CONNECT_TCP (1UL << 1)
 
 #define CAIS_LANDLOCK_FS_MASK_V1 ( \
     CAIS_LANDLOCK_ACCESS_FS_EXECUTE | \
@@ -115,8 +109,10 @@
 struct landlock_ruleset_attr {
 #if defined(__GNUC__)
     __extension__ unsigned long long handled_access_fs;
+    __extension__ unsigned long long handled_access_net;
 #else
     unsigned long handled_access_fs;
+    unsigned long handled_access_net;
 #endif
 };
 
@@ -129,7 +125,6 @@ struct landlock_path_beneath_attr {
     int parent_fd;
 };
 
-static int s_ruleset_fd = -1;
 static int s_cached_abi = -2;
 
 static int probe_landlock_abi(void)
@@ -152,11 +147,6 @@ static int probe_landlock_abi(void)
 #endif
 }
 
-/*
- * Returns the Landlock filesystem access mask supported by the running kernel.
- * Caps at known filesystem flags up to ABI 5, ensuring forward-compatibility
- * when running under newer kernels with ABI >= 6 (which add IPC scoping, etc.).
- */
 static unsigned long get_fs_mask(int abi)
 {
     unsigned long mask = CAIS_LANDLOCK_FS_MASK_V1;
@@ -173,9 +163,6 @@ static unsigned long get_fs_mask(int abi)
     return mask;
 }
 
-/*
- * Computes Landlock access rights for an unveiled path given permissions and node type.
- */
 static unsigned long compute_access_rights(int abi, int permissions, int is_dir)
 {
     unsigned long rights = 0;
@@ -215,7 +202,7 @@ static unsigned long compute_access_rights(int abi, int permissions, int is_dir)
     return rights & get_fs_mask(abi);
 }
 
-cais_sandbox_backend_t cais_sandbox_backend(int *version_out)
+cais_sandbox_backend_t cais_pal_sandbox_backend(int *version_out)
 {
     int abi = probe_landlock_abi();
     if (abi > 0) {
@@ -230,32 +217,26 @@ cais_sandbox_backend_t cais_sandbox_backend(int *version_out)
     return CAIS_SANDBOX_BACKEND_NONE;
 }
 
-const char *cais_sandbox_backend_name(int *version_out)
+const char *cais_pal_sandbox_backend_name(int *version_out)
 {
-    cais_sandbox_backend_t b = cais_sandbox_backend(version_out);
+    cais_sandbox_backend_t b = cais_pal_sandbox_backend(version_out);
     return (b == CAIS_SANDBOX_BACKEND_LANDLOCK) ? "landlock" : "none";
 }
 
-cais_bool_t cais_sandbox_is_supported(void)
+cais_bool_t cais_pal_sandbox_is_supported(void)
 {
     int version = 0;
-    return (cais_sandbox_backend(&version) != CAIS_SANDBOX_BACKEND_NONE && version > 0) ? CAIS_TRUE : CAIS_FALSE;
+    return (cais_pal_sandbox_backend(&version) != CAIS_SANDBOX_BACKEND_NONE && version > 0) ? CAIS_TRUE : CAIS_FALSE;
 }
 
-cais_sandbox_status_t cais_sandbox_unveil(const char *path, int permissions, char *err_buf, size_t err_cap)
+cais_sandbox_status_t cais_pal_sandbox_apply(const cais_sandbox_policy_t *policy, char *err_buf, size_t err_cap)
 {
+#if defined(__NR_landlock_create_ruleset) && defined(__NR_landlock_restrict_self)
     int abi;
-    int fd;
-    struct stat st;
-    struct landlock_path_beneath_attr pb;
-
-    if (err_buf != NULL && err_cap > 0) {
-        err_buf[0] = '\0';
-    }
-
-    if (path == NULL || path[0] == '\0') {
-        return CAIS_SANDBOX_OK;
-    }
+    int ruleset_fd;
+    struct landlock_ruleset_attr attr;
+    size_t path_count = 0;
+    size_t i;
 
     abi = probe_landlock_abi();
     if (abi <= 0) {
@@ -263,122 +244,85 @@ cais_sandbox_status_t cais_sandbox_unveil(const char *path, int permissions, cha
         return CAIS_SANDBOX_UNSUPPORTED;
     }
 
-#if defined(__NR_landlock_create_ruleset)
-    if (s_ruleset_fd < 0) {
-        struct landlock_ruleset_attr attr;
-        memset(&attr, 0, sizeof(attr));
-        attr.handled_access_fs = get_fs_mask(abi);
-        s_ruleset_fd = (int)syscall(__NR_landlock_create_ruleset, &attr, sizeof(attr), 0);
-        if (s_ruleset_fd < 0) {
-            cais_set_err_fmt(err_buf, err_cap, "landlock_create_ruleset failed (%s)", strerror(errno));
-            return CAIS_SANDBOX_ERROR;
+    memset(&attr, 0, sizeof(attr));
+    attr.handled_access_fs = get_fs_mask(abi);
+
+    if (abi >= 4 && policy != NULL && cais_sandbox_policy_get_network(policy) == CAIS_SANDBOX_NET_NONE) {
+        attr.handled_access_net = CAIS_LANDLOCK_ACCESS_NET_BIND_TCP | CAIS_LANDLOCK_ACCESS_NET_CONNECT_TCP;
+    }
+
+    ruleset_fd = (int)syscall(__NR_landlock_create_ruleset, &attr, sizeof(attr), 0);
+    if (ruleset_fd < 0) {
+        cais_set_err_fmt(err_buf, err_cap, "landlock_create_ruleset failed: %s", strerror(errno));
+        return CAIS_SANDBOX_ERROR;
+    }
+
+    if (policy != NULL) {
+        path_count = cais_sandbox_policy_path_count(policy);
+        for (i = 0; i < path_count; i++) {
+            int perms = 0;
+            const char *path = cais_sandbox_policy_get_path(policy, i, &perms);
+            int fd;
+            struct stat st;
+            struct landlock_path_beneath_attr pb;
+
+            if (path == NULL || path[0] == '\0') {
+                continue;
+            }
+
+            fd = open(path, O_PATH | O_CLOEXEC);
+            if (fd < 0) {
+                fd = open(path, O_RDONLY);
+            }
+            if (fd < 0) {
+                close(ruleset_fd);
+                cais_set_err_fmt(err_buf, err_cap, "cannot open path '%.128s' for sandbox: %s", path, strerror(errno));
+                return CAIS_SANDBOX_ERROR;
+            }
+
+            if (fstat(fd, &st) != 0) {
+                close(fd);
+                close(ruleset_fd);
+                cais_set_err_fmt(err_buf, err_cap, "fstat failed on sandbox target '%.128s'", path);
+                return CAIS_SANDBOX_ERROR;
+            }
+
+            memset(&pb, 0, sizeof(pb));
+            pb.allowed_access = compute_access_rights(abi, perms, S_ISDIR(st.st_mode));
+            pb.parent_fd = fd;
+
+            if (syscall(__NR_landlock_add_rule, ruleset_fd, LANDLOCK_RULE_PATH_BENEATH, &pb, 0) != 0) {
+                close(fd);
+                close(ruleset_fd);
+                cais_set_err_fmt(err_buf, err_cap, "landlock_add_rule failed on '%.128s': %s", path, strerror(errno));
+                return CAIS_SANDBOX_ERROR;
+            }
+
+            close(fd);
         }
     }
 
-    fd = open(path, O_PATH | O_CLOEXEC);
-    if (fd < 0) {
-        fd = open(path, O_RDONLY);
-    }
-    if (fd < 0) {
-        cais_set_err_fmt(err_buf, err_cap, "Cannot open path '%.128s' for sandbox: %s", path, strerror(errno));
+    /* Enforce NO_NEW_PRIVS */
+    if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) != 0) {
+        close(ruleset_fd);
+        cais_set_err(err_buf, err_cap, "prctl(PR_SET_NO_NEW_PRIVS) failed");
         return CAIS_SANDBOX_ERROR;
     }
 
-    if (fstat(fd, &st) != 0) {
-        close(fd);
-        cais_set_err(err_buf, err_cap, "fstat failed on sandbox target");
+    /* Restrict current process and descendants */
+    if (syscall(__NR_landlock_restrict_self, ruleset_fd, 0) != 0) {
+        close(ruleset_fd);
+        cais_set_err_fmt(err_buf, err_cap, "landlock_restrict_self failed: %s", strerror(errno));
         return CAIS_SANDBOX_ERROR;
     }
 
-    memset(&pb, 0, sizeof(pb));
-    pb.allowed_access = compute_access_rights(abi, permissions, S_ISDIR(st.st_mode));
-    pb.parent_fd = fd;
-
-    if (syscall(__NR_landlock_add_rule, s_ruleset_fd, LANDLOCK_RULE_PATH_BENEATH, &pb, 0) != 0) {
-        close(fd);
-        cais_set_err_fmt(err_buf, err_cap, "landlock_add_rule failed on '%.128s': %s", path, strerror(errno));
-        return CAIS_SANDBOX_ERROR;
-    }
-
-    close(fd);
+    close(ruleset_fd);
     return CAIS_SANDBOX_OK;
 #else
-    (void)path;
-    (void)permissions;
+    (void)policy;
     cais_set_err(err_buf, err_cap, "Landlock is not supported in this build");
     return CAIS_SANDBOX_UNSUPPORTED;
 #endif
-}
-
-cais_sandbox_status_t cais_sandbox_lock(char *err_buf, size_t err_cap)
-{
-    if (err_buf != NULL && err_cap > 0) {
-        err_buf[0] = '\0';
-    }
-
-#if defined(__NR_landlock_restrict_self)
-    if (s_ruleset_fd >= 0) {
-        if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) != 0) {
-            cais_set_err(err_buf, err_cap, "prctl(PR_SET_NO_NEW_PRIVS) failed");
-            return CAIS_SANDBOX_ERROR;
-        }
-        if (syscall(__NR_landlock_restrict_self, s_ruleset_fd, 0) != 0) {
-            cais_set_err_fmt(err_buf, err_cap, "landlock_restrict_self failed (%s)", strerror(errno));
-            close(s_ruleset_fd);
-            s_ruleset_fd = -1;
-            return CAIS_SANDBOX_ERROR;
-        }
-        close(s_ruleset_fd);
-        s_ruleset_fd = -1;
-        return CAIS_SANDBOX_OK;
-    } else {
-        /*
-         * When lock is called without prior unveil(), create an empty ruleset
-         * and enforce it so that all handled filesystem access is locked down.
-         */
-        int abi = probe_landlock_abi();
-        int empty_fd;
-        struct landlock_ruleset_attr attr;
-
-        if (abi <= 0) {
-            cais_set_err(err_buf, err_cap, "Landlock is not supported by the running Linux kernel");
-            return CAIS_SANDBOX_UNSUPPORTED;
-        }
-
-        memset(&attr, 0, sizeof(attr));
-        attr.handled_access_fs = get_fs_mask(abi);
-        empty_fd = (int)syscall(__NR_landlock_create_ruleset, &attr, sizeof(attr), 0);
-        if (empty_fd < 0) {
-            cais_set_err_fmt(err_buf, err_cap, "landlock_create_ruleset failed (%s)", strerror(errno));
-            return CAIS_SANDBOX_ERROR;
-        }
-
-        if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) != 0) {
-            cais_set_err(err_buf, err_cap, "prctl(PR_SET_NO_NEW_PRIVS) failed");
-            close(empty_fd);
-            return CAIS_SANDBOX_ERROR;
-        }
-
-        if (syscall(__NR_landlock_restrict_self, empty_fd, 0) != 0) {
-            cais_set_err_fmt(err_buf, err_cap, "landlock_restrict_self failed (%s)", strerror(errno));
-            close(empty_fd);
-            return CAIS_SANDBOX_ERROR;
-        }
-
-        close(empty_fd);
-        return CAIS_SANDBOX_OK;
-    }
-#else
-    cais_set_err(err_buf, err_cap, "Landlock is not supported in this build");
-    return CAIS_SANDBOX_UNSUPPORTED;
-#endif
-}
-
-cais_sandbox_status_t cais_sandbox_pledge(const char *promises, char *err_buf, size_t err_cap)
-{
-    (void)promises;
-    cais_set_err(err_buf, err_cap, "pledge is not supported on Linux (Landlock only supports filesystem restrictions)");
-    return CAIS_SANDBOX_UNSUPPORTED;
 }
 
 #endif /* CAIS_IS_LINUX || defined(__linux__) */

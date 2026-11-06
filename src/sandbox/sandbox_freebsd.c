@@ -8,8 +8,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-#include <cais/platform.h>
-#include <cais/sandbox.h>
+#include "sandbox_internal.h"
 
 #if CAIS_IS_FREEBSD || defined(__FreeBSD__)
 
@@ -30,12 +29,6 @@
 
 static int s_cached_capsicum = -1;
 
-/*
- * Probes whether Capsicum capability mode is actually supported by the running kernel.
- * 1. Checks sysctl kern.features.capsicum.
- * 2. Falls back to cap_getmode(&mode) which fails with ENOSYS if the kernel was built
- *    without CAPABILITY_MODE / CAPABILITIES options.
- */
 static int probe_capsicum(void)
 {
     int val = 0;
@@ -61,7 +54,7 @@ static int probe_capsicum(void)
     return s_cached_capsicum;
 }
 
-cais_sandbox_backend_t cais_sandbox_backend(int *version_out)
+cais_sandbox_backend_t cais_pal_sandbox_backend(int *version_out)
 {
     if (!probe_capsicum()) {
         if (version_out != NULL) {
@@ -80,30 +73,20 @@ cais_sandbox_backend_t cais_sandbox_backend(int *version_out)
     return CAIS_SANDBOX_BACKEND_CAPSICUM;
 }
 
-const char *cais_sandbox_backend_name(int *version_out)
+const char *cais_pal_sandbox_backend_name(int *version_out)
 {
-    cais_sandbox_backend_t b = cais_sandbox_backend(version_out);
+    cais_sandbox_backend_t b = cais_pal_sandbox_backend(version_out);
     return (b == CAIS_SANDBOX_BACKEND_CAPSICUM) ? "capsicum" : "none";
 }
 
-cais_bool_t cais_sandbox_is_supported(void)
+cais_bool_t cais_pal_sandbox_is_supported(void)
 {
     return probe_capsicum() ? CAIS_TRUE : CAIS_FALSE;
 }
 
-cais_sandbox_status_t cais_sandbox_unveil(const char *path, int permissions, char *err_buf, size_t err_cap)
+cais_sandbox_status_t cais_pal_sandbox_apply(const cais_sandbox_policy_t *policy, char *err_buf, size_t err_cap)
 {
-    (void)path;
-    (void)permissions;
-    cais_set_err(err_buf, err_cap, "unveil is not supported on FreeBSD (Capsicum operates on capability descriptors, not paths)");
-    return CAIS_SANDBOX_UNSUPPORTED;
-}
-
-cais_sandbox_status_t cais_sandbox_lock(char *err_buf, size_t err_cap)
-{
-    if (err_buf != NULL && err_cap > 0) {
-        err_buf[0] = '\0';
-    }
+    (void)policy;
 
     if (!probe_capsicum()) {
         cais_set_err(err_buf, err_cap, "Capsicum capability mode is not supported by the running FreeBSD kernel");
@@ -115,17 +98,11 @@ cais_sandbox_status_t cais_sandbox_lock(char *err_buf, size_t err_cap)
             cais_set_err(err_buf, err_cap, "Capsicum capability mode is not supported by the running FreeBSD kernel");
             return CAIS_SANDBOX_UNSUPPORTED;
         }
-        cais_set_err_fmt(err_buf, err_cap, "cap_enter() failed (%s)", strerror(errno));
+        cais_set_err_fmt(err_buf, err_cap, "cap_enter() failed: %s", strerror(errno));
         return CAIS_SANDBOX_ERROR;
     }
-    return CAIS_SANDBOX_OK;
-}
 
-cais_sandbox_status_t cais_sandbox_pledge(const char *promises, char *err_buf, size_t err_cap)
-{
-    (void)promises;
-    cais_set_err(err_buf, err_cap, "pledge is not supported on FreeBSD (Capsicum does not support pledge)");
-    return CAIS_SANDBOX_UNSUPPORTED;
+    return CAIS_SANDBOX_OK;
 }
 
 #endif /* CAIS_IS_FREEBSD || defined(__FreeBSD__) */

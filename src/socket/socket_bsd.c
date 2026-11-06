@@ -634,6 +634,12 @@ static int cais_posix_poll(cais_pollfd_t *fds, size_t nfds, int timeout_ms)
 }
 
 #elif CAIS_IS_WINDOWS
+#if CAIS_IS_WINDOWS_CE
+static int cais_win32_poll(cais_pollfd_t *fds, size_t nfds, int timeout_ms)
+{
+    return cais_poll_via_select(fds, nfds, timeout_ms);
+}
+#else
 /*
  * -----------------------------------------------------------------------------
  * 3. Windows Adaptive WSAPoll / select() Engine
@@ -774,6 +780,7 @@ static int cais_win32_poll(cais_pollfd_t *fds, size_t nfds, int timeout_ms)
     }
     return ready_count;
 }
+#endif /* !CAIS_IS_WINDOWS_CE */
 #endif
 
 int cais_socket_backend_poll(cais_pollfd_t *fds, size_t nfds, int timeout_ms)

@@ -17,8 +17,12 @@ local cais = require("cais")
 -- ============================================================================
 -- cais.sandbox (Kernel Security & Process Confinement Tests)
 -- ============================================================================
--- Tests the kernel sandboxing bindings (Landlock LSM on Linux, pledge/unveil on
--- OpenBSD, Capsicum on FreeBSD).
+-- Tests the declarative kernel sandboxing bindings across:
+-- - Linux: Landlock LSM
+-- - Apple Darwin: Seatbelt
+-- - Windows NT: Process Mitigations
+-- - OpenBSD: pledge & unveil
+-- - FreeBSD: Capsicum
 --
 -- NOTE ON PROCESS ISOLATION:
 -- Sandboxing restrictions are permanent for the calling process and cannot be
@@ -30,44 +34,59 @@ describe("cais.sandbox (Kernel Security & Isolation)", function()
 
     -- 1. Introspection of backend engine and version
     test("exposes backend name and version information", function()
-        -- s.backend() returns: backend_name_string, abi_version_number
-        local backend, version = s.backend()
+        -- s.backend() returns: backend_name_string, abi_version_number, backend_id
+        local backend, version, id = s.backend()
         assert_eq(type(backend), "string")
         assert_true(#backend > 0)
         assert_true(version == nil or type(version) == "number")
+        assert_true(type(id) == "number")
     end)
 
     -- 2. API function presence
     test("provides sandbox API function signatures", function()
         assert_eq(type(s.is_supported), "function")
-        assert_eq(type(s.unveil), "function")
-        assert_eq(type(s.lock), "function")
-        assert_eq(type(s.pledge), "function")
+        assert_eq(type(s.apply), "function")
+        assert_eq(type(s.backend), "table")
     end)
 
     -- 3. Path validation
-    test("unveil on nonexistent path fails visibly without altering sandbox state", function()
-        -- Unveiling a path that does not exist must fail gracefully (returning false, err)
-        local ok, err, code = s.unveil("/nonexistent_sandbox_path_12345", "r")
-        assert_false(ok)
-        assert_true(err ~= nil)
+    test("apply with nonexistent path fails visibly without altering sandbox state", function()
+        local ok, err, code = s.apply({
+            paths = {
+                { path = "/nonexistent_sandbox_path_12345", perm = "r" }
+            }
+        })
+        if s.is_supported() and s.backend() == "landlock" then
+            assert_false(ok)
+            assert_true(err ~= nil)
+            assert_eq(code, s.status.ERROR)
+        end
     end)
 
     -- 4. Enum tables and bitmask constants
-    test("defines sandbox backend, perm and status enum tables", function()
+    test("defines sandbox backend, perm, net and status enum tables", function()
         -- Backend identifiers
         assert_true(s.backend ~= nil)
         assert_eq(s.backend.NONE, 0)
         assert_eq(s.backend.LANDLOCK, 1)
         assert_eq(s.backend.OPENBSD, 2)
         assert_eq(s.backend.CAPSICUM, 3)
+        assert_eq(s.backend.SEATBELT, 4)
+        assert_eq(s.backend.WIN32, 5)
 
-        -- Permission bitmasks for unveil()
+        -- Permission bitmasks
         assert_true(s.perm ~= nil)
         assert_eq(s.perm.NONE, 0)
         assert_eq(s.perm.READ, 1)
         assert_eq(s.perm.WRITE, 2)
         assert_eq(s.perm.EXEC, 4)
+
+        -- Network access levels
+        assert_true(s.net ~= nil)
+        assert_eq(s.net.DEFAULT, 0)
+        assert_eq(s.net.NONE, 1)
+        assert_eq(s.net.LOOPBACK, 2)
+        assert_eq(s.net.ALL, 3)
 
         -- Return status codes
         assert_true(s.status ~= nil)
@@ -82,17 +101,20 @@ describe("cais.sandbox (Kernel Security & Isolation)", function()
     end)
 
     -- 5. Live filesystem confinement in child process
-    test("enforces filesystem isolation in child process after unveil and lock", function()
+    test("enforces filesystem isolation in child process after declarative policy apply", function()
         local backend, ver = s.backend()
         if backend == "landlock" and ver and ver > 0 then
             local lua_bin = os.getenv("LUA_BIN") or "/usr/bin/lua5.5"
-            -- Child process unveils "." (read-only) and locks sandbox:
+            -- Child process applies policy allowing "." (read-only):
             -- 1. Reading "xmake.lua" (inside ".") must succeed.
             -- 2. Reading "/etc/passwd" (outside ".") must be blocked by the kernel.
             local code = [=[
                 local s = require("cais.sandbox")
-                assert(s.unveil(".", "r"))
-                assert(s.lock())
+                assert(s.apply({
+                    paths = {
+                        { path = ".", perm = "r" }
+                    }
+                }))
                 local f1 = io.open("xmake.lua", "r")
                 if not f1 then os.exit(1) end
                 f1:close()
@@ -107,16 +129,16 @@ describe("cais.sandbox (Kernel Security & Isolation)", function()
         end
     end)
 
-    -- 6. Total lockdown without unveil
-    test("lock without unveil in child process restricts entire filesystem", function()
+    -- 6. Total lockdown without paths
+    test("apply without paths in child process restricts entire filesystem", function()
         local backend, ver = s.backend()
         if backend == "landlock" and ver and ver > 0 then
             local lua_bin = os.getenv("LUA_BIN") or "/usr/bin/lua5.5"
-            -- Locking immediately without unveiling grants zero filesystem paths.
+            -- Applying empty policy grants zero filesystem paths.
             -- Any attempt to open a file must be denied by Landlock.
             local code = [=[
                 local s = require("cais.sandbox")
-                assert(s.lock())
+                assert(s.apply())
                 local f = io.open("/etc/passwd", "r")
                 if f then f:close() os.exit(2) end
                 os.exit(0)
@@ -128,31 +150,79 @@ describe("cais.sandbox (Kernel Security & Isolation)", function()
         end
     end)
 
-    -- 7. Unsupported primitive handling
-    test("unsupported sandbox operations fail visibly with explanatory error", function()
-        if cais.platform.is_linux then
-            -- On Linux, pledge() is unsupported (pledge is OpenBSD-specific); must return UNSUPPORTED
-            local ok, err, code = s.pledge("stdio")
+    -- 7. Object-Oriented Policy Builder & Method Chaining
+    test("supports object-oriented policy builder and method chaining", function()
+        assert_eq(type(s.policy), "function")
+        local p = s.policy()
+        assert_eq(type(p), "userdata")
+
+        -- Method chaining returns self
+        local ret = p:allow(".", "r")
+        assert_eq(ret, p)
+        assert_eq(p:allow("/tmp", "rw"), p)
+        assert_eq(p:deny_network(), p)
+        assert_eq(p:set_network("loopback"), p)
+        assert_eq(p:no_child_processes(), p)
+        assert_eq(p:set_child_processes(true), p)
+        assert_eq(p:no_dynamic_code(), p)
+        assert_eq(p:set_dynamic_code(true), p)
+
+        -- tostring inspection
+        local str = tostring(p)
+        assert_true(str:find("cais.sandbox.policy") ~= nil)
+
+        -- Constructor with options table
+        local p2 = s.policy({
+            paths = { { path = ".", perm = "r" } },
+            network = "none"
+        })
+        assert_eq(type(p2), "userdata")
+    end)
+
+    -- 8. Live enforcement via OOP method chaining in child process
+    test("enforces filesystem isolation using OOP policy:apply() in child process", function()
+        local backend, ver = s.backend()
+        if backend == "landlock" and ver and ver > 0 then
+            local lua_bin = os.getenv("LUA_BIN") or "/usr/bin/lua5.5"
+            local code = [=[
+                local s = require("cais.sandbox")
+                local p = s.policy()
+                    :allow(".", "r")
+                    :deny_network()
+                    :no_child_processes()
+                assert(p:apply())
+                local f1 = io.open("xmake.lua", "r")
+                if not f1 then os.exit(1) end
+                f1:close()
+                local f2 = io.open("/etc/passwd", "r")
+                if f2 then f2:close() os.exit(2) end
+                os.exit(0)
+            ]=]
+            local cmd = string.format('LUA_CPATH="./build/lua/?.so;./?.so;;" %s -e %q 2>/dev/null', lua_bin, code)
+            local res = os.execute(cmd)
+            local status = (res == 0 or res == true)
+            assert_true(status)
+        end
+    end)
+
+    -- 9. Polymorphic cais.sandbox.apply(policy_obj)
+    test("cais.sandbox.apply accepts policy userdata polymorphically", function()
+        local p = s.policy():allow("/nonexistent_path_xyz", "r")
+        local ok, err, code = s.apply(p)
+        if s.is_supported() and s.backend() == "landlock" then
+            assert_false(ok)
+            assert_true(err ~= nil)
+            assert_eq(code, s.status.ERROR)
+        end
+    end)
+
+    -- 10. Unsupported platform handling
+    test("unsupported sandbox operations fail visibly on platforms without support", function()
+        if not s.is_supported() then
+            local ok, err, code = s.apply()
             assert_false(ok)
             assert_eq(type(err), "string")
-            assert_true(#err > 0)
             assert_eq(code, s.status.UNSUPPORTED)
-        elseif not s.is_supported() then
-            -- On platforms without sandbox support, all operations must fail with UNSUPPORTED
-            local ok_u, err_u, code_u = s.unveil(".", "r")
-            assert_false(ok_u)
-            assert_eq(type(err_u), "string")
-            assert_eq(code_u, s.status.UNSUPPORTED)
-
-            local ok_p, err_p, code_p = s.pledge("stdio")
-            assert_false(ok_p)
-            assert_eq(type(err_p), "string")
-            assert_eq(code_p, s.status.UNSUPPORTED)
-
-            local ok_l, err_l, code_l = s.lock()
-            assert_false(ok_l)
-            assert_eq(type(err_l), "string")
-            assert_eq(code_l, s.status.UNSUPPORTED)
         end
     end)
 end)

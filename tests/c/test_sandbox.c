@@ -11,8 +11,10 @@
  * ============================================================================
  * Kernel Security Sandbox & Process Confinement Tests
  * ============================================================================
- * Cais provides portable sandboxing using native kernel mechanisms:
- * - Linux: Landlock LSM (Filesystem unveils & rulesets)
+ * Cais provides portable declarative sandboxing using native kernel mechanisms:
+ * - Linux: Landlock LSM
+ * - Apple Darwin (macOS): Seatbelt (sandbox_init)
+ * - Windows NT: Process Mitigation Policies & Token Hardening
  * - OpenBSD: pledge() & unveil()
  * - FreeBSD: Capsicum capability mode
  *
@@ -45,7 +47,7 @@ TEST test_sandbox(void)
     }
 
     /* The backend enum must fall within valid known backend ranges */
-    ASSERT(b >= CAIS_SANDBOX_BACKEND_NONE && b <= CAIS_SANDBOX_BACKEND_CAPSICUM);
+    ASSERT(b >= CAIS_SANDBOX_BACKEND_NONE && b <= CAIS_SANDBOX_BACKEND_WIN32);
 
     PASS();
 }
@@ -61,12 +63,20 @@ TEST test_sandbox_enums(void)
     ASSERT_EQ(1, CAIS_SANDBOX_BACKEND_LANDLOCK);
     ASSERT_EQ(2, CAIS_SANDBOX_BACKEND_OPENBSD);
     ASSERT_EQ(3, CAIS_SANDBOX_BACKEND_CAPSICUM);
+    ASSERT_EQ(4, CAIS_SANDBOX_BACKEND_SEATBELT);
+    ASSERT_EQ(5, CAIS_SANDBOX_BACKEND_WIN32);
 
-    /* Filesystem permission bitmasks for cais_sandbox_unveil() */
+    /* Filesystem permission bitmasks */
     ASSERT_EQ(0, CAIS_SANDBOX_PERM_NONE);
     ASSERT_EQ(1 << 0, CAIS_SANDBOX_PERM_READ);
     ASSERT_EQ(1 << 1, CAIS_SANDBOX_PERM_WRITE);
     ASSERT_EQ(1 << 2, CAIS_SANDBOX_PERM_EXEC);
+
+    /* Network policy levels */
+    ASSERT_EQ(0, CAIS_SANDBOX_NET_DEFAULT);
+    ASSERT_EQ(1, CAIS_SANDBOX_NET_NONE);
+    ASSERT_EQ(2, CAIS_SANDBOX_NET_LOOPBACK);
+    ASSERT_EQ(3, CAIS_SANDBOX_NET_ALL);
 
     /* Status return codes */
     ASSERT_EQ(0, CAIS_SANDBOX_OK);
@@ -77,29 +87,53 @@ TEST test_sandbox_enums(void)
 }
 
 /*
- * Verifies that calling an unsupported sandbox primitive (such as pledge() on
- * Linux where Landlock only handles filesystem unveils) fails cleanly with
- * CAIS_SANDBOX_UNSUPPORTED and provides an explanatory error message.
+ * Verifies the declarative sandbox policy lifecycle and configuration methods.
  */
-TEST test_sandbox_unsupported(void)
+TEST test_sandbox_policy_lifecycle(void)
 {
-    char err_buf[128];
-    cais_sandbox_status_t rc;
+    cais_sandbox_policy_t *policy = cais_sandbox_policy_create();
+    ASSERT(policy != NULL);
 
+    ASSERT_EQ(CAIS_OK, cais_sandbox_policy_allow_path(policy, ".", CAIS_SANDBOX_READ));
+    ASSERT_EQ(CAIS_OK, cais_sandbox_policy_allow_path(policy, "/tmp", CAIS_SANDBOX_READ | CAIS_SANDBOX_WRITE));
+    ASSERT_EQ(CAIS_OK, cais_sandbox_policy_set_network(policy, CAIS_SANDBOX_NET_NONE));
+    ASSERT_EQ(CAIS_OK, cais_sandbox_policy_set_allow_child_processes(policy, CAIS_FALSE));
+    ASSERT_EQ(CAIS_OK, cais_sandbox_policy_set_allow_dynamic_code(policy, CAIS_FALSE));
+
+    /* Null validation */
+    ASSERT_EQ(CAIS_ERROR, cais_sandbox_policy_allow_path(NULL, ".", CAIS_SANDBOX_READ));
+    ASSERT_EQ(CAIS_ERROR, cais_sandbox_policy_allow_path(policy, NULL, CAIS_SANDBOX_READ));
+    ASSERT_EQ(CAIS_ERROR, cais_sandbox_policy_set_network(NULL, CAIS_SANDBOX_NET_NONE));
+
+    cais_sandbox_policy_destroy(policy);
+    PASS();
+}
+
+/*
+ * Verifies that applying a policy with a nonexistent path fails gracefully
+ * on platforms that validate paths (like Linux Landlock).
+ */
+TEST test_sandbox_invalid_path(void)
+{
 #if CAIS_IS_LINUX
-    /* On Linux, Landlock does not support OpenBSD pledge(); must fail visibly with error message */
-    err_buf[0] = '\0';
-    rc = cais_sandbox_pledge("stdio", err_buf, sizeof(err_buf));
-    ASSERT_EQ(CAIS_SANDBOX_UNSUPPORTED, rc);
-    ASSERT(strlen(err_buf) > 0);
-#elif !CAIS_IS_OPENBSD
-    /* On stubs or non-OpenBSD, pledge must fail visibly with CAIS_SANDBOX_UNSUPPORTED */
-    err_buf[0] = '\0';
-    rc = cais_sandbox_pledge("stdio", err_buf, sizeof(err_buf));
-    ASSERT_EQ(CAIS_SANDBOX_UNSUPPORTED, rc);
-    ASSERT(strlen(err_buf) > 0);
-#endif
+    int version = 0;
+    cais_sandbox_backend_t b = cais_sandbox_backend(&version);
 
+    if (b == CAIS_SANDBOX_BACKEND_LANDLOCK && version > 0) {
+        char err_buf[256];
+        cais_sandbox_status_t rc;
+        cais_sandbox_policy_t *p = cais_sandbox_policy_create();
+        ASSERT(p != NULL);
+
+        cais_sandbox_policy_allow_path(p, "/nonexistent_sandbox_path_12345", CAIS_SANDBOX_READ);
+        err_buf[0] = '\0';
+        rc = cais_sandbox_apply(p, err_buf, sizeof(err_buf));
+        cais_sandbox_policy_destroy(p);
+
+        ASSERT_EQ(CAIS_SANDBOX_ERROR, rc);
+        ASSERT(strlen(err_buf) > 0);
+    }
+#endif
     PASS();
 }
 
@@ -108,8 +142,8 @@ TEST test_sandbox_unsupported(void)
  *
  * SCENARIO:
  * 1. Forks a child process.
- * 2. In the child, unveils the current directory "." with READ permission.
- * 3. Enforces the sandbox via cais_sandbox_lock().
+ * 2. In the child, creates a policy allowing "." with READ permission.
+ * 3. Enforces the sandbox via cais_sandbox_apply(policy).
  * 4. Verifies that reading a file inside "." (e.g. "xmake.lua") succeeds.
  * 5. Verifies that opening an external system file (e.g. "/etc/passwd") is
  *    denied by the kernel (Landlock returns EACCES / NULL).
@@ -132,29 +166,28 @@ TEST test_sandbox_fork(void)
             char err_buf[128];
             FILE *f;
             cais_sandbox_status_t rc;
-
-            /* Unveil current working directory for read access */
-            err_buf[0] = '\0';
-            rc = cais_sandbox_unveil(".", CAIS_SANDBOX_PERM_READ, err_buf, sizeof(err_buf));
-            if (rc != CAIS_SANDBOX_OK) {
+            cais_sandbox_policy_t *p = cais_sandbox_policy_create();
+            if (!p) {
                 _exit(1);
             }
 
-            /* Irrevocably lock the sandbox ruleset */
+            cais_sandbox_policy_allow_path(p, ".", CAIS_SANDBOX_PERM_READ);
             err_buf[0] = '\0';
-            rc = cais_sandbox_lock(err_buf, sizeof(err_buf));
+            rc = cais_sandbox_apply(p, err_buf, sizeof(err_buf));
+            cais_sandbox_policy_destroy(p);
+
             if (rc != CAIS_SANDBOX_OK) {
                 _exit(2);
             }
 
-            /* Permitted read: local file in unveiled path must succeed */
+            /* Permitted read: local file in allowed path must succeed */
             f = fopen("xmake.lua", "r");
             if (!f) {
                 _exit(3);
             }
             fclose(f);
 
-            /* Forbidden read: file outside unveiled hierarchy must be blocked by Landlock */
+            /* Forbidden read: file outside allowed hierarchy must be blocked by Landlock */
             f = fopen("/etc/passwd", "r");
             if (f) {
                 fclose(f);
@@ -176,13 +209,12 @@ TEST test_sandbox_fork(void)
 }
 
 /*
- * Tests complete filesystem lockout when locking without any unveils.
+ * Tests complete filesystem lockout when applying NULL policy (default lockdown).
  *
  * SCENARIO:
  * 1. Forks a child process.
- * 2. In the child, immediately invokes cais_sandbox_lock() without any unveils.
- * 3. Under Landlock rules, a locked ruleset with no unveiled paths blocks all
- *    new filesystem openings across the entire system.
+ * 2. In the child, invokes cais_sandbox_apply(NULL).
+ * 3. Under Landlock rules, an empty ruleset blocks all new filesystem openings.
  * 4. Verifies that opening "/etc/passwd" is denied.
  * 5. Parent verifies child exits cleanly with code 0.
  */
@@ -203,9 +235,8 @@ TEST test_sandbox_lock_without_unveil_fork(void)
             FILE *f;
             cais_sandbox_status_t rc;
 
-            /* Lock immediately without granting any path permissions */
             err_buf[0] = '\0';
-            rc = cais_sandbox_lock(err_buf, sizeof(err_buf));
+            rc = cais_sandbox_apply(NULL, err_buf, sizeof(err_buf));
             if (rc != CAIS_SANDBOX_OK) {
                 _exit(1);
             }
@@ -235,7 +266,8 @@ SUITE(sandbox_suite)
 {
     RUN_TEST(test_sandbox);
     RUN_TEST(test_sandbox_enums);
-    RUN_TEST(test_sandbox_unsupported);
+    RUN_TEST(test_sandbox_policy_lifecycle);
+    RUN_TEST(test_sandbox_invalid_path);
     RUN_TEST(test_sandbox_fork);
     RUN_TEST(test_sandbox_lock_without_unveil_fork);
 }

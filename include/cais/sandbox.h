@@ -15,17 +15,23 @@
 #include <stddef.h>
 
 /*
- * Sandbox backend identifiers.
+ * =============================================================================
+ * Sandbox Backend Identifiers
+ * =============================================================================
  */
 typedef enum {
     CAIS_SANDBOX_BACKEND_NONE     = 0,
-    CAIS_SANDBOX_BACKEND_LANDLOCK = 1,
-    CAIS_SANDBOX_BACKEND_OPENBSD  = 2,
-    CAIS_SANDBOX_BACKEND_CAPSICUM = 3
+    CAIS_SANDBOX_BACKEND_LANDLOCK = 1, /* Linux Landlock LSM */
+    CAIS_SANDBOX_BACKEND_OPENBSD  = 2, /* OpenBSD pledge & unveil */
+    CAIS_SANDBOX_BACKEND_CAPSICUM = 3, /* FreeBSD Capsicum capability mode */
+    CAIS_SANDBOX_BACKEND_SEATBELT = 4, /* Apple Darwin / macOS Seatbelt (sandbox_init) */
+    CAIS_SANDBOX_BACKEND_WIN32    = 5  /* Windows NT Process Mitigations & Token Lockdown */
 } cais_sandbox_backend_t;
 
 /*
- * Sandbox filesystem unveil access permissions.
+ * =============================================================================
+ * Filesystem Permission Flags for Allowed Paths
+ * =============================================================================
  */
 typedef enum {
     CAIS_SANDBOX_PERM_NONE  = 0,
@@ -38,22 +44,43 @@ typedef enum {
 #define CAIS_SANDBOX_WRITE CAIS_SANDBOX_PERM_WRITE
 #define CAIS_SANDBOX_EXEC  CAIS_SANDBOX_PERM_EXEC
 
+/*
+ * =============================================================================
+ * Network Access Policy Level
+ * =============================================================================
+ */
+typedef enum {
+    CAIS_SANDBOX_NET_DEFAULT  = 0, /* Unmodified / allow network */
+    CAIS_SANDBOX_NET_NONE     = 1, /* Completely deny socket & network operations */
+    CAIS_SANDBOX_NET_LOOPBACK = 2, /* Allow only local loopback communication */
+    CAIS_SANDBOX_NET_ALL      = 3  /* Explicitly allow all network access */
+} cais_sandbox_net_t;
+
+/*
+ * Opaque declaration of the declarative sandbox policy handle.
+ */
+typedef struct cais_sandbox_policy cais_sandbox_policy_t;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /*
- * Returns the active sandboxing backend type enum:
- * CAIS_SANDBOX_BACKEND_NONE, CAIS_SANDBOX_BACKEND_LANDLOCK,
- * CAIS_SANDBOX_BACKEND_OPENBSD, or CAIS_SANDBOX_BACKEND_CAPSICUM.
- * If version_out is non-NULL, stores ABI version or 0.
+ * =============================================================================
+ * Introspection & Platform Capability
+ * =============================================================================
+ */
+
+/**
+ * @brief Returns the active sandboxing backend type enum.
+ * @param version_out Optional pointer to store backend ABI or OS version.
  */
 cais_sandbox_backend_t cais_sandbox_backend(int *version_out);
 
-/*
- * Returns the name of the active sandboxing backend:
- * "landlock", "openbsd", "capsicum", or "none".
- * If version_out is non-NULL, stores ABI version or 0.
+/**
+ * @brief Returns the descriptive name of the active sandboxing backend:
+ *        "landlock", "seatbelt", "win32", "openbsd", "capsicum", or "none".
+ * @param version_out Optional pointer to store backend ABI or OS version.
  */
 const char *cais_sandbox_backend_name(int *version_out);
 
@@ -64,38 +91,76 @@ const char *cais_sandbox_backend_name(int *version_out);
 cais_bool_t cais_sandbox_is_supported(void);
 
 /*
- * Unveils a filesystem path with given permissions (read/write/exec).
- *
- * NOTE: Sandboxing operations are process-global.
- * Under Linux (Landlock), calls to unveil() accumulate path rules into a
- * process-wide ruleset until cais_sandbox_lock() is called to enforce them.
- * Under FreeBSD (Capsicum), path-based unveil is not supported and returns
- * CAIS_SANDBOX_UNSUPPORTED.
- *
- * Returns CAIS_SANDBOX_OK on success,
- * CAIS_SANDBOX_UNSUPPORTED if sandboxing is not supported on this platform,
- * or CAIS_SANDBOX_ERROR on failure (writing error details to err_buf if non-NULL).
+ * =============================================================================
+ * Declarative Policy Lifecycle & Configuration
+ * =============================================================================
  */
-cais_sandbox_status_t cais_sandbox_unveil(const char *path, int permissions, char *err_buf, size_t err_cap);
+
+/**
+ * @brief Allocates and initializes a new empty declarative sandbox policy.
+ * @return Pointer to new policy handle, or NULL on memory allocation failure.
+ */
+cais_sandbox_policy_t *cais_sandbox_policy_create(void);
+
+/**
+ * @brief Releases all resources associated with a sandbox policy handle.
+ * @param policy Policy handle to destroy (safe to pass NULL).
+ */
+void cais_sandbox_policy_destroy(cais_sandbox_policy_t *policy);
+
+/**
+ * @brief Adds a filesystem path rule to the policy.
+ * @param policy Active policy handle.
+ * @param path Filesystem path (directory or file) to allow.
+ * @param perms Bitmask combination of CAIS_SANDBOX_PERM_READ, WRITE, EXEC.
+ * @return CAIS_OK on success, or CAIS_ERROR on invalid argument/allocation failure.
+ */
+cais_status_t cais_sandbox_policy_allow_path(cais_sandbox_policy_t *policy, const char *path, int perms);
+
+/**
+ * @brief Configures network access policy.
+ * @param policy Active policy handle.
+ * @param net Network access level (CAIS_SANDBOX_NET_DEFAULT, NONE, LOOPBACK, ALL).
+ * @return CAIS_OK on success.
+ */
+cais_status_t cais_sandbox_policy_set_network(cais_sandbox_policy_t *policy, cais_sandbox_net_t net);
+
+/**
+ * @brief Configures whether creating child processes (fork/exec/CreateProcess) is allowed.
+ * @param policy Active policy handle.
+ * @param allow CAIS_TRUE to allow child processes, CAIS_FALSE to prohibit.
+ * @return CAIS_OK on success.
+ */
+cais_status_t cais_sandbox_policy_set_allow_child_processes(cais_sandbox_policy_t *policy, cais_bool_t allow);
+
+/**
+ * @brief Configures whether dynamic code generation (W^X / RWX executable memory) is allowed.
+ * @param policy Active policy handle.
+ * @param allow CAIS_TRUE to allow, CAIS_FALSE to prohibit (W^X memory hardening).
+ * @return CAIS_OK on success.
+ */
+cais_status_t cais_sandbox_policy_set_allow_dynamic_code(cais_sandbox_policy_t *policy, cais_bool_t allow);
 
 /*
- * Locks the sandbox, enforcing the restrictions on the current process.
- * If called without prior unveil(), enforces an empty ruleset that prevents
- * opening any newly restricted filesystem paths.
- * Returns CAIS_SANDBOX_OK on success,
- * CAIS_SANDBOX_UNSUPPORTED if sandboxing is not supported on this platform,
- * or CAIS_SANDBOX_ERROR on failure (writing error details to err_buf if non-NULL).
+ * =============================================================================
+ * Enforcement
+ * =============================================================================
  */
-cais_sandbox_status_t cais_sandbox_lock(char *err_buf, size_t err_cap);
 
-/*
- * Pledges a set of system call promises (e.g. "stdio rpath wpath").
- * On platforms supporting pledge (OpenBSD), enforces the promises.
- * On unsupported platforms, returns CAIS_SANDBOX_UNSUPPORTED (-4) and populates
- * err_buf if provided.
- * Returns CAIS_SANDBOX_OK on success, or CAIS_SANDBOX_ERROR on failure.
+/**
+ * @brief Irrevocably enforces the sandbox policy on the current process and descendants.
+ *
+ * If policy is NULL, enforces a strict default lockdown (no filesystem access,
+ * dropping privileges where supported by the operating system).
+ *
+ * @param policy The policy configuration to enforce (or NULL for complete lockdown).
+ * @param err_buf Buffer to receive human-readable error description on failure.
+ * @param err_cap Capacity of err_buf in bytes.
+ * @return CAIS_SANDBOX_OK on success,
+ *         CAIS_SANDBOX_UNSUPPORTED if sandboxing is not supported on this platform,
+ *         or CAIS_SANDBOX_ERROR on failure.
  */
-cais_sandbox_status_t cais_sandbox_pledge(const char *promises, char *err_buf, size_t err_cap);
+cais_sandbox_status_t cais_sandbox_apply(const cais_sandbox_policy_t *policy, char *err_buf, size_t err_cap);
 
 #ifdef __cplusplus
 }
