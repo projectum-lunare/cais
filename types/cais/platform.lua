@@ -1,0 +1,124 @@
+---@meta cais.platform
+
+---
+---# cais.platform
+---
+---Compile-time and runtime target platform, CPU architecture, word size,
+---and operating system introspection.
+---
+
+---Canonical target operating system identifier string.
+---@alias cais.platform.os
+---| '"linux"'        # Linux kernel
+---| '"darwin"'       # Apple macOS / Darwin
+---| '"windows"'      # Microsoft Windows NT / Win32 / Win64
+---| '"wince"'        # Windows CE / Pocket PC
+---| '"freebsd"'      # FreeBSD
+---| '"openbsd"'      # OpenBSD
+---| '"netbsd"'       # NetBSD
+---| '"dos"'          # MS-DOS / PC-DOS / FreeDOS
+---| '"amiga"'        # Classic Commodore AmigaOS (m68k)
+---| '"amigaos4"'     # PowerPC AmigaOS 4
+---| '"aros"'         # AROS Research Operating System
+---| '"atarist"'      # Atari ST (TOS / FreeMiNT)
+---| '"kolibri"'      # KolibriOS
+---| '"haiku"'        # Haiku OS
+---| '"beos"'         # BeOS
+---| '"plan9"'        # Plan 9 from Bell Labs
+---| '"os2"'          # IBM OS/2 or ArcaOS
+---| '"mac68k"'       # Classic Macintosh System / Mac OS (m68k)
+---| '"x68k"'         # Sharp X68000 (Human68k)
+---| '"solaris"'      # Sun Solaris / Illumos
+---| '"minix"'        # Minix 3
+---| '"unix"'         # Generic UNIX
+---| '"wasi"'         # WebAssembly System Interface
+---| '"unknown"'      # Unrecognized host OS
+
+---Canonical CPU architecture identifier string.
+---@alias cais.platform.arch
+---| '"x86_64"'       # AMD64 / Intel 64-bit x86
+---| '"x86"'          # Intel IA-32 (i386, i486, i586, i686)
+---| '"arm64"'        # AArch64 / ARMv8+ 64-bit
+---| '"arm"'          # ARM 32-bit (ARMv4T through ARMv7)
+---| '"m68k"'         # Motorola 68000 family
+---| '"ppc"'          # PowerPC 32-bit
+---| '"mips"'         # MIPS (I, II, III, IV, 32, 64)
+---| '"alpha"'        # DEC Alpha
+---| '"ia64"'         # Intel Itanium 64-bit
+---| '"sh"'           # Hitachi / Renesas SuperH
+---| '"riscv64"'      # RISC-V 64-bit
+---| '"wasm32"'       # WebAssembly 32-bit
+---| '"unknown"'      # Unrecognized CPU architecture
+
+---Canonical memory byte ordering.
+---@alias cais.platform.endian
+---| '"little"'       # Little-Endian (LSB first: x86, ARM little, etc.)
+---| '"big"'          # Big-Endian (MSB first: m68k, SPARC, PPC, etc.)
+---| '"unknown"'      # Unknown endianness
+
+---@class cais.platform
+---Target operating system identifier string.
+---@field os cais.platform.os
+---Target CPU architecture identifier string.
+---@field arch cais.platform.arch
+---Target machine bitness width in bits (16, 32, or 64).
+---@field bits 16|32|64
+---Endianness format string ("little" or "big").
+---@field endian cais.platform.endian
+---True if host target uses 64-bit pointers and addresses.
+---@field is_64bit boolean
+---True if host target uses 32-bit pointers and addresses.
+---@field is_32bit boolean
+---True if host target uses 16-bit segmented or flat pointers.
+---@field is_16bit boolean
+---True if target byte-ordering is Little-Endian (LSB first).
+---@field is_little_endian boolean
+---True if target byte-ordering is Big-Endian (MSB first).
+---@field is_big_endian boolean
+---True if host kernel provides a POSIX-compatible environment.
+---@field is_posix boolean
+---True if host target is Microsoft Windows (NT, 9x, or CE).
+---@field is_windows boolean
+---True if host target is modern Windows NT / Win32 / Win64.
+---@field is_windows_nt boolean
+---True if host target is Windows CE / Windows Mobile.
+---@field is_windows_ce boolean
+---True if host target belongs to the Amiga family (AmigaOS, AROS, MorphOS).
+---@field is_amiga boolean
+---True if host target is classic Commodore AmigaOS (1.x - 3.x, m68k).
+---@field is_amiga_classic boolean
+---True if host target is AROS Research Operating System.
+---@field is_aros boolean
+---True if host target is AmigaOS 4 (PowerPC).
+---@field is_amigaos4 boolean
+---True if host kernel is Linux.
+---@field is_linux boolean
+---True if host kernel is Apple macOS / Darwin.
+---@field is_darwin boolean
+---True if host target belongs to the BSD family (FreeBSD, OpenBSD, NetBSD, DragonFly).
+---@field is_bsd boolean
+---True if host operating system is Haiku.
+---@field is_haiku boolean
+---True if host operating system is BeOS.
+---@field is_beos boolean
+---True if host operating system is Plan 9 from Bell Labs.
+---@field is_plan9 boolean
+---True if host operating system is KolibriOS (MenuetOS fork).
+---@field is_kolibri boolean
+---True if host operating system is MS-DOS, PC-DOS, or FreeDOS.
+---@field is_dos boolean
+---True if host target is Atari ST (TOS, FreeMiNT).
+---@field is_atarist boolean
+---True if host operating system is IBM OS/2 or ArcaOS.
+---@field is_os2 boolean
+---True if host operating system is Minix 3.
+---@field is_minix boolean
+---True if host target is Classic Macintosh System / Mac OS (m68k).
+---@field is_mac68k boolean
+---True if host target is Sharp X68000 (Human68k).
+---@field is_x68k boolean
+---True if host target is WebAssembly System Interface (WASI).
+---@field is_wasi boolean
+local platform = {}
+
+return platform

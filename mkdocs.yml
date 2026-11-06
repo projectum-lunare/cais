@@ -52,7 +52,7 @@ plugins:
         cais:
           src-dirs: include/cais
           full-doc: True
-          api-path: api
+          api-path: c-api
           template-dir: docs/templates/doxy
           doxy-cfg:
             FILE_PATTERNS: "*.h"
@@ -69,6 +69,7 @@ markdown_extensions:
   - attr_list
   - def_list
   - tables
+  - md_in_html
   - toc:
       permalink: true
   - pymdownx.highlight:
@@ -116,20 +117,29 @@ nav:
       - Defense-in-Depth CLI Sandbox: recipes/hardened-cli.md
       - Centronics Impact Printing: recipes/parallel-strobe.md
   - C API Reference:
-      - Overview: api/index.md
-      - Headers: api/files.md
-      - Data Structures: api/classes.md
-      - Functions: api/functions.md
-      - Macros: api/macros.md
+      - Overview: c-api/index.md
+      - Headers: c-api/files.md
+      - Data Structures: c-api/classes.md
+      - Functions: c-api/functions.md
+      - Macros: c-api/macros.md
       - Subsystems:
-          - cais.h: api/cais_8h.md
-          - types.h: api/types_8h.md
-          - socket.h: api/socket_8h.md
-          - serial.h: api/serial_8h.md
-          - parallel.h: api/parallel_8h.md
-          - filesystem.h: api/filesystem_8h.md
-          - sandbox.h: api/sandbox_8h.md
-          - platform.h: api/platform_8h.md
+          - cais.h: c-api/cais_8h.md
+          - types.h: c-api/types_8h.md
+          - socket.h: c-api/socket_8h.md
+          - serial.h: c-api/serial_8h.md
+          - parallel.h: c-api/parallel_8h.md
+          - filesystem.h: c-api/filesystem_8h.md
+          - sandbox.h: c-api/sandbox_8h.md
+          - platform.h: c-api/platform_8h.md
+  - Lua API Reference:
+      - Overview: lua-api/index.md
+      - cais (Umbrella): lua-api/cais.md
+      - cais.platform: lua-api/platform.md
+      - cais.filesystem: lua-api/filesystem.md
+      - cais.socket: lua-api/socket.md
+      - cais.serial: lua-api/serial.md
+      - cais.parallel: lua-api/parallel.md
+      - cais.sandbox: lua-api/sandbox.md
   - Platforms:
       - Overview & Support Matrix: platforms/index.md
       - Linux: platforms/linux.md
