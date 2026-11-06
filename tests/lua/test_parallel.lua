@@ -80,6 +80,20 @@ describe("cais.parallel (Physical Parallel IEEE 1284 Driver Signatures)", functi
         assert_nil(port)
         assert_eq(type(err), "string")
     end)
+
+    -- 5. Pin status predicate aliases
+    test("exposes status and pin predicate methods is_busy, is_ack, is_pe, is_online, is_fault", function()
+        local mt = debug.getregistry()["cais.parallel.port"]
+        assert_eq(type(mt.status), "function")
+        assert_eq(type(mt.get_status), "function")
+        assert_eq(type(mt.is_busy), "function")
+        assert_eq(type(mt.is_ack), "function")
+        assert_eq(type(mt.is_pe), "function")
+        assert_eq(type(mt.is_paper_out), "function")
+        assert_eq(type(mt.is_online), "function")
+        assert_eq(type(mt.is_slct), "function")
+        assert_eq(type(mt.is_fault), "function")
+    end)
 end)
 
 if arg and arg[0] and arg[0]:match("test_.*%.lua$") then

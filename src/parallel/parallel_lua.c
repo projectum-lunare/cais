@@ -120,6 +120,71 @@ static int lcais_parallel_status(lua_State *L)
     return 1;
 }
 
+static int lcais_parallel_is_busy(lua_State *L)
+{
+    lcais_parallel_t *p = (lcais_parallel_t *)luaL_checkudata(L, 1, PARALLEL_PORT_MT);
+    int pins = 0;
+    if (p->handle == NULL) return luaL_error(L, "attempt to query status of closed parallel port");
+    if (cais_parallel_get_status(p->handle, &pins) != CAIS_PARALLEL_OK) {
+        lua_pushnil(L);
+        return 1;
+    }
+    lua_pushboolean(L, (pins & CAIS_PARALLEL_PIN_BUSY) != 0);
+    return 1;
+}
+
+static int lcais_parallel_is_ack(lua_State *L)
+{
+    lcais_parallel_t *p = (lcais_parallel_t *)luaL_checkudata(L, 1, PARALLEL_PORT_MT);
+    int pins = 0;
+    if (p->handle == NULL) return luaL_error(L, "attempt to query status of closed parallel port");
+    if (cais_parallel_get_status(p->handle, &pins) != CAIS_PARALLEL_OK) {
+        lua_pushnil(L);
+        return 1;
+    }
+    lua_pushboolean(L, (pins & CAIS_PARALLEL_PIN_ACK) != 0);
+    return 1;
+}
+
+static int lcais_parallel_is_pe(lua_State *L)
+{
+    lcais_parallel_t *p = (lcais_parallel_t *)luaL_checkudata(L, 1, PARALLEL_PORT_MT);
+    int pins = 0;
+    if (p->handle == NULL) return luaL_error(L, "attempt to query status of closed parallel port");
+    if (cais_parallel_get_status(p->handle, &pins) != CAIS_PARALLEL_OK) {
+        lua_pushnil(L);
+        return 1;
+    }
+    lua_pushboolean(L, (pins & CAIS_PARALLEL_PIN_PE) != 0);
+    return 1;
+}
+
+static int lcais_parallel_is_online(lua_State *L)
+{
+    lcais_parallel_t *p = (lcais_parallel_t *)luaL_checkudata(L, 1, PARALLEL_PORT_MT);
+    int pins = 0;
+    if (p->handle == NULL) return luaL_error(L, "attempt to query status of closed parallel port");
+    if (cais_parallel_get_status(p->handle, &pins) != CAIS_PARALLEL_OK) {
+        lua_pushnil(L);
+        return 1;
+    }
+    lua_pushboolean(L, (pins & CAIS_PARALLEL_PIN_SLCT) != 0);
+    return 1;
+}
+
+static int lcais_parallel_is_fault(lua_State *L)
+{
+    lcais_parallel_t *p = (lcais_parallel_t *)luaL_checkudata(L, 1, PARALLEL_PORT_MT);
+    int pins = 0;
+    if (p->handle == NULL) return luaL_error(L, "attempt to query status of closed parallel port");
+    if (cais_parallel_get_status(p->handle, &pins) != CAIS_PARALLEL_OK) {
+        lua_pushnil(L);
+        return 1;
+    }
+    lua_pushboolean(L, (pins & CAIS_PARALLEL_PIN_FAULT) != 0);
+    return 1;
+}
+
 static int lcais_parallel_set_mode(lua_State *L)
 {
     lcais_parallel_t *p = (lcais_parallel_t *)luaL_checkudata(L, 1, PARALLEL_PORT_MT);
@@ -195,16 +260,24 @@ static int lcais_parallel_open(lua_State *L)
 }
 
 static const luaL_Reg port_methods[] = {
-    {"write",    lcais_parallel_write   },
-    {"read",     lcais_parallel_read    },
-    {"status",   lcais_parallel_status  },
-    {"set_mode", lcais_parallel_set_mode},
-    {"drain",    lcais_parallel_drain   },
-    {"flush",    lcais_parallel_drain   },
-    {"close",    lcais_parallel_close   },
-    {"__close",  lcais_parallel_close   },
-    {"__gc",     lcais_parallel_close   },
-    {NULL,       NULL                   }
+    {"write",         lcais_parallel_write       },
+    {"read",          lcais_parallel_read        },
+    {"status",        lcais_parallel_status      },
+    {"get_status",    lcais_parallel_status      },
+    {"is_busy",       lcais_parallel_is_busy     },
+    {"is_ack",        lcais_parallel_is_ack      },
+    {"is_pe",         lcais_parallel_is_pe       },
+    {"is_paper_out",  lcais_parallel_is_pe       },
+    {"is_online",     lcais_parallel_is_online   },
+    {"is_slct",       lcais_parallel_is_online   },
+    {"is_fault",      lcais_parallel_is_fault    },
+    {"set_mode",      lcais_parallel_set_mode    },
+    {"drain",         lcais_parallel_drain       },
+    {"flush",         lcais_parallel_drain       },
+    {"close",         lcais_parallel_close       },
+    {"__close",       lcais_parallel_close       },
+    {"__gc",          lcais_parallel_close       },
+    {NULL,            NULL                       }
 };
 
 static const luaL_Reg parallel_funcs[] = {
