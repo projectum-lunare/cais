@@ -111,6 +111,14 @@ int main(void)
     SMOKE_ASSERT(s_str != NULL && strlen(s_str) > 0, "cais_sandbox_backend_name is empty");
     printf("[OK] Sandbox: backend '%s' (abi=%d) verified\n", s_str, version);
 
+#ifndef CAIS_NO_TLS
+    /* 7. TLS Secure Transport Behavior */
+    SMOKE_ASSERT(cais_tls_is_supported() == 1, "cais_tls_is_supported must be 1");
+    s_str = cais_tls_backend_name();
+    SMOKE_ASSERT(s_str != NULL && strlen(s_str) > 0, "cais_tls_backend_name is empty");
+    printf("[OK] TLS: backend '%s' verified\n", s_str);
+#endif
+
     printf("=== All smoke tests passed successfully ===\n");
     return 0;
 }

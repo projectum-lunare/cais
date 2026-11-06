@@ -46,6 +46,9 @@ SUITE_EXTERN(socket_suite);
 #ifndef CAIS_NO_NOISE
 SUITE_EXTERN(noise_suite);
 #endif
+#ifndef CAIS_NO_TLS
+SUITE_EXTERN(tls_suite);
+#endif
 
 /* Greatest framework global definition macro (must appear only once across the binary) */
 GREATEST_MAIN_DEFS();
@@ -76,6 +79,9 @@ int main(int argc, char **argv)
 #endif
 #ifndef CAIS_NO_NOISE
     RUN_SUITE(noise_suite);
+#endif
+#ifndef CAIS_NO_TLS
+    RUN_SUITE(tls_suite);
 #endif
 
     /* Print test summary (total tests, passed, failed, skipped, assertions) and exit */

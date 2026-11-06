@@ -125,6 +125,15 @@ describe("cais standalone submodules (Independent C Module Loading)", function()
             assert_eq(ns.pattern.XX, 0)
         end)
     end
+
+    -- 8. Independent cais.tls loading
+    if cais.tls then
+        test("loads cais.tls independently", function()
+            local tls = require("cais.tls")
+            assert_eq(type(tls.is_supported), "function")
+            assert_eq(type(tls.backend), "function")
+        end)
+    end
 end)
 
 if arg and arg[0] and arg[0]:match("test_.*%.lua$") then
