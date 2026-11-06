@@ -88,6 +88,7 @@ Initializes a new Noise session state machine.
   * `role` (string or integer, default: `"initiator"`): `"initiator"` or `"responder"`.
   * `private_key` (string, optional): 32-byte binary static private key (required for `XX`, `IK`, or `NK` responder).
   * `remote_key` (string, optional): 32-byte pre-known remote public key (required for `NK` initiator or `IK` initiator).
+  * `ephemeral_key` (string, optional): 32-byte binary ephemeral private key (used for deterministic testing and test vector verification).
   * `prologue` (string, optional): Contextual application bytes to bind cryptographically to the handshake transcript.
 * **Returns:** `Session` userdata or `nil, err_msg`.
 
@@ -119,6 +120,14 @@ Returns `true` if the handshake has finished successfully and the session is in 
 ### `session:remote_static()`
 
 Returns the 32-byte binary remote static public key if established and authenticated, or `nil`.
+
+---
+
+### `session:handshake_hash()`
+
+Returns the current 32-byte binary handshake hash (`h`). This hash reflects the complete cryptographic transcript of the session up to the current point (including protocol name, prologue, keys exchanged, and message payloads). It can be used for test vector verification, post-handshake channel binding, or authentication tokens.
+
+* **Returns:** `string` (32-byte binary hash) or `nil, err_msg`.
 
 ---
 

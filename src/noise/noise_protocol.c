@@ -304,9 +304,8 @@ cais_status_t cais_noise_start(cais_noise_t *noise,
 
     cais_noise_sym_init(&noise->sym, pname);
 
-    if (noise->prologue_len > 0) {
-        cais_noise_sym_mix_hash(&noise->sym, noise->prologue, noise->prologue_len);
-    }
+    /* Section 5.3: MixHash(prologue) is always executed, even if prologue is empty */
+    cais_noise_sym_mix_hash(&noise->sym, noise->prologue, noise->prologue_len);
 
     /* Pre-messages for NK and IK (<- s) */
     if (noise->pattern == CAIS_NOISE_NK || noise->pattern == CAIS_NOISE_IK) {

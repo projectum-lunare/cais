@@ -264,238 +264,146 @@ describe("cais.noise (Noise-Based Cryptographic Transport)", function()
         server:close()
     end)
 
-    -- 7. Official Cacophony Test Vectors (Snow / Noise Protocol Framework Rev 34)
     local function from_hex(hex)
         return (hex:gsub("..", function(cc)
             return string.char(tonumber(cc, 16))
         end))
     end
 
-    test("matches official Cacophony test vector: Noise_NN_25519_ChaChaPoly_BLAKE2s", function()
-        local client = n.create({
-            pattern = "NN",
-            role = "initiator",
-            ephemeral_key = from_hex("893e28b9dc6ca8d611ab664754b8ceb7bac5117349a4439a6b0569da977c464a"),
-            prologue = from_hex("4a6f686e2047616c74")
-        })
-        local server = n.create({
-            pattern = "NN",
-            role = "responder",
-            ephemeral_key = from_hex("bbdb4cdbd309f1a1f2e1456967fe288cadd6f712d65dc7b7793d5e63da6b375b"),
-            prologue = from_hex("4a6f686e2047616c74")
-        })
-
-        -- Msg 0 (init -> resp)
-        local m0 = client:write_message(from_hex("4c756477696720766f6e204d69736573"))
-        assert_eq(m0, from_hex("ca35def5ae56cec33dc2036731ab14896bc4c75dbb07a61f879f8e3afa4c79444c756477696720766f6e204d69736573"))
-        local p0 = server:read_message(m0)
-        assert_eq(p0, from_hex("4c756477696720766f6e204d69736573"))
-
-        -- Msg 1 (resp -> init)
-        local m1 = server:write_message(from_hex("4d757272617920526f746862617264"))
-        assert_eq(m1, from_hex("95ebc60d2b1fa672c1f46a8aa265ef51bfe38e7ccb39ec5be34069f144808843ff34a6759d06e7733c83aeb5556c15bc762b664b3ba0556b1e7eaea4168bb6"))
-        local p1 = client:read_message(m1)
-        assert_eq(p1, from_hex("4d757272617920526f746862617264"))
-
-        assert_true(client:is_complete())
-        assert_true(server:is_complete())
-
-        local expected_h = from_hex("a621e3943a29c1d984b43727697fbec096107d0b569031ac7e0f1131de19f4f4")
+    -- 7. Empty prologue handling (Noise Rev 34 Section 5.3)
+    test("executes MixHash on empty prologue conforming to Noise Section 5.3", function()
+        local client = n.create({ pattern = "NN", role = "initiator" })
+        local expected_h = from_hex("00b6f1c6799546c330d32d638953a16e33dfc15b22450efb33d28cab6b041599")
         assert_eq(client:handshake_hash(), expected_h)
-        assert_eq(server:handshake_hash(), expected_h)
+        client:close()
+    end)
 
-        -- Msg 2 (init -> resp, transport)
-        local c2 = client:encrypt(from_hex("462e20412e20486179656b"))
-        assert_eq(c2, from_hex("79285da88da3535f52b07b70006c85706de7ddb1fd3dddac995b7e"))
-        local p2 = server:decrypt(c2)
-        assert_eq(p2, from_hex("462e20412e20486179656b"))
+    -- 8. Official Cacophony Test Vectors (Snow / Noise Protocol Framework Rev 34)
+    local cjson = require("cjson")
+    local cacophony_cache = nil
 
-        -- Msg 3 (resp -> init, transport)
-        local c3 = server:encrypt(from_hex("4361726c204d656e676572"))
-        assert_eq(c3, from_hex("ffdad3a7f0db4c39077f223659c5c1d107666405566ecdf4ab53bf"))
-        local p3 = client:decrypt(c3)
-        assert_eq(p3, from_hex("4361726c204d656e676572"))
+    local function get_cacophony_vector(target_protocol)
+        if not cacophony_cache then
+            local f = io.open("tests/vectors/cacophony.json", "rb")
+            if not f then
+                error("Could not open tests/vectors/cacophony.json")
+            end
+            local content = f:read("*a")
+            f:close()
+            cacophony_cache = cjson.decode(content)
+        end
+        for _, vec in ipairs(cacophony_cache.vectors) do
+            if vec.protocol_name == target_protocol then
+                return vec
+            end
+        end
+        return nil
+    end
 
-        -- Msg 4 (init -> resp, transport)
-        local c4 = client:encrypt(from_hex("4a65616e2d426170746973746520536179"))
-        assert_eq(c4, from_hex("2b9801f5084b9a7e9df57382fb4af099a63cd8ff97bc3284c4c5f28994be58ae46"))
-        local p4 = server:decrypt(c4)
-        assert_eq(p4, from_hex("4a65616e2d426170746973746520536179"))
+    local function run_cacophony_vector(vec)
+        local pattern_str = vec.protocol_name:match("^Noise_([A-Z]+)_")
 
-        -- Msg 5 (resp -> init, transport)
-        local c5 = server:encrypt(from_hex("457567656e2042f6686d20766f6e2042617765726b"))
-        assert_eq(c5, from_hex("6c94a97c5de175c870fb9e8d5c50c59d20752b0695baf24e151011ee46a184a65b444e9d97"))
-        local p5 = client:decrypt(c5)
-        assert_eq(p5, from_hex("457567656e2042f6686d20766f6e2042617765726b"))
+        local client_opts = {
+            pattern = pattern_str,
+            role = "initiator"
+        }
+        local server_opts = {
+            pattern = pattern_str,
+            role = "responder"
+        }
+
+        if vec.init_static then client_opts.private_key = from_hex(vec.init_static) end
+        if vec.resp_static then server_opts.private_key = from_hex(vec.resp_static) end
+        if vec.init_remote_static then client_opts.remote_key = from_hex(vec.init_remote_static) end
+        if vec.resp_remote_static then server_opts.remote_key = from_hex(vec.resp_remote_static) end
+        if vec.init_ephemeral then client_opts.ephemeral_key = from_hex(vec.init_ephemeral) end
+        if vec.resp_ephemeral then server_opts.ephemeral_key = from_hex(vec.resp_ephemeral) end
+        if vec.init_prologue then client_opts.prologue = from_hex(vec.init_prologue) end
+        if vec.resp_prologue then server_opts.prologue = from_hex(vec.resp_prologue) end
+
+        local client = n.create(client_opts)
+        local server = n.create(server_opts)
+
+        local transport_sender = 0
+        local handshake_verified = false
+
+        for _, msg in ipairs(vec.messages) do
+            local exp_pld = from_hex(msg.payload)
+            local exp_cip = from_hex(msg.ciphertext)
+
+            if not client:is_complete() then
+                if client:action() == "write_msg" then
+                    -- Initiator -> Responder
+                    local actual_cip = client:write_message(exp_pld)
+                    assert_eq(actual_cip, exp_cip)
+                    local actual_pld = server:read_message(actual_cip)
+                    assert_eq(actual_pld, exp_pld)
+                    transport_sender = 1
+                else
+                    -- Responder -> Initiator
+                    local actual_cip = server:write_message(exp_pld)
+                    assert_eq(actual_cip, exp_cip)
+                    local actual_pld = client:read_message(actual_cip)
+                    assert_eq(actual_pld, exp_pld)
+                    transport_sender = 0
+                end
+
+                if client:is_complete() and not handshake_verified then
+                    assert_true(server:is_complete())
+                    if vec.handshake_hash then
+                        local exp_h = from_hex(vec.handshake_hash)
+                        assert_eq(client:handshake_hash(), exp_h)
+                        assert_eq(server:handshake_hash(), exp_h)
+                    end
+                    handshake_verified = true
+                end
+            else
+                -- Transport phase
+                if transport_sender == 0 then
+                    -- Initiator -> Responder
+                    local actual_cip = client:encrypt(exp_pld)
+                    assert_eq(actual_cip, exp_cip)
+                    local actual_pld = server:decrypt(actual_cip)
+                    assert_eq(actual_pld, exp_pld)
+                    transport_sender = 1
+                else
+                    -- Responder -> Initiator
+                    local actual_cip = server:encrypt(exp_pld)
+                    assert_eq(actual_cip, exp_cip)
+                    local actual_pld = client:decrypt(actual_cip)
+                    assert_eq(actual_pld, exp_pld)
+                    transport_sender = 0
+                end
+            end
+        end
 
         client:close()
         server:close()
+        return true
+    end
+
+    test("matches official Cacophony test vector: Noise_NN_25519_ChaChaPoly_BLAKE2s", function()
+        local vec = get_cacophony_vector("Noise_NN_25519_ChaChaPoly_BLAKE2s")
+        assert_true(vec ~= nil)
+        assert_true(run_cacophony_vector(vec))
     end)
 
     test("matches official Cacophony test vector: Noise_NK_25519_ChaChaPoly_BLAKE2s", function()
-        local client = n.create({
-            pattern = "NK",
-            role = "initiator",
-            ephemeral_key = from_hex("893e28b9dc6ca8d611ab664754b8ceb7bac5117349a4439a6b0569da977c464a"),
-            remote_key = from_hex("31e0303fd6418d2f8c0e78b91f22e8caed0fbe48656dcf4767e4834f701b8f62"),
-            prologue = from_hex("4a6f686e2047616c74")
-        })
-        local server = n.create({
-            pattern = "NK",
-            role = "responder",
-            private_key = from_hex("4a3acbfdb163dec651dfa3194dece676d437029c62a408b4c5ea9114246e4893"),
-            ephemeral_key = from_hex("bbdb4cdbd309f1a1f2e1456967fe288cadd6f712d65dc7b7793d5e63da6b375b"),
-            prologue = from_hex("4a6f686e2047616c74")
-        })
-
-        -- Msg 0 (init -> resp)
-        local m0 = client:write_message(from_hex("4c756477696720766f6e204d69736573"))
-        assert_eq(m0, from_hex("ca35def5ae56cec33dc2036731ab14896bc4c75dbb07a61f879f8e3afa4c794454ae7612d1724af42adb130160a9a94e67b5b169b4e00c189f6467cd17eb7cad"))
-        local p0 = server:read_message(m0)
-        assert_eq(p0, from_hex("4c756477696720766f6e204d69736573"))
-
-        -- Msg 1 (resp -> init)
-        local m1 = server:write_message(from_hex("4d757272617920526f746862617264"))
-        assert_eq(m1, from_hex("95ebc60d2b1fa672c1f46a8aa265ef51bfe38e7ccb39ec5be34069f144808843986a5c929337e337ac8b4a074af12ab9f76318a5f18c8b599a443af07383ce"))
-        local p1 = client:read_message(m1)
-        assert_eq(p1, from_hex("4d757272617920526f746862617264"))
-
-        assert_true(client:is_complete())
-        assert_true(server:is_complete())
-
-        local expected_h = from_hex("d7244d974066aae2376f7ba5534f60a6e4e82cd7c9751e226cae3928e6b49f14")
-        assert_eq(client:handshake_hash(), expected_h)
-        assert_eq(server:handshake_hash(), expected_h)
-
-        -- Msg 2 (init -> resp, transport)
-        local c2 = client:encrypt(from_hex("462e20412e20486179656b"))
-        assert_eq(c2, from_hex("550027c7a5d450017bcb5e12b8253b1c53fd2213aeda84891d5f95"))
-        local p2 = server:decrypt(c2)
-        assert_eq(p2, from_hex("462e20412e20486179656b"))
-
-        -- Msg 3 (resp -> init, transport)
-        local c3 = server:encrypt(from_hex("4361726c204d656e676572"))
-        assert_eq(c3, from_hex("dfbce0c38210ccee35e830aca9dd8b8b3997b933e75bfc8864b759"))
-        local p3 = client:decrypt(c3)
-        assert_eq(p3, from_hex("4361726c204d656e676572"))
-
-        client:close()
-        server:close()
+        local vec = get_cacophony_vector("Noise_NK_25519_ChaChaPoly_BLAKE2s")
+        assert_true(vec ~= nil)
+        assert_true(run_cacophony_vector(vec))
     end)
 
     test("matches official Cacophony test vector: Noise_IK_25519_ChaChaPoly_BLAKE2s", function()
-        local client = n.create({
-            pattern = "IK",
-            role = "initiator",
-            private_key = from_hex("e61ef9919cde45dd5f82166404bd08e38bceb5dfdfded0a34c8df7ed542214d1"),
-            ephemeral_key = from_hex("893e28b9dc6ca8d611ab664754b8ceb7bac5117349a4439a6b0569da977c464a"),
-            remote_key = from_hex("31e0303fd6418d2f8c0e78b91f22e8caed0fbe48656dcf4767e4834f701b8f62"),
-            prologue = from_hex("4a6f686e2047616c74")
-        })
-        local server = n.create({
-            pattern = "IK",
-            role = "responder",
-            private_key = from_hex("4a3acbfdb163dec651dfa3194dece676d437029c62a408b4c5ea9114246e4893"),
-            ephemeral_key = from_hex("bbdb4cdbd309f1a1f2e1456967fe288cadd6f712d65dc7b7793d5e63da6b375b"),
-            prologue = from_hex("4a6f686e2047616c74")
-        })
-
-        -- Msg 0 (init -> resp)
-        local m0 = client:write_message(from_hex("4c756477696720766f6e204d69736573"))
-        assert_eq(m0, from_hex("ca35def5ae56cec33dc2036731ab14896bc4c75dbb07a61f879f8e3afa4c79440b03ddc7aac5123d06a1b23b71670e32e76c28239a7ca4ac8f784de7e44c1adbfc6e83fef7352a58d9d56157400c0a737b1d171ce368229c7b752ac25b8faf4eca690f6d896f543be02c996ab2b86b76"))
-        local p0 = server:read_message(m0)
-        assert_eq(p0, from_hex("4c756477696720766f6e204d69736573"))
-
-        -- Msg 1 (resp -> init)
-        local m1 = server:write_message(from_hex("4d757272617920526f746862617264"))
-        assert_eq(m1, from_hex("95ebc60d2b1fa672c1f46a8aa265ef51bfe38e7ccb39ec5be34069f144808843d9b5a8927f0ac9655ef76833bc7e5561f42e691ac8404efd6fbd6308b6a27c"))
-        local p1 = client:read_message(m1)
-        assert_eq(p1, from_hex("4d757272617920526f746862617264"))
-
-        assert_true(client:is_complete())
-        assert_true(server:is_complete())
-
-        local expected_h = from_hex("48f3cb8bc9319da4ba1e9933991b1c4ed4034f1f126a76d3a1fbcfd7f94248d4")
-        assert_eq(client:handshake_hash(), expected_h)
-        assert_eq(server:handshake_hash(), expected_h)
-
-        -- Msg 2 (init -> resp, transport)
-        local c2 = client:encrypt(from_hex("462e20412e20486179656b"))
-        assert_eq(c2, from_hex("2c256ed08fcd08c2980f954ee4beaccb61c9581340f5dd2fd1cf3b"))
-        local p2 = server:decrypt(c2)
-        assert_eq(p2, from_hex("462e20412e20486179656b"))
-
-        -- Msg 3 (resp -> init, transport)
-        local c3 = server:encrypt(from_hex("4361726c204d656e676572"))
-        assert_eq(c3, from_hex("d6033f70eee20945c7c9dba304e397ee3b284ff5e00fd9efb095d3"))
-        local p3 = client:decrypt(c3)
-        assert_eq(p3, from_hex("4361726c204d656e676572"))
-
-        client:close()
-        server:close()
+        local vec = get_cacophony_vector("Noise_IK_25519_ChaChaPoly_BLAKE2s")
+        assert_true(vec ~= nil)
+        assert_true(run_cacophony_vector(vec))
     end)
 
     test("matches official Cacophony test vector: Noise_XX_25519_ChaChaPoly_BLAKE2s", function()
-        local client = n.create({
-            pattern = "XX",
-            role = "initiator",
-            private_key = from_hex("e61ef9919cde45dd5f82166404bd08e38bceb5dfdfded0a34c8df7ed542214d1"),
-            ephemeral_key = from_hex("893e28b9dc6ca8d611ab664754b8ceb7bac5117349a4439a6b0569da977c464a"),
-            prologue = from_hex("4a6f686e2047616c74")
-        })
-        local server = n.create({
-            pattern = "XX",
-            role = "responder",
-            private_key = from_hex("4a3acbfdb163dec651dfa3194dece676d437029c62a408b4c5ea9114246e4893"),
-            ephemeral_key = from_hex("bbdb4cdbd309f1a1f2e1456967fe288cadd6f712d65dc7b7793d5e63da6b375b"),
-            prologue = from_hex("4a6f686e2047616c74")
-        })
-
-        -- Msg 0 (init -> resp)
-        local m0 = client:write_message(from_hex("4c756477696720766f6e204d69736573"))
-        assert_eq(m0, from_hex("ca35def5ae56cec33dc2036731ab14896bc4c75dbb07a61f879f8e3afa4c79444c756477696720766f6e204d69736573"))
-        local p0 = server:read_message(m0)
-        assert_eq(p0, from_hex("4c756477696720766f6e204d69736573"))
-
-        -- Msg 1 (resp -> init)
-        local m1 = server:write_message(from_hex("4d757272617920526f746862617264"))
-        assert_eq(m1, from_hex("95ebc60d2b1fa672c1f46a8aa265ef51bfe38e7ccb39ec5be34069f1448088437c365eb362a1c991b0557fe8a7fb187d99346765d93ec63db6c1b01504ebeec55a2298d2dbff80eff034d20595153f63a196a6cead1e11b2bb13e336fa13616dd3e8b0a070c882ed3f1a78c7c06c93"))
-        local p1 = client:read_message(m1)
-        assert_eq(p1, from_hex("4d757272617920526f746862617264"))
-
-        -- Msg 2 (init -> resp)
-        local m2 = client:write_message(from_hex("462e20412e20486179656b"))
-        assert_eq(m2, from_hex("46c3307de83b014258717d97781c1f50936d8b7d50c0722a1739654d10392d415b670c114f79b9a4f80541570f77ce88802efa4220cff733e7b5668ba38059ec904b4b8eef9448085faf51"))
-        local p2 = server:read_message(m2)
-        assert_eq(p2, from_hex("462e20412e20486179656b"))
-
-        assert_true(client:is_complete())
-        assert_true(server:is_complete())
-
-        local expected_h = from_hex("6c4c56cf71612f72d05ceb96c0155e6f4ea54a26b504c93de632a2db4a49d200")
-        assert_eq(client:handshake_hash(), expected_h)
-        assert_eq(server:handshake_hash(), expected_h)
-
-        -- Msg 3 (resp -> init, transport)
-        local c3 = server:encrypt(from_hex("4361726c204d656e676572"))
-        assert_eq(c3, from_hex("d5e83adfaac5dc324a68f1862df54549e56d209fba707205f328b2"))
-        local p3 = client:decrypt(c3)
-        assert_eq(p3, from_hex("4361726c204d656e676572"))
-
-        -- Msg 4 (init -> resp, transport)
-        local c4 = client:encrypt(from_hex("4a65616e2d426170746973746520536179"))
-        assert_eq(c4, from_hex("d102c9029b1f55c788f561ba7737afbccef9c9f1bf2f238167fd40ba9c1c134867"))
-        local p4 = server:decrypt(c4)
-        assert_eq(p4, from_hex("4a65616e2d426170746973746520536179"))
-
-        -- Msg 5 (resp -> init, transport)
-        local c5 = server:encrypt(from_hex("457567656e2042f6686d20766f6e2042617765726b"))
-        assert_eq(c5, from_hex("cb1ce80960382c6d5d5e740ffb724d1432f0310b200fb6f8424120f506092744baa415e155"))
-        local p5 = client:decrypt(c5)
-        assert_eq(p5, from_hex("457567656e2042f6686d20766f6e2042617765726b"))
-
-        client:close()
-        server:close()
+        local vec = get_cacophony_vector("Noise_XX_25519_ChaChaPoly_BLAKE2s")
+        assert_true(vec ~= nil)
+        assert_true(run_cacophony_vector(vec))
     end)
 end)
 

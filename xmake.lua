@@ -114,6 +114,7 @@ if is_plat("linux", "macosx", "bsd", "windows", "mingw") then
     add_requires("greatest")
     if has_config("noise") then
         add_requires("parson")
+        add_requires("lua-cjson")
     end
 end
 
@@ -570,6 +571,9 @@ if has_config("lua") then
         set_values("recudo.lua.entry", "tests/runner.lua")
         set_default(false)
         add_deps(table.unpack(test_lua_deps))
+        if has_config("noise") then
+            add_packages("lua-cjson")
+        end
         on_test(function (target)
             os.execv(path.join(os.projectdir(), "build/bin/test_lua"))
             return true

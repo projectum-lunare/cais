@@ -49,6 +49,7 @@ function noise.seed(entropy) end
 ---@field role? cais.noise.role|string Role: "initiator" or "responder" (default: "initiator")
 ---@field private_key? string 32-byte static private key (required for XX, IK)
 ---@field remote_key? string 32-byte remote static public key (required for NK, IK initiator)
+---@field ephemeral_key? string 32-byte ephemeral private key (used for test vector execution)
 ---@field prologue? string Optional handshake prologue bytes
 
 ---Creates a new Noise session state machine.
@@ -71,6 +72,11 @@ function Session:is_complete() end
 ---Returns the 32-byte authenticated remote static public key, if established.
 ---@return string? remote_public_key
 function Session:remote_static() end
+
+---Returns the current 32-byte binary handshake hash (h) for verification or channel binding.
+---@return string? handshake_hash 32-byte raw binary handshake hash
+---@return string? error_message
+function Session:handshake_hash() end
 
 ---Writes the next handshake message, optionally including payload.
 ---@param payload? string Optional unencrypted or encrypted payload

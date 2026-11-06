@@ -644,10 +644,37 @@ TEST test_noise_vector_cacophony_xx(void)
     PASS();
 }
 
+TEST test_noise_empty_prologue_hash(void)
+{
+    char err[128];
+    unsigned char act_h[32];
+    /*
+     * For Noise_NN_25519_ChaChaPoly_BLAKE2s:
+     * pname length is 33 bytes (> 32), so:
+     *   h0 = BLAKE2s("Noise_NN_25519_ChaChaPoly_BLAKE2s")
+     * Section 5.3: MixHash(prologue) must run even when prologue is empty (0 bytes):
+     *   h1 = BLAKE2s(h0 || "") = 00b6f1c6799546c330d32d638953a16e33dfc15b22450efb33d28cab6b041599
+     */
+    static const unsigned char exp_nn_h[32] = {
+        0x00, 0xb6, 0xf1, 0xc6, 0x79, 0x95, 0x46, 0xc3,
+        0x30, 0xd3, 0x2d, 0x63, 0x89, 0x53, 0xa1, 0x6e,
+        0x33, 0xdf, 0xc1, 0x5b, 0x22, 0x45, 0x0e, 0xfb,
+        0x33, 0xd2, 0x8c, 0xab, 0x6b, 0x04, 0x15, 0x99
+    };
+    cais_noise_t *client = cais_noise_create(CAIS_NOISE_NN, CAIS_NOISE_INITIATOR, err, sizeof(err));
+    ASSERT(client != NULL);
+    ASSERT_EQ(CAIS_OK, cais_noise_start(client, err, sizeof(err)));
+    ASSERT_EQ(CAIS_OK, cais_noise_get_handshake_hash(client, act_h, err, sizeof(err)));
+    ASSERT(memcmp(act_h, exp_nn_h, 32) == 0);
+    cais_noise_free(client);
+    PASS();
+}
+
 SUITE(noise_suite)
 {
     RUN_TEST(test_noise_keygen);
     RUN_TEST(test_noise_nn_handshake);
+    RUN_TEST(test_noise_empty_prologue_hash);
     RUN_TEST(test_noise_xx_handshake);
     RUN_TEST(test_noise_nk_handshake);
     RUN_TEST(test_noise_ik_handshake);

@@ -193,6 +193,14 @@ cais_status_t cais_noise_set_remote_key(
     size_t err_cap
 );
 
+/* Configures deterministic 32-byte ephemeral private key (used for test vector validation) */
+cais_status_t cais_noise_set_ephemeral_key(
+    cais_noise_t *noise,
+    const unsigned char priv[CAIS_NOISE_KEY_LEN],
+    char *err_buf,
+    size_t err_cap
+);
+
 /* Configures optional contextual prologue bytes mixed into handshake hash */
 cais_status_t cais_noise_set_prologue(
     cais_noise_t *noise,
@@ -202,7 +210,11 @@ cais_status_t cais_noise_set_prologue(
     size_t err_cap
 );
 
-/* Initializes SymmetricState and enters first handshake state */
+/* Initializes SymmetricState and enters first handshake state.
+ * Conforming to Noise Specification Rev 34 (Section 5.3), MixHash(prologue)
+ * is unconditionally executed during initialization, even when the prologue
+ * is empty (0 bytes), ensuring full cross-implementation interoperability.
+ */
 cais_status_t cais_noise_start(
     cais_noise_t *noise,
     char *err_buf,
@@ -226,6 +238,14 @@ cais_bool_t cais_noise_is_complete(const cais_noise_t *noise);
 
 /* Returns pointer to authenticated 32-byte remote public key, or NULL if unavailable */
 const unsigned char *cais_noise_get_remote_static(const cais_noise_t *noise);
+
+/* Retrieves the current 32-byte handshake hash (h) for verification or channel binding */
+cais_status_t cais_noise_get_handshake_hash(
+    const cais_noise_t *noise,
+    unsigned char out_hash[CAIS_NOISE_HASH_LEN],
+    char *err_buf,
+    size_t err_cap
+);
 ```
 
 ---
